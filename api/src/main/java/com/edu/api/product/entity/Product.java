@@ -77,20 +77,22 @@ public class Product {
             String name,
             String description,
             BigDecimal price,
-            int minimumStock
+            int minimumStock,
+            boolean active
     ) {
         this.name = name;
         this.description = description;
         this.price = price;
         this.minimumStock = minimumStock;
+        this.active = active;
     }
 
     public void attachInventory(Inventory inventory) {
         this.inventory = inventory;
     }
 
-    public void updateStatus(boolean active) {
-        this.active = active;
+    public void updateSku(String sku) {
+        this.sku = sku;
     }
 
     @PrePersist
@@ -104,8 +106,4 @@ public class Product {
     void onUpdate() {
         updatedAt = Instant.now();
     }
-
-    public void updateSku(String sku) {
-    this.sku = sku;
-}
 }
