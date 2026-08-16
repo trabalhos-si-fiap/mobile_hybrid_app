@@ -26,3 +26,9 @@ migrações em `src/main/resources/db/migration`.
 - `student_metrics` para os indicadores educacionais agregados mockados
 
 Os dados individuais de alunos não fazem parte do MVP.
+
+## Swagger
+
+Com a API em execução, abra `http://localhost:8080/api/v1/swagger-ui.html`.
+O contrato está em `src/main/resources/static/openapi.yaml` e pode ser usado
+diretamente pelos clientes Angular e Flutter durante o desenvolvimento.

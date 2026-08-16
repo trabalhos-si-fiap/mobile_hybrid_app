@@ -1,0 +1,580 @@
+openapi: 3.0.3
+info:
+  title: Edu Admin API
+  version: 0.1.0
+  description: |
+    Contrato do MVP administrativo do Edu. A API reúne indicadores agregados
+    educacionais, produtos/estoque, transportadoras e suas ocorrências.
+    Dados individuais de alunos e gestão de pedidos não fazem parte deste MVP.
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Desenvolvimento local
+tags:
+  - name: Auth
+  - name: Dashboard
+  - name: Products
+  - name: Inventory
+  - name: Carriers
+  - name: Carrier occurrences
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login do administrador mockado
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Sessão autenticada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Retorna o administrador autenticado
+      operationId: getCurrentUser
+      responses:
+        '200':
+          description: Administrador atual
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUser'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /dashboard:
+    get:
+      tags: [Dashboard]
+      summary: Indicadores agregados do painel administrativo
+      operationId: getDashboard
+      parameters:
+        - $ref: '#/components/parameters/Days'
+      responses:
+        '200':
+          description: Métricas educacionais e operacionais do período
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardResponse'
+  /products:
+    get:
+      tags: [Products]
+      summary: Lista produtos
+      operationId: listProducts
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Search'
+      responses:
+        '200':
+          description: Página de produtos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPage'
+    post:
+      tags: [Products]
+      summary: Cadastra um produto e seu estoque inicial
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProductRequest'
+      responses:
+        '201':
+          description: Produto criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+  /products/{productId}:
+    parameters:
+      - $ref: '#/components/parameters/ProductId'
+    get:
+      tags: [Products]
+      summary: Consulta um produto
+      operationId: getProduct
+      responses:
+        '200':
+          description: Produto encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Products]
+      summary: Edita os dados cadastrais de um produto
+      operationId: updateProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProductRequest'
+      responses:
+        '200':
+          description: Produto atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /inventory:
+    get:
+      tags: [Inventory]
+      summary: Lista a posição de estoque
+      operationId: listInventory
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Search'
+        - name: lowStock
+          in: query
+          description: Quando verdadeiro, retorna somente produtos abaixo ou no estoque mínimo.
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Página de itens de estoque
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryPage'
+  /inventory/{productId}:
+    parameters:
+      - $ref: '#/components/parameters/ProductId'
+    patch:
+      tags: [Inventory]
+      summary: Ajusta a quantidade de estoque de um produto
+      operationId: adjustInventory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdjustInventoryRequest'
+      responses:
+        '200':
+          description: Estoque atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /carriers:
+    get:
+      tags: [Carriers]
+      summary: Lista transportadoras parceiras
+      operationId: listCarriers
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - $ref: '#/components/parameters/Search'
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/CarrierStatus'
+      responses:
+        '200':
+          description: Página de transportadoras
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarrierPage'
+    post:
+      tags: [Carriers]
+      summary: Cadastra uma transportadora
+      operationId: createCarrier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CarrierRequest'
+      responses:
+        '201':
+          description: Transportadora criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Carrier'
+  /carriers/{carrierId}:
+    parameters:
+      - $ref: '#/components/parameters/CarrierId'
+    get:
+      tags: [Carriers]
+      summary: Consulta uma transportadora
+      operationId: getCarrier
+      responses:
+        '200':
+          description: Transportadora encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Carrier'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Carriers]
+      summary: Edita uma transportadora
+      operationId: updateCarrier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CarrierRequest'
+      responses:
+        '200':
+          description: Transportadora atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Carrier'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /carriers/{carrierId}/status:
+    parameters:
+      - $ref: '#/components/parameters/CarrierId'
+    patch:
+      tags: [Carriers]
+      summary: Ativa ou inativa uma transportadora
+      operationId: updateCarrierStatus
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/CarrierStatus'
+      responses:
+        '200':
+          description: Status atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Carrier'
+  /carrier-occurrences:
+    get:
+      tags: [Carrier occurrences]
+      summary: Lista ocorrências de transportadoras
+      operationId: listCarrierOccurrences
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - name: carrierId
+          in: query
+          schema: { type: integer, format: int64 }
+        - name: type
+          in: query
+          schema: { $ref: '#/components/schemas/OccurrenceType' }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/OccurrenceStatus' }
+      responses:
+        '200':
+          description: Página de ocorrências
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OccurrencePage'
+    post:
+      tags: [Carrier occurrences]
+      summary: Registra uma ocorrência independente de pedido
+      operationId: createCarrierOccurrence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOccurrenceRequest'
+      responses:
+        '201':
+          description: Ocorrência criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarrierOccurrence'
+  /carrier-occurrences/{occurrenceId}:
+    parameters:
+      - $ref: '#/components/parameters/OccurrenceId'
+    get:
+      tags: [Carrier occurrences]
+      summary: Consulta uma ocorrência
+      operationId: getCarrierOccurrence
+      responses:
+        '200':
+          description: Ocorrência encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarrierOccurrence'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /carrier-occurrences/{occurrenceId}/status:
+    parameters:
+      - $ref: '#/components/parameters/OccurrenceId'
+    patch:
+      tags: [Carrier occurrences]
+      summary: Atualiza o status de uma ocorrência
+      operationId: updateCarrierOccurrenceStatus
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/OccurrenceStatus'
+      responses:
+        '200':
+          description: Ocorrência atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CarrierOccurrence'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 0, default: 0 }
+    Size:
+      name: size
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+    Search:
+      name: search
+      in: query
+      schema: { type: string }
+    Days:
+      name: days
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 365, default: 30 }
+    ProductId:
+      name: productId
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
+    CarrierId:
+      name: carrierId
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
+    OccurrenceId:
+      name: occurrenceId
+      in: path
+      required: true
+      schema: { type: integer, format: int64 }
+  responses:
+    Unauthorized:
+      description: Token ausente, inválido ou expirado
+    NotFound:
+      description: Recurso não encontrado
+    ValidationError:
+      description: Dados inválidos
+  schemas:
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, example: admin@edu.com }
+        password: { type: string, format: password, example: admin123 }
+    AdminUser:
+      type: object
+      properties:
+        id: { type: string, example: '1' }
+        name: { type: string, example: Administrador Edu }
+        email: { type: string, format: email, example: admin@edu.com }
+        role: { type: string, example: ADMIN }
+    AuthResponse:
+      type: object
+      properties:
+        accessToken: { type: string }
+        tokenType: { type: string, example: Bearer }
+        user: { $ref: '#/components/schemas/AdminUser' }
+    DashboardResponse:
+      type: object
+      properties:
+        periodDays: { type: integer, example: 30 }
+        educationMetrics:
+          type: object
+          properties:
+            registeredStudents: { type: integer, example: 128 }
+            activeStudents: { type: integer, example: 84 }
+            newRegistrations: { type: integer, example: 12 }
+            activeRate: { type: number, format: double, example: 65.6 }
+            studentsAtRisk: { type: integer, example: 9 }
+            activityHistory:
+              type: array
+              items:
+                type: object
+                properties:
+                  date: { type: string, format: date }
+                  activeStudents: { type: integer }
+                  newRegistrations: { type: integer }
+        operationalMetrics:
+          type: object
+          properties:
+            totalProducts: { type: integer, example: 45 }
+            lowStockProducts: { type: integer, example: 3 }
+            outOfStockProducts: { type: integer, example: 1 }
+            activeCarriers: { type: integer, example: 4 }
+            inactiveCarriers: { type: integer, example: 1 }
+            openCarrierOccurrences: { type: integer, example: 2 }
+        summary: { type: string }
+    CreateProductRequest:
+      type: object
+      required: [name, sku, minimumStock, initialQuantity]
+      properties:
+        name: { type: string, maxLength: 150 }
+        sku: { type: string, maxLength: 60 }
+        description: { type: string, maxLength: 500 }
+        minimumStock: { type: integer, minimum: 0 }
+        initialQuantity: { type: integer, minimum: 0 }
+    UpdateProductRequest:
+      type: object
+      required: [name, sku, minimumStock, active]
+      properties:
+        name: { type: string }
+        sku: { type: string }
+        description: { type: string }
+        minimumStock: { type: integer, minimum: 0 }
+        active: { type: boolean }
+    Product:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        sku: { type: string }
+        description: { type: string }
+        minimumStock: { type: integer }
+        active: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    InventoryItem:
+      type: object
+      properties:
+        productId: { type: integer, format: int64 }
+        productName: { type: string }
+        sku: { type: string }
+        quantity: { type: integer }
+        minimumStock: { type: integer }
+        lowStock: { type: boolean }
+        updatedAt: { type: string, format: date-time }
+    AdjustInventoryRequest:
+      type: object
+      required: [quantity, reason]
+      properties:
+        quantity: { type: integer, minimum: 0 }
+        reason: { type: string, minLength: 3, maxLength: 300 }
+    CarrierStatus:
+      type: string
+      enum: [ACTIVE, INACTIVE]
+    CarrierRequest:
+      type: object
+      required: [name, location, email, averageDeliveryDays, rating, slaPercentage, status]
+      properties:
+        name: { type: string }
+        location: { type: string }
+        email: { type: string, format: email }
+        averageDeliveryDays: { type: integer, minimum: 1 }
+        rating: { type: number, minimum: 0, maximum: 5 }
+        slaPercentage: { type: number, minimum: 0, maximum: 100 }
+        status: { $ref: '#/components/schemas/CarrierStatus' }
+    Carrier:
+      allOf:
+        - $ref: '#/components/schemas/CarrierRequest'
+        - type: object
+          properties:
+            id: { type: integer, format: int64 }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+    OccurrenceType:
+      type: string
+      enum: [DELIVERY_DELAY, DAMAGE, DELIVERY_FAILURE, OTHER]
+    OccurrenceStatus:
+      type: string
+      enum: [OPEN, RESOLVED]
+    CreateOccurrenceRequest:
+      type: object
+      required: [carrierId, type, description]
+      properties:
+        carrierId: { type: integer, format: int64 }
+        type: { $ref: '#/components/schemas/OccurrenceType' }
+        description: { type: string, minLength: 3, maxLength: 500 }
+    CarrierOccurrence:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        carrierId: { type: integer, format: int64 }
+        carrierName: { type: string }
+        type: { $ref: '#/components/schemas/OccurrenceType' }
+        description: { type: string }
+        status: { $ref: '#/components/schemas/OccurrenceStatus' }
+        createdAt: { type: string, format: date-time }
+        resolvedAt: { type: string, format: date-time, nullable: true }
+    ProductPage:
+      type: object
+      properties:
+        content: { type: array, items: { $ref: '#/components/schemas/Product' } }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+    InventoryPage:
+      type: object
+      properties:
+        content: { type: array, items: { $ref: '#/components/schemas/InventoryItem' } }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+    CarrierPage:
+      type: object
+      properties:
+        content: { type: array, items: { $ref: '#/components/schemas/Carrier' } }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+    OccurrencePage:
+      type: object
+      properties:
+        content: { type: array, items: { $ref: '#/components/schemas/CarrierOccurrence' } }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+security:
+  - bearerAuth: []
