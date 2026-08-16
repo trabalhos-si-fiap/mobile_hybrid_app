@@ -18,6 +18,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 
 @Getter
 @Entity
@@ -29,11 +30,11 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 150)
-    private String name;
-
     @Column(nullable = false, unique = true, length = 60)
     private String sku;
+
+    @Column(nullable = false, length = 150)
+    private String name;
 
     @Column(length = 500)
     private String description;
@@ -67,6 +68,7 @@ public class Product {
             BigDecimal price,
             int minimumStock
     ) {
+        this.sku = generateSku();
         this.name = name;
         this.description = description;
         this.price = price;
@@ -91,8 +93,12 @@ public class Product {
         this.inventory = inventory;
     }
 
-    public void updateSku(String sku) {
-        this.sku = sku;
+    private String generateSku() {
+        return "EDU-" + UUID.randomUUID()
+                .toString()
+                .replace("-", "")
+                .substring(0, 8)
+                .toUpperCase();
     }
 
     @PrePersist

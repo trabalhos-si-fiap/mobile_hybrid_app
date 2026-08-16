@@ -38,12 +38,6 @@ public class ProductService {
 
         productRepository.save(product);
 
-        // Gera o SKU automaticamente após obter o ID
-        product.updateSku(
-                String.format("EDU-%04d", product.getId())
-        );
-
-        // Cria o estoque inicial
         Inventory inventory = new Inventory(product, 0);
 
         inventoryRepository.save(inventory);
