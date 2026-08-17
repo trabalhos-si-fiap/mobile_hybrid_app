@@ -9,6 +9,8 @@ import com.edu.api.occurrence.entity.CarrierOccurrence;
 import com.edu.api.occurrence.entity.OccurrenceStatus;
 import com.edu.api.occurrence.entity.OccurrenceType;
 import com.edu.api.occurrence.repository.CarrierOccurrenceRepository;
+import com.edu.api.shared.exception.BusinessException;
+import com.edu.api.shared.exception.NotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -112,9 +114,12 @@ public class CarrierOccurrenceService {
             CreateCarrierOccurrenceRequest request
     ) {
 
-        Carrier carrier = carrierRepository.findById(request.carrierId())
+        Carrier carrier = carrierRepository
+                .findById(request.carrierId())
                 .orElseThrow(() ->
-                        new RuntimeException("Transportadora não encontrada")
+                        new NotFoundException(
+                                "Transportadora não encontrada"
+                        )
                 );
 
         CarrierOccurrence occurrence = new CarrierOccurrence(
@@ -131,9 +136,12 @@ public class CarrierOccurrenceService {
     @Transactional(readOnly = true)
     public CarrierOccurrenceResponse findById(Long id) {
 
-        CarrierOccurrence occurrence = occurrenceRepository.findById(id)
+        CarrierOccurrence occurrence = occurrenceRepository
+                .findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Ocorrência não encontrada")
+                        new NotFoundException(
+                                "Ocorrência não encontrada"
+                        )
                 );
 
         return toResponse(occurrence);
@@ -145,15 +153,18 @@ public class CarrierOccurrenceService {
             UpdateOccurrenceStatusRequest request
     ) {
 
-        CarrierOccurrence occurrence = occurrenceRepository.findById(id)
+        CarrierOccurrence occurrence = occurrenceRepository
+                .findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Ocorrência não encontrada")
+                        new NotFoundException(
+                                "Ocorrência não encontrada"
+                        )
                 );
 
         if (occurrence.getStatus() == OccurrenceStatus.RESOLVED
                 && request.status() == OccurrenceStatus.OPEN) {
 
-            throw new IllegalArgumentException(
+            throw new BusinessException(
                     "Uma ocorrência resolvida não pode voltar para OPEN"
             );
         }

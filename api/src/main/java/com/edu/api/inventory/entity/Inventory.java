@@ -1,6 +1,7 @@
 package com.edu.api.inventory.entity;
 
 import com.edu.api.product.entity.Product;
+import com.edu.api.shared.exception.BusinessException;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -58,8 +59,7 @@ private final List<InventoryAdjustment> adjustments = new ArrayList<>();
     public InventoryAdjustment adjustTo(int newQuantity, String reason) {
 
         if (newQuantity < 0) {
-            throw new IllegalArgumentException(
-                    "A quantidade do estoque não pode ser negativa"
+            throw new BusinessException("A quantidade do estoque não pode ser negativa"
             );
         }
 

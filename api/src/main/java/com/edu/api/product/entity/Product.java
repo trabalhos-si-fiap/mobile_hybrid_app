@@ -30,7 +30,12 @@ public class Product {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 60)
+    @Column(
+        nullable = false,
+        unique = true,
+        length = 60,
+        updatable = false
+    )   
     private String sku;
 
     @Column(nullable = false, length = 150)

@@ -6,7 +6,8 @@ import com.edu.api.inventory.entity.Inventory;
 import com.edu.api.inventory.entity.InventoryAdjustment;
 import com.edu.api.inventory.repository.InventoryRepository;
 import com.edu.api.product.entity.Product;
-import com.edu.api.product.repository.ProductRepository;
+import com.edu.api.shared.exception.BusinessException;
+import com.edu.api.shared.exception.NotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -17,10 +18,7 @@ public class InventoryService {
 
     private final InventoryRepository inventoryRepository;
 
-    public InventoryService(
-            InventoryRepository inventoryRepository,
-            ProductRepository productRepository
-    ) {
+    public InventoryService(InventoryRepository inventoryRepository) {
         this.inventoryRepository = inventoryRepository;
     }
 
@@ -34,15 +32,20 @@ public class InventoryService {
         Page<Inventory> inventories;
 
         if (lowStock) {
+
             inventories = inventoryRepository.findBelowMinimum(pageable);
+
         } else if (search != null && !search.isBlank()) {
+
             inventories = inventoryRepository
                     .findByProductNameContainingIgnoreCaseOrProductSkuContainingIgnoreCase(
                             search,
                             search,
                             pageable
                     );
+
         } else {
+
             inventories = inventoryRepository.findAll(pageable);
         }
 
@@ -52,9 +55,12 @@ public class InventoryService {
     @Transactional(readOnly = true)
     public InventoryResponse findByProductId(Long productId) {
 
-        Inventory inventory = inventoryRepository.findByProductId(productId)
+        Inventory inventory = inventoryRepository
+                .findByProductId(productId)
                 .orElseThrow(() ->
-                        new RuntimeException("Estoque do produto não encontrado")
+                        new NotFoundException(
+                                "Estoque do produto não encontrado"
+                        )
                 );
 
         return toResponse(inventory);
@@ -66,13 +72,16 @@ public class InventoryService {
             AdjustInventoryRequest request
     ) {
 
-        Inventory inventory = inventoryRepository.findByProductId(productId)
+        Inventory inventory = inventoryRepository
+                .findByProductId(productId)
                 .orElseThrow(() ->
-                        new RuntimeException("Estoque do produto não encontrado")
+                        new NotFoundException(
+                                "Estoque do produto não encontrado"
+                        )
                 );
 
         if (request.quantity() < 0) {
-            throw new RuntimeException(
+            throw new BusinessException(
                     "A quantidade do estoque não pode ser negativa"
             );
         }

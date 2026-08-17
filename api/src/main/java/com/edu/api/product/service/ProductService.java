@@ -7,6 +7,8 @@ import com.edu.api.product.dto.ProductResponse;
 import com.edu.api.product.dto.UpdateProductRequest;
 import com.edu.api.product.entity.Product;
 import com.edu.api.product.repository.ProductRepository;
+import com.edu.api.shared.exception.NotFoundException;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -59,7 +61,7 @@ public class ProductService {
 
         Product product = productRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Produto não encontrado")
+                        new NotFoundException("Produto não encontrado")
                 );
 
         return toResponse(product);
@@ -73,7 +75,7 @@ public class ProductService {
 
         Product product = productRepository.findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Produto não encontrado")
+                        new NotFoundException("Produto não encontrado")
                 );
 
         product.update(

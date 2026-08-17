@@ -6,6 +6,7 @@ import com.edu.api.carrier.dto.UpdateCarrierStatusRequest;
 import com.edu.api.carrier.entity.Carrier;
 import com.edu.api.carrier.entity.CarrierStatus;
 import com.edu.api.carrier.repository.CarrierRepository;
+import com.edu.api.shared.exception.NotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ public class CarrierService {
         Page<Carrier> carriers;
 
         if (search != null && !search.isBlank() && status != null) {
+
             carriers = carrierRepository
                     .findByNameContainingIgnoreCaseAndStatus(
                             search,
@@ -38,6 +40,7 @@ public class CarrierService {
                     );
 
         } else if (search != null && !search.isBlank()) {
+
             carriers = carrierRepository
                     .findByNameContainingIgnoreCase(
                             search,
@@ -45,6 +48,7 @@ public class CarrierService {
                     );
 
         } else if (status != null) {
+
             carriers = carrierRepository
                     .findByStatus(
                             status,
@@ -52,6 +56,7 @@ public class CarrierService {
                     );
 
         } else {
+
             carriers = carrierRepository.findAll(pageable);
         }
 
@@ -61,9 +66,12 @@ public class CarrierService {
     @Transactional(readOnly = true)
     public CarrierResponse findById(Long id) {
 
-        Carrier carrier = carrierRepository.findById(id)
+        Carrier carrier = carrierRepository
+                .findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Transportadora não encontrada")
+                        new NotFoundException(
+                                "Transportadora não encontrada"
+                        )
                 );
 
         return toResponse(carrier);
@@ -93,9 +101,12 @@ public class CarrierService {
             CarrierRequest request
     ) {
 
-        Carrier carrier = carrierRepository.findById(id)
+        Carrier carrier = carrierRepository
+                .findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Transportadora não encontrada")
+                        new NotFoundException(
+                                "Transportadora não encontrada"
+                        )
                 );
 
         carrier.update(
@@ -117,9 +128,12 @@ public class CarrierService {
             UpdateCarrierStatusRequest request
     ) {
 
-        Carrier carrier = carrierRepository.findById(id)
+        Carrier carrier = carrierRepository
+                .findById(id)
                 .orElseThrow(() ->
-                        new RuntimeException("Transportadora não encontrada")
+                        new NotFoundException(
+                                "Transportadora não encontrada"
+                        )
                 );
 
         carrier.updateStatus(request.status());
