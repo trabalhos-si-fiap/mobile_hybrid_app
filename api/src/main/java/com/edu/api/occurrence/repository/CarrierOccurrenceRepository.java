@@ -3,6 +3,9 @@ package com.edu.api.occurrence.repository;
 import com.edu.api.occurrence.entity.CarrierOccurrence;
 import com.edu.api.occurrence.entity.OccurrenceStatus;
 import com.edu.api.occurrence.entity.OccurrenceType;
+
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -49,4 +52,8 @@ public interface CarrierOccurrenceRepository
             OccurrenceStatus status,
             Pageable pageable
     );
+
+    long countByStatus(OccurrenceStatus status);
+
+    List<CarrierOccurrence> findTop5ByOrderByCreatedAtDesc();
 }
