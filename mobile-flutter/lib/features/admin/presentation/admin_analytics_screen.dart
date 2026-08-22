@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../data/admin_api.dart';
-import '../domain/analytics.dart';
+import '../domain/dashboard.dart';
 import 'widgets/admin_scaffold.dart';
 import 'widgets/admin_widgets.dart';
 
-/// Painel Analítico: KPIs vindos de GET /analytics/summary (eventos por
-/// tipo) e GET /analytics/deliveries (pedidos por status), mais a lista de
-/// anomalias de GET /analytics/anomalies.
+/// Painel Analítico: KPIs operacionais reais vindos de `GET /carriers`,
+/// `GET /carrier-occurrences` e `GET /inventory` (estoque baixo) na Edu
+/// Admin API — substitui as antigas anomalias/eventos do
+/// analytics-service Python, que não existe neste backend.
 class AdminAnalyticsScreen extends StatefulWidget {
   const AdminAnalyticsScreen({super.key});
 
@@ -33,13 +34,17 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
   }
 
   Future<_PainelData> _carregarDados() async {
-    final eventos = await _api.fetchResumoEventos();
-    final entregas = await _api.fetchEntregasPorStatus();
-    final anomalias = await _api.fetchAnomalias(diasHistorico: 30);
+    // As três chamadas são independentes — busca em paralelo pra tela não
+    // demorar o triplo do tempo esperando uma depois da outra.
+    final results = await Future.wait([
+      _api.fetchCarriers(),
+      _api.fetchOccurrences(),
+      _api.fetchInventory(lowStock: true),
+    ]);
     return _PainelData(
-      eventos: eventos,
-      entregasPorStatus: entregas,
-      anomalias: anomalias,
+      carriers: results[0] as List<Carrier>,
+      occurrences: results[1] as List<CarrierOccurrence>,
+      lowStock: results[2] as List<InventoryItem>,
     );
   }
 
@@ -68,20 +73,16 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
               );
             }
             final data = snapshot.data!;
-            final totalEventos = data.eventos.fold<int>(
-              0,
-              (a, e) => a + e.total,
-            );
-            final totalPedidos = data.entregasPorStatus.fold<int>(
-              0,
-              (a, s) => a + s.total,
-            );
-            final entregues = data.entregasPorStatus
-                .where((s) => s.status == 'ENTREGUE')
-                .fold<int>(0, (a, s) => a + s.total);
-            final taxaEntrega = totalPedidos == 0
+            final ativas = data.carriers
+                .where((c) => c.status == 'ACTIVE')
+                .toList();
+            final slaMedio = ativas.isEmpty
                 ? 0.0
-                : (entregues / totalPedidos) * 100;
+                : ativas.fold<double>(0, (a, c) => a + c.slaPercentage) /
+                      ativas.length;
+            final abertas = data.occurrences
+                .where((o) => o.status == 'OPEN')
+                .length;
 
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
@@ -97,66 +98,61 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
                   childAspectRatio: 1.15,
                   children: [
                     AdminStatCard(
-                      icon: Icons.event_note_outlined,
-                      label: 'Eventos registrados',
-                      value: '$totalEventos',
-                    ),
-                    AdminStatCard(
                       icon: Icons.local_shipping_outlined,
-                      label: 'Pedidos no período',
-                      value: '$totalPedidos',
+                      label: 'Transportadoras ativas',
+                      value: '${ativas.length}',
                     ),
                     AdminStatCard(
                       icon: Icons.check_circle_outline,
-                      label: 'Taxa de entrega',
-                      value: '${taxaEntrega.toStringAsFixed(0)}%',
-                      badge: taxaEntrega >= 80 ? 'Excelente' : null,
+                      label: 'SLA médio',
+                      value: '${slaMedio.toStringAsFixed(0)}%',
+                      badge: slaMedio >= 90 ? 'Excelente' : null,
                       badgeColor: AppColors.success,
                     ),
                     AdminStatCard(
-                      icon: Icons.warning_amber_outlined,
-                      label: 'Anomalias detectadas',
-                      value:
-                          '${data.anomalias.resultados.where((a) => a.anomalia).length}',
-                      badge: data.anomalias.resultados.any((a) => a.anomalia)
-                          ? 'Revisar'
-                          : null,
+                      icon: Icons.report_problem_outlined,
+                      label: 'Ocorrências abertas',
+                      value: '$abertas',
+                      badge: abertas > 0 ? 'Atenção' : null,
+                      badgeColor: AppColors.danger,
+                    ),
+                    AdminStatCard(
+                      icon: Icons.inventory_2_outlined,
+                      label: 'Produtos c/ estoque baixo',
+                      value: '${data.lowStock.length}',
+                      badge: data.lowStock.isNotEmpty ? 'Atenção' : null,
                       badgeColor: AppColors.danger,
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 AdminSectionCard(
-                  title: 'Eventos por tipo',
-                  subtitle: 'Event log completo (sem filtro de período)',
-                  child: data.eventos.isEmpty
+                  title: 'Ocorrências por tipo',
+                  subtitle: 'Todas as transportadoras',
+                  child: data.occurrences.isEmpty
                       ? const AdminEmptyState(
-                          titulo: 'Nenhum evento registrado',
+                          titulo: 'Nenhuma ocorrência registrada',
                           subtitulo:
-                              'Os eventos aparecerão aqui assim que houver atividade.',
+                              'As ocorrências aparecerão aqui assim que forem criadas.',
                         )
                       : MiniBarChart(
                           height: 160,
-                          data: {
-                            for (final e in data.eventos.take(6))
-                              _abreviarTipoEvento(e.tipo): e.total,
-                          },
+                          data: _contarPorTipo(data.occurrences),
                         ),
                 ),
                 const SizedBox(height: 16),
                 AdminSectionCard(
-                  title: 'Anomalias',
-                  subtitle:
-                      'Comparado à média dos últimos ${data.anomalias.diasHistorico} dias',
-                  child: data.anomalias.resultados.isEmpty
+                  title: 'Transportadoras',
+                  subtitle: 'Rating, SLA e prazo médio de entrega',
+                  child: data.carriers.isEmpty
                       ? const AdminEmptyState(
-                          titulo: 'Nenhum histórico suficiente ainda.',
+                          titulo: 'Nenhuma transportadora cadastrada.',
                           subtitulo:
-                              'São necessários dados de pelo menos alguns dias para detectar anomalias.',
+                              'As transportadoras cadastradas aparecerão aqui.',
                         )
                       : Column(
-                          children: data.anomalias.resultados
-                              .map((a) => _LinhaAnomalia(anomalia: a))
+                          children: data.carriers
+                              .map((c) => _LinhaTransportadora(carrier: c))
                               .toList(),
                         ),
                 ),
@@ -171,32 +167,31 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
 
 class _PainelData {
   const _PainelData({
-    required this.eventos,
-    required this.entregasPorStatus,
-    required this.anomalias,
+    required this.carriers,
+    required this.occurrences,
+    required this.lowStock,
   });
 
-  final List<TipoContagem> eventos;
-  final List<StatusContagem> entregasPorStatus;
-  final AnomaliasResponse anomalias;
+  final List<Carrier> carriers;
+  final List<CarrierOccurrence> occurrences;
+  final List<InventoryItem> lowStock;
 }
 
-class _LinhaAnomalia extends StatelessWidget {
-  const _LinhaAnomalia({required this.anomalia});
+class _LinhaTransportadora extends StatelessWidget {
+  const _LinhaTransportadora({required this.carrier});
 
-  final Anomalia anomalia;
+  final Carrier carrier;
 
   @override
   Widget build(BuildContext context) {
-    final cor = anomalia.anomalia ? AppColors.danger : AppColors.success;
+    final ativa = carrier.status == 'ACTIVE';
+    final cor = ativa ? AppColors.success : AppColors.textSecondary;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
           Icon(
-            anomalia.anomalia
-                ? Icons.priority_high_rounded
-                : Icons.check_circle_outline,
+            ativa ? Icons.local_shipping : Icons.local_shipping_outlined,
             color: cor,
             size: 18,
           ),
@@ -206,7 +201,7 @@ class _LinhaAnomalia extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _abreviarTipoEvento(anomalia.tipoEvento),
+                  carrier.name,
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
@@ -214,8 +209,8 @@ class _LinhaAnomalia extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Hoje: ${anomalia.contagemHoje} · média histórica: '
-                  '${anomalia.mediaHistorica.toStringAsFixed(1)}',
+                  'Rating: ${carrier.rating.toStringAsFixed(1)} · '
+                  'Prazo médio: ${carrier.averageDeliveryDays} dias',
                   style: const TextStyle(
                     fontSize: 11,
                     color: AppColors.textSecondary,
@@ -224,25 +219,38 @@ class _LinhaAnomalia extends StatelessWidget {
               ],
             ),
           ),
-          if (anomalia.zScore != null)
-            Text(
-              'z=${anomalia.zScore!.toStringAsFixed(1)}',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: cor,
-              ),
+          Text(
+            'SLA ${carrier.slaPercentage.toStringAsFixed(0)}%',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: cor,
             ),
+          ),
         ],
       ),
     );
   }
 }
 
-/// Os tipos de evento no event log seguem o padrão `dominio.acao`
-/// (order.created, diagnostic.answered...) — mostra só a última parte pra
-/// caber no mini gráfico e nas linhas de anomalia.
-String _abreviarTipoEvento(String tipo) {
-  final partes = tipo.split('.');
-  return partes.length > 1 ? partes.last : tipo;
+/// Agrupa as ocorrências por [OccurrenceType] e devolve rótulo curto ->
+/// contagem, para alimentar o `MiniBarChart`.
+Map<String, int> _contarPorTipo(List<CarrierOccurrence> occurrences) {
+  final contagem = <String, int>{};
+  for (final o in occurrences) {
+    final rotulo = _rotuloTipoOcorrencia(o.type);
+    contagem[rotulo] = (contagem[rotulo] ?? 0) + 1;
+  }
+  return contagem;
+}
+
+String _rotuloTipoOcorrencia(String type) {
+  // Valores reais de api/src/main/java/com/edu/api/occurrence/entity/OccurrenceType.java.
+  const rotulos = {
+    'DELIVERY_DELAY': 'Atraso',
+    'DAMAGE': 'Avaria',
+    'DELIVERY_FAILURE': 'Falha entrega',
+    'OTHER': 'Outro',
+  };
+  return rotulos[type] ?? type;
 }

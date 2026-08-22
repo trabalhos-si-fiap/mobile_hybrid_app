@@ -3,11 +3,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../../core/network/api_config.dart';
-import '../../../core/network/app_http.dart';
-import '../../../core/network/token_store.dart';
-import '../domain/analytics.dart';
+import '../domain/dashboard.dart';
 
-/// Lançada quando uma chamada ao analytics-service falha; carrega mensagem
+/// Lançada quando uma chamada à Edu Admin API falha; carrega mensagem
 /// amigável pronta para exibir ao usuário.
 class AdminApiException implements Exception {
   AdminApiException(this.message);
@@ -18,43 +16,30 @@ class AdminApiException implements Exception {
   String toString() => message;
 }
 
-/// Cliente HTTP para os endpoints do Analytics Service (`/analytics/*`) e
-/// demais rotas admin, todos protegidos por `role=admin` no backend. Segue
-/// a mesma convenção dos demais serviços do app: usa [appAuthClient]
-/// (refresh automático de token em 401) em vez de gerenciar o header de
-/// autorização manualmente.
+/// Cliente HTTP para os endpoints da Edu Admin API (`api/`) consumidos
+/// pelas telas administrativas do app.
+///
+/// A API hoje não exige autenticação (`SecurityConfig` é `permitAll`), e
+/// login está fora do escopo atual do app — por isso este cliente usa um
+/// [http.Client] simples, sem injetar `Authorization` nem depender de uma
+/// sessão salva.
 class AdminApi {
-  AdminApi({http.Client? client, TokenStore? tokenStore})
-    : _client = client ?? appAuthClient,
-      _tokenStore = tokenStore ?? TokenStore();
+  AdminApi({http.Client? client}) : _client = client ?? http.Client();
 
   final http.Client _client;
-  final TokenStore _tokenStore;
-
-  Future<Map<String, String>> _headers() async {
-    final access = await _tokenStore.readAccessToken();
-    if (access == null) {
-      throw AdminApiException('Sessão expirada. Entre novamente.');
-    }
-    return {'Authorization': 'Bearer $access'};
-  }
 
   Future<dynamic> _get(String path) async {
     final http.Response res;
     try {
-      res = await _client.get(
-        Uri.parse('${ApiConfig.adminBaseUrl}$path'),
-        headers: await _headers(),
-      );
-    } on AdminApiException {
-      rethrow;
+      res = await _client.get(Uri.parse('${ApiConfig.adminBaseUrl}$path'));
     } on Exception {
       throw AdminApiException('Não foi possível conectar ao servidor');
     }
-    if (res.statusCode == 403) {
-      throw AdminApiException(
-        'Seu usuário não tem permissão de administrador.',
-      );
+    if (res.statusCode == 404) {
+      throw AdminApiException('Recurso não encontrado (404)');
+    }
+    if (res.statusCode >= 500) {
+      throw AdminApiException('Erro interno do servidor (${res.statusCode})');
     }
     if (res.statusCode != 200) {
       throw AdminApiException(
@@ -64,41 +49,46 @@ class AdminApi {
     return jsonDecode(res.body);
   }
 
-  /// Relatório executivo (métricas agregadas + resumo em texto gerado por
-  /// LLM) do período dos últimos [dias] dias. Alimenta a tela inicial do
-  /// admin.
-  Future<ResumoExecutivo> fetchResumoExecutivo({int dias = 7}) async {
-    final json = await _get('/analytics/executive-summary?dias=$dias');
-    return ResumoExecutivo.fromJson(json as Map<String, dynamic>);
+  /// Extrai a lista de itens de uma resposta paginada do Spring Data
+  /// (`Page<T>`, serializada com o conteúdo em `content`).
+  List<dynamic> _content(dynamic json) {
+    if (json is Map<String, dynamic>) {
+      return json['content'] as List<dynamic>? ?? [];
+    }
+    return json as List<dynamic>;
   }
 
-  /// Contagem de eventos do event log por tipo (ex: order.created,
-  /// order.delivered, diagnostic.answered...). Alimenta os KPIs do Painel
-  /// Analítico.
-  Future<List<TipoContagem>> fetchResumoEventos() async {
-    final json = await _get('/analytics/summary');
-    return (json as List<dynamic>)
-        .map((e) => TipoContagem.fromJson(e as Map<String, dynamic>))
+  /// Métricas agregadas + resumo executivo do dashboard mobile.
+  /// `GET /dashboard`.
+  Future<DashboardResponse> fetchDashboard({int days = 30}) async {
+    final json = await _get('/dashboard?days=$days');
+    return DashboardResponse.fromJson(json as Map<String, dynamic>);
+  }
+
+  /// Lista de transportadoras. `GET /carriers`.
+  Future<List<Carrier>> fetchCarriers({String? status}) async {
+    final query = status != null ? '?status=$status' : '';
+    final json = await _get('/carriers$query');
+    return _content(json)
+        .map((e) => Carrier.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
-  /// Contagem de pedidos por status atual (criado, confirmado,
-  /// despachado, em trânsito, entregue...). Alimenta o mini gráfico da
-  /// tela inicial e os KPIs do Painel Analítico.
-  Future<List<StatusContagem>> fetchEntregasPorStatus() async {
-    final json = await _get('/analytics/deliveries');
-    return (json as List<dynamic>)
-        .map((e) => StatusContagem.fromJson(e as Map<String, dynamic>))
+  /// Lista de ocorrências de transportadoras. `GET /carrier-occurrences`.
+  Future<List<CarrierOccurrence>> fetchOccurrences({String? status}) async {
+    final query = status != null ? '?status=$status' : '';
+    final json = await _get('/carrier-occurrences$query');
+    return _content(json)
+        .map((e) => CarrierOccurrence.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
-  /// Detecção de anomalias: compara a contagem de eventos de hoje com a
-  /// média histórica dos últimos [diasHistorico] dias (z-score). Alimenta
-  /// a seção de alertas do Painel Analítico.
-  Future<AnomaliasResponse> fetchAnomalias({int diasHistorico = 30}) async {
-    final json = await _get(
-      '/analytics/anomalies?dias_historico=$diasHistorico',
-    );
-    return AnomaliasResponse.fromJson(json as Map<String, dynamic>);
+  /// Itens de estoque, opcionalmente filtrados por estoque baixo.
+  /// `GET /inventory`.
+  Future<List<InventoryItem>> fetchInventory({bool lowStock = false}) async {
+    final json = await _get('/inventory?lowStock=$lowStock');
+    return _content(json)
+        .map((e) => InventoryItem.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 }

@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../data/admin_api.dart';
-import '../domain/analytics.dart';
+import '../domain/dashboard.dart';
 import 'widgets/admin_scaffold.dart';
 import 'widgets/admin_widgets.dart';
 
-/// Tela inicial do modo Admin: relatório executivo (GET
-/// /analytics/executive-summary), grade compacta de 7 métricas, mini
-/// gráfico de pedidos por status, e placeholders para seções sem API ainda
-/// (alunos, estoque baixo, transportadoras — aguardando Admin API Java).
+/// Tela inicial do modo Admin: relatório executivo, grade compacta de 7
+/// métricas e gráfico reduzido de atividade educacional — tudo a partir
+/// de uma única chamada a `GET /dashboard` na Edu Admin API.
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
 
@@ -19,7 +18,7 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   final _api = AdminApi();
-  late Future<_DashboardData> _dataFuture;
+  late Future<DashboardResponse> _dataFuture;
 
   @override
   void initState() {
@@ -29,16 +28,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   void _carregar() {
     setState(() {
-      _dataFuture = _carregarDados();
+      _dataFuture = _api.fetchDashboard(days: 30);
     });
-  }
-
-  Future<_DashboardData> _carregarDados() async {
-    // As duas chamadas são independentes — busca em paralelo pra tela não
-    // demorar o dobro do tempo esperando uma depois da outra.
-    final resumo = await _api.fetchResumoExecutivo(dias: 7);
-    final entregas = await _api.fetchEntregasPorStatus();
-    return _DashboardData(resumo: resumo, entregasPorStatus: entregas);
   }
 
   @override
@@ -48,7 +39,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       titulo: 'Painel Administrativo',
       body: RefreshIndicator(
         onRefresh: () async => _carregar(),
-        child: FutureBuilder<_DashboardData>(
+        child: FutureBuilder<DashboardResponse>(
           future: _dataFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -69,22 +60,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
               children: [
-                _CabecalhoResumo(resumo: data.resumo),
+                _CabecalhoResumo(dashboard: data),
                 const SizedBox(height: 16),
-                _GradeDashboard(resumo: data.resumo),
+                _GradeDashboard(dashboard: data),
                 const SizedBox(height: 16),
                 AdminSectionCard(
-                  title: 'Pedidos por status',
-                  subtitle: 'Últimos 7 dias',
-                  child: data.entregasPorStatus.isEmpty
+                  title: 'Atividade educacional',
+                  subtitle: 'Últimos 30 dias',
+                  child: data.educational.activityHistory.isEmpty
                       ? const AdminEmptyState(
-                          titulo: 'Nenhum pedido registrado',
-                          subtitulo: 'Os pedidos aparecerão aqui assim que forem criados.',
+                          titulo: 'Nenhuma atividade registrada',
+                          subtitulo:
+                              'A atividade educacional aparecerá aqui assim que houver dados.',
                         )
                       : MiniBarChart(
                           data: {
-                            for (final s in data.entregasPorStatus)
-                              _rotuloStatus(s.status): s.total,
+                            for (final a in data.educational.activityHistory)
+                              _rotuloData(a.date): a.studyActivities,
                           },
                         ),
                 ),
@@ -97,31 +89,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 }
 
-class _DashboardData {
-  const _DashboardData({required this.resumo, required this.entregasPorStatus});
-
-  final ResumoExecutivo resumo;
-  final List<StatusContagem> entregasPorStatus;
-}
-
 // ---------------------------------------------------------------------------
 // Grade compacta de 7 métricas
 // ---------------------------------------------------------------------------
 
-/// Grade 2×N com as sete métricas do dashboard mobile compacto.
-///
-/// Métricas provenientes do analytics-service (Python) são populadas em
-/// tempo real. Métricas que dependem da Admin API Java (alunos, estoque
-/// baixo, transportadoras) exibem '--' com badge 'Aguard. API' até a
-/// integração ser feita.
+/// Grade 2×N com as sete métricas do dashboard mobile compacto, todas
+/// vindas de `GET /dashboard` (educational + operational).
 class _GradeDashboard extends StatelessWidget {
-  const _GradeDashboard({required this.resumo});
+  const _GradeDashboard({required this.dashboard});
 
-  final ResumoExecutivo resumo;
+  final DashboardResponse dashboard;
 
   @override
   Widget build(BuildContext context) {
-    final m = resumo.metricas;
+    final edu = dashboard.educational;
+    final ops = dashboard.operational;
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -132,56 +114,45 @@ class _GradeDashboard extends StatelessWidget {
       // _GradeMetricas sobre o motivo de 1.15 e não 1.5.
       childAspectRatio: 1.15,
       children: [
-        // ── Métricas educacionais (Admin API Java — pendente) ──────────────
         AdminStatCard(
           icon: Icons.school_outlined,
           label: 'Alunos cadastrados',
-          value: '--',
-          badge: 'Aguard. API',
-          badgeColor: AppColors.textSecondary,
+          value: '${edu.registeredStudents}',
         ),
         AdminStatCard(
           icon: Icons.person_outline,
           label: 'Alunos ativos',
-          value: '--',
-          badge: 'Aguard. API',
-          badgeColor: AppColors.textSecondary,
+          value: '${edu.activeStudents}',
         ),
         AdminStatCard(
           icon: Icons.person_add_outlined,
           label: 'Novos cadastros',
-          value: '--',
-          badge: 'Aguard. API',
-          badgeColor: AppColors.textSecondary,
+          value: '${edu.newRegistrations}',
         ),
         AdminStatCard(
           icon: Icons.warning_amber_outlined,
           label: 'Alunos em risco',
-          value: '--',
-          badge: 'Aguard. API',
-          badgeColor: AppColors.textSecondary,
+          value: '${edu.inactiveRiskStudents}',
+          badge: edu.inactiveRiskStudents > 0 ? 'Atenção' : null,
+          badgeColor: AppColors.danger,
         ),
-        // ── Métricas de estoque/logística (Admin API Java — pendente) ──────
         AdminStatCard(
           icon: Icons.inventory_2_outlined,
           label: 'Estoque baixo',
-          value: '--',
-          badge: 'Aguard. API',
-          badgeColor: AppColors.textSecondary,
+          value: '${ops.lowStockProducts}',
+          badge: ops.lowStockProducts > 0 ? 'Atenção' : null,
+          badgeColor: AppColors.danger,
         ),
         AdminStatCard(
           icon: Icons.local_shipping_outlined,
           label: 'Transportadoras ativas',
-          value: '--',
-          badge: 'Aguard. API',
-          badgeColor: AppColors.textSecondary,
+          value: '${ops.activeCarriers}',
         ),
-        // ── Ocorrências abertas — analytics-service (real) ─────────────────
         AdminStatCard(
           icon: Icons.report_problem_outlined,
           label: 'Ocorrências abertas',
-          value: '${m.ocorrenciasAbertas}',
-          badge: m.ocorrenciasAbertas > 0 ? 'Atenção' : null,
+          value: '${ops.openOccurrences}',
+          badge: ops.openOccurrences > 0 ? 'Atenção' : null,
           badgeColor: AppColors.danger,
         ),
       ],
@@ -189,13 +160,13 @@ class _GradeDashboard extends StatelessWidget {
   }
 }
 
-/// Texto do relatório executivo, gerado por LLM no backend
-/// (analytics-service/app/services/resumo_ia.py) a partir das métricas do
-/// período.
+/// Texto do relatório executivo devolvido por `GET /dashboard`
+/// (`executiveSummary`, gerado no backend a partir das métricas do
+/// período).
 class _CabecalhoResumo extends StatelessWidget {
-  const _CabecalhoResumo({required this.resumo});
+  const _CabecalhoResumo({required this.dashboard});
 
-  final ResumoExecutivo resumo;
+  final DashboardResponse dashboard;
 
   @override
   Widget build(BuildContext context) {
@@ -209,34 +180,25 @@ class _CabecalhoResumo extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.purple,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  'RELATÓRIO EXECUTIVO',
-                  style: TextStyle(
-                    color: AppColors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.4,
-                  ),
-                ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppColors.purple,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text(
+              'RELATÓRIO EXECUTIVO',
+              style: TextStyle(
+                color: AppColors.white,
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.4,
               ),
-              const Spacer(),
-              Text(
-                'Últimos ${resumo.periodoDias} dias',
-                style: const TextStyle(color: AppColors.background, fontSize: 12),
-              ),
-            ],
+            ),
           ),
           const SizedBox(height: 12),
           Text(
-            resumo.resumoExecutivo,
+            dashboard.executiveSummary,
             style: const TextStyle(
               color: AppColors.white,
               fontSize: 14,
@@ -249,19 +211,10 @@ class _CabecalhoResumo extends StatelessWidget {
   }
 }
 
-String _rotuloStatus(String status) {
-  // Valores reais de back-end/commerce-service/app/services/status_pedido.py
-  // (StatusPedido enum) — string, maiúscula, sem tradução pro Flutter
-  // porque o analytics-service não serve o app do aluno.
-  const rotulos = {
-    'CRIADO': 'Criado',
-    'AGUARDANDO_SEPARACAO': 'Ag. separ.',
-    'EM_SEPARACAO': 'Separando',
-    'SEPARADO': 'Separado',
-    'AGUARDANDO_COLETA': 'Ag. coleta',
-    'EM_TRANSITO': 'Trânsito',
-    'ENTREGUE': 'Entregue',
-    'CANCELADO': 'Cancelado',
-  };
-  return rotulos[status] ?? status;
+/// Rótulo curto (`DD/MM`) para o eixo do mini gráfico a partir de uma data
+/// `AAAA-MM-DD` (serialização padrão de `LocalDate`).
+String _rotuloData(String isoDate) {
+  final partes = isoDate.split('-');
+  if (partes.length != 3) return isoDate;
+  return '${partes[2]}/${partes[1]}';
 }
