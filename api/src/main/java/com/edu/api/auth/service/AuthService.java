@@ -5,6 +5,7 @@ import com.edu.api.auth.dto.AuthResponse;
 import com.edu.api.auth.dto.LoginRequest;
 import com.edu.api.user.entity.AdminUser;
 import com.edu.api.user.repository.AdminUserRepository;
+import com.edu.api.shared.exception.UnauthorizedException;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -38,7 +39,7 @@ public class AuthService {
                 request.password(),
                 user.getPassword()
         )) {
-            throw new RuntimeException("Email ou senha inválidos");
+            throw new UnauthorizedException("Email ou senha inválidos");
         }
 
         AdminUserResponse userResponse = new AdminUserResponse(
