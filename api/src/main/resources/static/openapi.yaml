@@ -8,7 +8,10 @@ info:
     A API reúne indicadores agregados educacionais,
     produtos/estoque, transportadoras e suas ocorrências.
 
-    O MVP atualmente não exige autenticação.
+    A API utiliza autenticação JWT.
+    O endpoint de login gera um token Bearer que deve ser enviado
+    no header Authorization nas rotas protegidas.
+
     A API pode ser executada utilizando H2 para desenvolvimento
     local ou PostgreSQL para integração e testes.
 
@@ -16,7 +19,11 @@ servers:
   - url: http://localhost:8080/api/v1
     description: Desenvolvimento local
 
+security:
+  - BearerAuth: []
+
 tags:
+  - name: Auth
   - name: Dashboard
   - name: Products
   - name: Inventory
@@ -24,6 +31,32 @@ tags:
   - name: Carrier occurrences
 
 paths:
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Realiza login do administrador
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login realizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Credenciais inválidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /dashboard:
     get:
@@ -39,6 +72,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DashboardResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /products:
     get:
@@ -56,6 +91,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProductPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
     post:
       tags: [Products]
@@ -76,6 +113,8 @@ paths:
                 $ref: '#/components/schemas/Product'
         '400':
           $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /products/{productId}:
     parameters:
@@ -92,6 +131,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Product'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -114,6 +155,8 @@ paths:
                 $ref: '#/components/schemas/Product'
         '400':
           $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -141,6 +184,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InventoryPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /inventory/{productId}:
     parameters:
@@ -165,6 +210,8 @@ paths:
                 $ref: '#/components/schemas/InventoryItem'
         '400':
           $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -188,6 +235,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CarrierPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
     post:
       tags: [Carriers]
@@ -208,6 +257,8 @@ paths:
                 $ref: '#/components/schemas/Carrier'
         '400':
           $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /carriers/{carrierId}:
     parameters:
@@ -224,6 +275,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Carrier'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -246,6 +299,8 @@ paths:
                 $ref: '#/components/schemas/Carrier'
         '400':
           $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -275,6 +330,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Carrier'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -306,6 +363,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OccurrencePage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
     post:
       tags: [Carrier occurrences]
@@ -326,6 +385,8 @@ paths:
                 $ref: '#/components/schemas/CarrierOccurrence'
         '400':
           $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /carrier-occurrences/{occurrenceId}:
     parameters:
@@ -342,6 +403,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CarrierOccurrence'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -371,10 +434,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CarrierOccurrence'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
 
 components:
+
+  securitySchemes:
+
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Informe o token JWT obtido através do endpoint de login.
+        O Swagger adicionará automaticamente o prefixo "Bearer".
 
   parameters:
 
@@ -436,6 +511,13 @@ components:
 
   responses:
 
+    Unauthorized:
+      description: Token ausente, inválido ou expirado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
     NotFound:
       description: Recurso não encontrado
       content:
@@ -451,6 +533,58 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
 
   schemas:
+
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: admin@edu.com
+
+        password:
+          type: string
+          format: password
+          example: admin123
+
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+          description: Token JWT utilizado para autenticar as requisições.
+          example: eyJhbGciOiJIUzI1NiJ9...
+
+        tokenType:
+          type: string
+          example: Bearer
+
+        user:
+          $ref: '#/components/schemas/AuthUser'
+
+    AuthUser:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+
+        name:
+          type: string
+          example: Administrador Edu
+
+        email:
+          type: string
+          format: email
+          example: admin@edu.com
+
+        role:
+          type: string
+          example: ADMIN
 
     DashboardResponse:
       type: object
