@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../data/admin_api.dart';
@@ -87,6 +88,8 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
               children: [
+                const _BannerDashboardWeb(),
+                const SizedBox(height: 16),
                 GridView.count(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
@@ -253,4 +256,64 @@ String _rotuloTipoOcorrencia(String type) {
     'OTHER': 'Outro',
   };
   return rotulos[type] ?? type;
+}
+
+class _BannerDashboardWeb extends StatelessWidget {
+  const _BannerDashboardWeb();
+
+  // TODO: substituir pela URL real do dashboard web quando disponível.
+  static const _url = '';
+
+  Future<void> _abrir() async {
+    if (_url.isEmpty) return;
+    final uri = Uri.parse(_url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.purple,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: _abrir,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          child: Row(
+            children: [
+              const Icon(Icons.open_in_browser, color: AppColors.white, size: 22),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Dashboard administrativo completo',
+                      style: TextStyle(
+                        color: AppColors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Acesse a versão web para gestão completa',
+                      style: TextStyle(
+                        color: AppColors.white,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: AppColors.white, size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

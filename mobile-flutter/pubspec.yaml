@@ -41,6 +41,9 @@ dependencies:
   # Encrypted local storage for the JWT pair (core/network/token_store.dart).
   flutter_secure_storage: ^9.2.2
 
+  # Abre URLs no browser nativo (link para o dashboard web administrativo).
+  url_launcher: ^6.3.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

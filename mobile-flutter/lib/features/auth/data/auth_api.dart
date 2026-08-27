@@ -30,52 +30,6 @@ class AuthApi {
   final TokenStore _tokenStore;
   final SessionStore _sessionStore;
 
-  /// Creates an account via `POST /auth/register` and persists the JWT pair.
-  ///
-  /// [educationLevel] must be one of the backend `EducationLevel` values and
-  /// [birthDate] is sent as `DD/MM/AAAA` (parsed server-side).
-  Future<void> register({
-    required String name,
-    required String email,
-    required String phone,
-    required String birthDate,
-    required String educationLevel,
-    required String password,
-  }) async {
-    final http.Response res;
-    try {
-      res = await _client.post(
-        Uri.parse('${ApiConfig.baseUrl}/auth/register'),
-        headers: const {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'name': name,
-          'email': email,
-          'phone': phone,
-          'birth_date': birthDate,
-          'education_level': educationLevel,
-          'password': password,
-        }),
-      );
-    } on Exception {
-      throw AuthException('Não foi possível conectar ao servidor');
-    }
-
-    if (res.statusCode == 409) {
-      throw AuthException('Este e-mail já está cadastrado');
-    }
-    if (res.statusCode == 422) {
-      throw AuthException('Verifique os dados informados');
-    }
-    if (res.statusCode == 429) {
-      throw AuthException('Muitas tentativas. Tente novamente mais tarde');
-    }
-    if (res.statusCode != 201) {
-      throw AuthException('Falha ao cadastrar (código ${res.statusCode})');
-    }
-
-    await _persistAuth(jsonDecode(res.body) as Map<String, dynamic>);
-  }
-
   /// Authenticates against `POST /auth/login` and persists the JWT pair.
   Future<void> login({required String email, required String password}) async {
     final http.Response res;
@@ -102,69 +56,24 @@ class AuthApi {
     await _persistAuth(jsonDecode(res.body) as Map<String, dynamic>);
   }
 
-  /// Requests a password reset code via `POST /auth/password-reset/request`.
-  ///
-  /// The backend always responds 200 (anti-enumeration), so a successful
-  /// return reveals nothing about whether the email exists.
+  /// Solicita redefinição de senha via `POST /auth/password-reset/request`.
+  /// Endpoint ainda não disponível na API — lança [AuthException] informativo.
   Future<void> requestPasswordReset({required String email}) async {
-    final http.Response res;
-    try {
-      res = await _client.post(
-        Uri.parse('${ApiConfig.baseUrl}/auth/password-reset/request'),
-        headers: const {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email}),
-      );
-    } on Exception {
-      throw AuthException('Não foi possível conectar ao servidor');
-    }
-
-    if (res.statusCode == 429) {
-      throw AuthException('Muitas tentativas. Tente novamente mais tarde');
-    }
-    if (res.statusCode == 422) {
-      throw AuthException('Verifique os dados informados');
-    }
-    if (res.statusCode != 200) {
-      throw AuthException(
-        'Falha ao solicitar o código (código ${res.statusCode})',
-      );
-    }
+    throw AuthException(
+      'Redefinição de senha indisponível. Entre em contato com o administrador.',
+    );
   }
 
-  /// Confirms a reset code and sets a new password via
-  /// `POST /auth/password-reset/confirm`. The backend returns a generic 400 for
-  /// any verification failure (wrong/expired/locked code, unknown email).
+  /// Confirma o código e redefine a senha via `POST /auth/password-reset/confirm`.
+  /// Endpoint ainda não disponível na API — lança [AuthException] informativo.
   Future<void> confirmPasswordReset({
     required String email,
     required String code,
     required String newPassword,
   }) async {
-    final http.Response res;
-    try {
-      res = await _client.post(
-        Uri.parse('${ApiConfig.baseUrl}/auth/password-reset/confirm'),
-        headers: const {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': email,
-          'code': code,
-          'new_password': newPassword,
-        }),
-      );
-    } on Exception {
-      throw AuthException('Não foi possível conectar ao servidor');
-    }
-
-    if (res.statusCode == 400) {
-      throw AuthException('Código inválido ou expirado');
-    }
-    if (res.statusCode == 422) {
-      throw AuthException('Verifique os dados informados');
-    }
-    if (res.statusCode != 200) {
-      throw AuthException(
-        'Falha ao redefinir a senha (código ${res.statusCode})',
-      );
-    }
+    throw AuthException(
+      'Redefinição de senha indisponível. Entre em contato com o administrador.',
+    );
   }
 
   /// Ends the session locally: drops the JWT pair and the cached profile data.
@@ -173,13 +82,16 @@ class AuthApi {
     await _sessionStore.clear();
   }
 
-  /// Saves the JWT pair and caches the user's display name from an
-  /// `AuthResponse` body (`{user, tokens}`).
+  /// Salva o token de acesso e o nome do usuário a partir da resposta da API.
+  ///
+  /// A API retorna: `{ accessToken, tokenType, user: { id, name, email, role } }`
+  /// Não há refresh token no momento — o TokenStore salva uma string vazia como
+  /// placeholder para manter a interface estável.
   Future<void> _persistAuth(Map<String, dynamic> body) async {
-    final tokens = body['tokens'] as Map<String, dynamic>;
+    final accessToken = body['accessToken'] as String;
     await _tokenStore.save(
-      accessToken: tokens['access_token'] as String,
-      refreshToken: tokens['refresh_token'] as String,
+      accessToken: accessToken,
+      refreshToken: '',
     );
     final user = body['user'] as Map<String, dynamic>?;
     final name = user?['name'] as String?;
@@ -188,33 +100,9 @@ class AuthApi {
     }
   }
 
-  /// Display name of the signed-in user: the cached value when present, else
-  /// fetched from `GET /auth/me` and cached. Returns `null` when unavailable
-  /// (no session or the request fails) so callers can fall back to a neutral
-  /// greeting.
+  /// Nome do usuário logado: lido do cache local (salvo no login).
+  /// Retorna `null` se não houver sessão.
   Future<String?> currentDisplayName() async {
-    final cached = await _sessionStore.readName();
-    if (cached != null && cached.isNotEmpty) return cached;
-
-    final access = await _tokenStore.readAccessToken();
-    if (access == null) return null;
-
-    final http.Response res;
-    try {
-      res = await _client.get(
-        Uri.parse('${ApiConfig.baseUrl}/auth/me'),
-        headers: {'Authorization': 'Bearer $access'},
-      );
-    } on Exception {
-      return null;
-    }
-    if (res.statusCode != 200) return null;
-
-    final user = jsonDecode(res.body) as Map<String, dynamic>;
-    final name = user['name'] as String?;
-    if (name != null && name.isNotEmpty) {
-      await _sessionStore.saveName(name);
-    }
-    return name;
+    return _sessionStore.readName();
   }
 }

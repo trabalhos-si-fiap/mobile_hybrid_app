@@ -6,6 +6,30 @@ import '../domain/dashboard.dart';
 import 'widgets/admin_scaffold.dart';
 import 'widgets/admin_widgets.dart';
 
+// Tag exibida no canto das seções que têm gestão completa na versão web.
+class _TagWebOnly extends StatelessWidget {
+  const _TagWebOnly();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: AppColors.inputFill,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: const Text(
+        'Gestão completa na versão web',
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textSecondary,
+        ),
+      ),
+    );
+  }
+}
+
 /// Tela inicial do modo Admin: relatório executivo, grade compacta de 7
 /// métricas e gráfico reduzido de atividade educacional — tudo a partir
 /// de uma única chamada a `GET /dashboard` na Edu Admin API.
@@ -18,7 +42,7 @@ class AdminDashboardScreen extends StatefulWidget {
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   final _api = AdminApi();
-  late Future<DashboardResponse> _dataFuture;
+  late Future<_DashboardData> _dataFuture;
 
   @override
   void initState() {
@@ -28,7 +52,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   void _carregar() {
     setState(() {
-      _dataFuture = _api.fetchDashboard(days: 30);
+      _dataFuture = Future.wait([
+        _api.fetchDashboard(days: 30),
+        _api.fetchLowStockTop3(),
+        _api.fetchActiveCarriersTop3(),
+        _api.fetchOpenOccurrencesTop3(),
+      ]).then((results) => _DashboardData(
+            dashboard: results[0] as DashboardResponse,
+            lowStock: results[1] as List<InventoryItem>,
+            carriers: results[2] as List<Carrier>,
+            ocorrencias: results[3] as List<CarrierOccurrence>,
+          ));
     });
   }
 
@@ -39,7 +73,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       titulo: 'Painel Administrativo',
       body: RefreshIndicator(
         onRefresh: () async => _carregar(),
-        child: FutureBuilder<DashboardResponse>(
+        child: FutureBuilder<_DashboardData>(
           future: _dataFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -57,17 +91,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               );
             }
             final data = snapshot.data!;
+
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
               children: [
-                _CabecalhoResumo(dashboard: data),
+                _CabecalhoResumo(dashboard: data.dashboard),
                 const SizedBox(height: 16),
-                _GradeDashboard(dashboard: data),
+                _GradeDashboard(dashboard: data.dashboard),
                 const SizedBox(height: 16),
                 AdminSectionCard(
                   title: 'Atividade educacional',
                   subtitle: 'Últimos 30 dias',
-                  child: data.educational.activityHistory.isEmpty
+                  child: data.dashboard.educational.activityHistory.isEmpty
                       ? const AdminEmptyState(
                           titulo: 'Nenhuma atividade registrada',
                           subtitulo:
@@ -75,9 +110,49 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         )
                       : MiniBarChart(
                           data: {
-                            for (final a in data.educational.activityHistory)
+                            for (final a
+                                in data.dashboard.educational.activityHistory)
                               _rotuloData(a.date): a.studyActivities,
                           },
+                        ),
+                ),
+                const SizedBox(height: 16),
+                AdminSectionCard(
+                  title: 'Estoque baixo',
+                  subtitle: 'Produtos com quantidade crítica',
+                  trailing: const _TagWebOnly(),
+                  child: data.lowStock.isEmpty
+                      ? const AdminEmptyState(titulo: 'Nenhum produto em alerta')
+                      : Column(
+                          children: data.lowStock
+                              .map((item) => EstoqueLinhaItem(item: item))
+                              .toList(),
+                        ),
+                ),
+                const SizedBox(height: 16),
+                AdminSectionCard(
+                  title: 'Transportadoras ativas',
+                  subtitle: 'Top 3 do período',
+                  trailing: const _TagWebOnly(),
+                  child: data.carriers.isEmpty
+                      ? const AdminEmptyState(titulo: 'Nenhuma transportadora')
+                      : Column(
+                          children: data.carriers
+                              .map((c) => TransportadoraLinhaItem(carrier: c))
+                              .toList(),
+                        ),
+                ),
+                const SizedBox(height: 16),
+                AdminSectionCard(
+                  title: 'Ocorrências abertas',
+                  subtitle: 'Aguardando resolução',
+                  trailing: const _TagWebOnly(),
+                  child: data.ocorrencias.isEmpty
+                      ? const AdminEmptyState(titulo: 'Nenhuma ocorrência aberta')
+                      : Column(
+                          children: data.ocorrencias
+                              .map((o) => OcorrenciaLinhaItem(ocorrencia: o))
+                              .toList(),
                         ),
                 ),
               ],
@@ -87,6 +162,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ),
     );
   }
+}
+
+class _DashboardData {
+  const _DashboardData({
+    required this.dashboard,
+    required this.lowStock,
+    required this.carriers,
+    required this.ocorrencias,
+  });
+
+  final DashboardResponse dashboard;
+  final List<InventoryItem> lowStock;
+  final List<Carrier> carriers;
+  final List<CarrierOccurrence> ocorrencias;
 }
 
 // ---------------------------------------------------------------------------

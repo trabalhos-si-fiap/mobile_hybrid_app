@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../domain/dashboard.dart';
 
 /// Card de estatística única (ex: "Pedidos criados", "1.284"), no estilo
 /// dos cards do mockup de referência.
@@ -362,6 +363,236 @@ class AdminEmptyState extends StatelessWidget {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Linhas de lista para estoque, transportadoras e ocorrências
+// ---------------------------------------------------------------------------
+
+/// Uma linha de produto com estoque baixo.
+class EstoqueLinhaItem extends StatelessWidget {
+  const EstoqueLinhaItem({super.key, required this.item});
+
+  final InventoryItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final critico = item.quantity == 0;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: critico
+                  ? AppColors.danger.withValues(alpha: 0.12)
+                  : AppColors.star.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              Icons.inventory_2_outlined,
+              size: 18,
+              color: critico ? AppColors.danger : AppColors.star,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.productName,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  'SKU ${item.sku}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${item.quantity} un.',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: critico ? AppColors.danger : AppColors.star,
+                ),
+              ),
+              Text(
+                'mín. ${item.minimumStock}',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Uma linha de transportadora.
+class TransportadoraLinhaItem extends StatelessWidget {
+  const TransportadoraLinhaItem({super.key, required this.carrier});
+
+  final Carrier carrier;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.purpleSoft,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.local_shipping_outlined,
+              size: 18,
+              color: AppColors.purple,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  carrier.name,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  'SLA ${carrier.slaPercentage.toStringAsFixed(1)}%  •  '
+                  '${carrier.averageDeliveryDays}d avg',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Row(
+            children: [
+              const Icon(Icons.star, size: 14, color: AppColors.star),
+              const SizedBox(width: 2),
+              Text(
+                carrier.rating.toStringAsFixed(1),
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Uma linha de ocorrência aberta.
+class OcorrenciaLinhaItem extends StatelessWidget {
+  const OcorrenciaLinhaItem({super.key, required this.ocorrencia});
+
+  final CarrierOccurrence ocorrencia;
+
+  static const _tipoLabel = {
+    'DELIVERY_DELAY': 'Atraso',
+    'DAMAGE': 'Avaria',
+    'DELIVERY_FAILURE': 'Falha na entrega',
+    'OTHER': 'Outro',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final label = _tipoLabel[ocorrencia.type] ?? ocorrencia.type;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.danger.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.report_problem_outlined,
+              size: 18,
+              color: AppColors.danger,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  ocorrencia.carrierName,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppColors.danger.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text(
+              'ABERTA',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: AppColors.danger,
+              ),
+            ),
+          ),
         ],
       ),
     );

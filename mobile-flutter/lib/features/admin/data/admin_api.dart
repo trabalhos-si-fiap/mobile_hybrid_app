@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../../../core/network/api_config.dart';
+import '../../../core/network/token_store.dart';
 import '../domain/dashboard.dart';
 
 /// Lançada quando uma chamada à Edu Admin API falha; carrega mensagem
@@ -19,21 +20,35 @@ class AdminApiException implements Exception {
 /// Cliente HTTP para os endpoints da Edu Admin API (`api/`) consumidos
 /// pelas telas administrativas do app.
 ///
-/// A API hoje não exige autenticação (`SecurityConfig` é `permitAll`), e
-/// login está fora do escopo atual do app — por isso este cliente usa um
-/// [http.Client] simples, sem injetar `Authorization` nem depender de uma
-/// sessão salva.
+/// Injeta o JWT de acesso salvo pelo login em cada requisição via
+/// `Authorization: Bearer <token>`.
 class AdminApi {
-  AdminApi({http.Client? client}) : _client = client ?? http.Client();
+  AdminApi({http.Client? client, TokenStore? tokenStore})
+      : _client = client ?? http.Client(),
+        _tokenStore = tokenStore ?? TokenStore();
 
   final http.Client _client;
+  final TokenStore _tokenStore;
 
   Future<dynamic> _get(String path) async {
+    final token = await _tokenStore.readAccessToken();
+    final headers = <String, String>{
+      if (token != null && token.isNotEmpty)
+        'Authorization': 'Bearer $token',
+    };
+
     final http.Response res;
     try {
-      res = await _client.get(Uri.parse('${ApiConfig.adminBaseUrl}$path'));
+      res = await _client.get(
+        Uri.parse('${ApiConfig.adminBaseUrl}$path'),
+        headers: headers,
+      );
     } on Exception {
       throw AdminApiException('Não foi possível conectar ao servidor');
+    }
+
+    if (res.statusCode == 401) {
+      throw AdminApiException('Sessão expirada. Faça login novamente.');
     }
     if (res.statusCode == 404) {
       throw AdminApiException('Recurso não encontrado (404)');
@@ -89,6 +104,37 @@ class AdminApi {
     final json = await _get('/inventory?lowStock=$lowStock');
     return _content(json)
         .map((e) => InventoryItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  // -------------------------------------------------------------------------
+  // Endpoints dedicados às seções do dashboard mobile (top 3, filtrados)
+  // -------------------------------------------------------------------------
+
+  /// Top 3 produtos com estoque baixo.
+  /// `GET /inventory?lowStock=true&size=3`
+  Future<List<InventoryItem>> fetchLowStockTop3() async {
+    final json = await _get('/inventory?lowStock=true&size=3');
+    return _content(json)
+        .map((e) => InventoryItem.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Top 3 transportadoras ativas.
+  /// `GET /carriers?status=ACTIVE&size=3`
+  Future<List<Carrier>> fetchActiveCarriersTop3() async {
+    final json = await _get('/carriers?status=ACTIVE&size=3');
+    return _content(json)
+        .map((e) => Carrier.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Top 3 ocorrências abertas (mais recentes).
+  /// `GET /carrier-occurrences?status=OPEN&size=3`
+  Future<List<CarrierOccurrence>> fetchOpenOccurrencesTop3() async {
+    final json = await _get('/carrier-occurrences?status=OPEN&size=3');
+    return _content(json)
+        .map((e) => CarrierOccurrence.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 }
