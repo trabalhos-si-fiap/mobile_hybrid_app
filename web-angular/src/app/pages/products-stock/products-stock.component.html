@@ -1,0 +1,241 @@
+<section class="stock-page">
+  <div class="page-header">
+    <div>
+      <h1>Produtos e Estoque</h1>
+      <p>Gerencie seu catálogo e níveis de inventário.</p>
+    </div>
+
+    <button class="new-product" type="button" (click)="openNewProduct()">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 5v14"></path>
+        <path d="M5 12h14"></path>
+      </svg>
+      <span>Novo Produto</span>
+    </button>
+  </div>
+
+  <div class="summary-grid">
+    <article class="summary-card">
+      <div class="summary-icon total">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="5" y="5" width="14" height="16" rx="2"></rect>
+          <path d="M9 5V3h6v2"></path>
+          <path d="m9 12 2 2 4-4"></path>
+        </svg>
+      </div>
+      <div>
+        <span class="summary-label">TOTAL DE PRODUTOS</span>
+        <strong>{{ loadingSummary ? '...' : (summary.totalProducts | number:'1.0-0') }}</strong>
+      </div>
+    </article>
+
+    <article class="summary-card">
+      <div class="summary-icon warning">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3 2.8 20h18.4L12 3z"></path>
+          <path d="M12 9v5"></path>
+          <path d="M12 17h.01"></path>
+        </svg>
+      </div>
+      <div>
+        <span class="summary-label">ESTOQUE BAIXO</span>
+        <strong class="red">{{ loadingSummary ? '...' : summary.lowStock }}</strong>
+      </div>
+    </article>
+
+    <article class="summary-card">
+      <div class="summary-icon empty">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="8"></circle>
+          <path d="M7 7l10 10"></path>
+        </svg>
+      </div>
+      <div>
+        <span class="summary-label">SEM ESTOQUE</span>
+        <strong>{{ loadingSummary ? '...' : summary.outOfStock }}</strong>
+      </div>
+    </article>
+  </div>
+
+  <article class="inventory-panel">
+    <div class="toolbar">
+      <label class="search-box">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="6"></circle>
+          <path d="m16 16 4 4"></path>
+        </svg>
+        <input
+          type="text"
+          [formControl]="searchControl"
+          placeholder="Filtrar nesta lista..."
+        />
+      </label>
+
+      <label class="low-stock-check">
+        <input
+          type="checkbox"
+          [checked]="lowStockOnly"
+          (change)="toggleLowStock($event)"
+        />
+        <span>Somente estoque baixo</span>
+      </label>
+    </div>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th class="product-col">PRODUTO</th>
+            <th>SKU</th>
+            <th class="number-col">QTD</th>
+            <th class="number-col">MÍNIMO</th>
+            <th>SITUAÇÃO</th>
+            <th class="actions-col">AÇÕES</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          @if (loadingTable) {
+            <tr>
+              <td colspan="6">
+                <div class="state-message">Carregando estoque...</div>
+              </td>
+            </tr>
+          } @else if (inventoryPage?.content?.length) {
+            @for (item of inventoryPage!.content; track item.productId) {
+              <tr [class.out-row]="item.status === 'OUT_OF_STOCK'">
+                <td>
+                  <div class="product-cell">
+                    <img [src]="productImage(item)" alt="" />
+                    <span
+                      class="product-name"
+                      [class.strike]="item.status === 'OUT_OF_STOCK'"
+                    >
+                      {{ item.productName }}
+                    </span>
+                  </div>
+                </td>
+
+                <td>{{ item.sku }}</td>
+
+                <td
+                  class="quantity"
+                  [class.danger]="item.status === 'LOW_STOCK'"
+                >
+                  {{ item.quantity }}
+                </td>
+
+                <td>{{ item.minimumStock }}</td>
+
+                <td>
+                  <span
+                    class="status"
+                    [class]="statusClass(item)"
+                  >
+                    {{ statusLabel(item) }}
+                  </span>
+                </td>
+
+                <td class="actions-cell">
+                  <div class="action-buttons">
+                    <button
+                      class="edit-button"
+                      type="button"
+                      title="Editar produto"
+                      aria-label="Editar produto"
+                      (click)="openEditProduct(item)"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 20h4l11-11-4-4L4 16v4z"></path>
+                        <path d="m13.5 6.5 4 4"></path>
+                      </svg>
+                    </button>
+
+                    <button
+                      class="edit-button"
+                      type="button"
+                      title="Ajustar estoque"
+                      aria-label="Ajustar estoque"
+                      (click)="openAdjust(item)"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5 7h14"></path>
+                        <path d="M5 12h14"></path>
+                        <path d="M5 17h14"></path>
+                        <circle cx="9" cy="7" r="2"></circle>
+                        <circle cx="15" cy="12" r="2"></circle>
+                        <circle cx="11" cy="17" r="2"></circle>
+                      </svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          } @else {
+            <tr>
+              <td colspan="6">
+                <div class="state-message">Nenhum produto encontrado.</div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="panel-footer">
+      <p>
+        Mostrando {{ startResult }} a {{ endResult }}
+        de {{ totalResults | number:'1.0-0' }} resultados
+      </p>
+
+      <div class="pagination">
+        <button
+          type="button"
+          [disabled]="!hasPrevious"
+          (click)="previousPage()"
+        >
+          Anterior
+        </button>
+
+        @for (displayPage of displayPages; track displayPage) {
+          <button
+            class="page-number"
+            [class.current]="displayPage === page + 1"
+            type="button"
+            (click)="goToDisplayPage(displayPage)"
+          >
+            {{ displayPage }}
+          </button>
+        }
+
+        <button
+          type="button"
+          [disabled]="!hasNext"
+          (click)="nextPage()"
+        >
+          Próxima
+        </button>
+      </div>
+    </div>
+  </article>
+</section>
+
+@if (productFormOpen) {
+  <app-product-form-modal
+    [productId]="editingProductId"
+    (closed)="closeProductForm()"
+    (saved)="productSaved($event)"
+  />
+}
+
+@if (selectedStockItem) {
+  <app-stock-adjust-modal
+    [item]="selectedStockItem"
+    (closed)="closeAdjust()"
+    (saved)="afterAdjusted()"
+  />
+}
+
+@if (successMessage) {
+  <app-success-toast [message]="successMessage" />
+}

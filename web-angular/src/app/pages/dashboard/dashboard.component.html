@@ -1,0 +1,241 @@
+<section class="dashboard-page">
+  <header class="dashboard-topbar">
+    <h1>Dashboard Geral</h1>
+
+    <div class="topbar-actions" aria-hidden="true">
+      <div class="bell">
+        <svg viewBox="0 0 24 24">
+          <path d="M6 17h12"></path>
+          <path d="M8 17V10a4 4 0 0 1 8 0v7"></path>
+          <path d="M10 20h4"></path>
+        </svg>
+      </div>
+      <div class="avatar">AD</div>
+    </div>
+  </header>
+
+  <div class="dashboard-body">
+    @if (loading) {
+      <div class="loading-state">Carregando dashboard...</div>
+    } @else if (errorMessage) {
+      <div class="error-state">{{ errorMessage }}</div>
+    } @else if (data) {
+      <section>
+        <h2>Visão Educacional</h2>
+
+        <div class="education-cards">
+          <article class="metric-card">
+            <div>
+              <span>ALUNOS CADASTRADOS</span>
+              <strong>{{ data.educational.registeredStudents }}</strong>
+            </div>
+            <div class="metric-icon blue">
+              <svg viewBox="0 0 24 24">
+                <circle cx="9" cy="9" r="2"></circle>
+                <circle cx="15" cy="9" r="2"></circle>
+                <path d="M5 17c.6-3 2-4 4-4s3.4 1 4 4"></path>
+                <path d="M12 17c.5-2.5 1.6-3.5 3.4-3.5 1.7 0 2.9 1 3.6 3.5"></path>
+              </svg>
+            </div>
+          </article>
+
+          <article class="metric-card">
+            <div>
+              <span>ALUNOS ATIVOS</span>
+              <strong>{{ data.educational.activeStudents }}</strong>
+            </div>
+            <div class="metric-icon green">
+              <svg viewBox="0 0 24 24">
+                <circle cx="11" cy="8" r="2.3"></circle>
+                <path d="M6.5 17c.7-3 2.2-4.5 4.5-4.5 1.3 0 2.4.5 3.2 1.4"></path>
+                <path d="m14 16 1.5 1.5L19 14"></path>
+              </svg>
+            </div>
+          </article>
+
+          <article class="metric-card">
+            <div>
+              <span>NOVOS CADASTROS</span>
+              <strong>{{ data.educational.newRegistrations }}</strong>
+            </div>
+            <div class="metric-icon cyan">
+              <svg viewBox="0 0 24 24">
+                <circle cx="10" cy="8" r="2.2"></circle>
+                <path d="M5.5 17c.7-3 2.2-4.5 4.5-4.5s3.8 1.5 4.5 4.5"></path>
+                <path d="M18 6v6"></path>
+                <path d="M15 9h6"></path>
+              </svg>
+            </div>
+          </article>
+
+          <article class="metric-card">
+            <div>
+              <span>ALUNOS EM RISCO</span>
+              <strong class="danger">{{ data.educational.inactiveRiskStudents }}</strong>
+            </div>
+            <div class="metric-icon red">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 4 4 19h16L12 4z"></path>
+                <path d="M12 10v4"></path>
+                <path d="M12 17h.01"></path>
+              </svg>
+            </div>
+          </article>
+        </div>
+
+        <div class="chart-summary-grid">
+          <article class="chart-card">
+            <h3>ATIVIDADE E CADASTROS (30 DIAS)</h3>
+
+            @if (history.length) {
+              <div class="chart-legend">
+                <span><i class="line-key"></i>Atividade (Acessos)</span>
+                <span><i class="bar-key"></i>Novos Cadastros</span>
+              </div>
+
+              <svg class="activity-chart" viewBox="0 0 560 230" preserveAspectRatio="none">
+                <g class="grid-lines">
+                  <line x1="30" y1="42" x2="530" y2="42"></line>
+                  <line x1="30" y1="80" x2="530" y2="80"></line>
+                  <line x1="30" y1="118" x2="530" y2="118"></line>
+                  <line x1="30" y1="156" x2="530" y2="156"></line>
+                  <line x1="30" y1="196" x2="530" y2="196"></line>
+                </g>
+
+                <polygon
+                  class="area"
+                  [attr.points]="chartAreaPoints"
+                ></polygon>
+
+                @for (item of history; track item.date; let i = $index) {
+                  <rect
+                    class="bar"
+                    [attr.x]="barX(i)"
+                    [attr.y]="196 - barHeight(item.newRegistrations)"
+                    width="28"
+                    [attr.height]="barHeight(item.newRegistrations)"
+                    rx="4"
+                  ></rect>
+                }
+
+                <polyline
+                  class="activity-line"
+                  [attr.points]="chartLinePoints"
+                ></polyline>
+
+                @for (item of history; track item.date; let i = $index) {
+                  <circle
+                    class="point"
+                    [attr.cx]="38 + i * (474 / Math.max(history.length - 1, 1))"
+                    [attr.cy]="chartLinePoints.split(' ')[i].split(',')[1]"
+                    r="4"
+                  ></circle>
+                  <text
+                    class="x-label"
+                    [attr.x]="38 + i * (474 / Math.max(history.length - 1, 1))"
+                    y="218"
+                  >
+                    {{ historyLabel(item) }}
+                  </text>
+                }
+              </svg>
+            } @else {
+              <div class="empty-chart">Sem histórico no período.</div>
+            }
+          </article>
+
+          <article class="executive-card">
+            <div class="sparkle-icon">✣</div>
+            <h3>Resumo Executivo</h3>
+            <p>{{ data.executiveSummary }}</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="operational-section">
+        <h2>Controle Operacional</h2>
+
+        <div class="operational-cards">
+          <article class="small-metric-card">
+            <span>PRODUTOS CADASTRADOS</span>
+            <strong>{{ data.operational.registeredProducts | number:'1.0-0' }}</strong>
+          </article>
+
+          <article class="small-metric-card">
+            <span>ESTOQUE BAIXO</span>
+            <strong class="danger">{{ data.operational.lowStockProducts }}</strong>
+          </article>
+
+          <article class="small-metric-card">
+            <span>TRANSPORTADORAS ATIVAS</span>
+            <strong>{{ data.operational.activeCarriers }}</strong>
+          </article>
+
+          <article class="small-metric-card">
+            <span>OCORRÊNCIAS ABERTAS</span>
+            <strong>{{ data.operational.openOccurrences }}</strong>
+          </article>
+        </div>
+
+        <div class="bottom-grid">
+          <article class="mini-panel">
+            <header>
+              <span>ESTOQUE BAIXO</span>
+              <a routerLink="/produtos-estoque">Ver tudo</a>
+            </header>
+
+            <div class="mini-head">
+              <span>Produto</span>
+              <span>Qtd</span>
+            </div>
+
+            @for (item of data.operational.lowStock.slice(0, 4); track item.productId) {
+              <div class="low-stock-row">
+                <span>{{ item.productName }}</span>
+                <b>{{ item.currentQuantity }}</b>
+              </div>
+            }
+          </article>
+
+          <article class="mini-panel">
+            <header>
+              <span>TRANSPORTADORAS PARCEIRAS</span>
+              <a routerLink="/transportadoras">Gerenciar</a>
+            </header>
+
+            @for (carrier of data.operational.carriers.slice(0, 3); track carrier.carrierId) {
+              <div class="carrier-mini-row">
+                <div class="mini-icon">▣</div>
+                <div>
+                  <strong>{{ carrier.name }}</strong>
+                  <span>Ativa • {{ carrier.slaPercentage | number:'1.0-0' }}% Entregas no Prazo</span>
+                </div>
+              </div>
+            }
+          </article>
+
+          <article class="mini-panel occurrences-panel">
+            <header>
+              <span>OCORRÊNCIAS RECENTES</span>
+              <a routerLink="/ocorrencias">Ver fila</a>
+            </header>
+
+            @for (occurrence of data.operational.recentOccurrences.slice(0, 2); track occurrence.occurrenceId) {
+              <div class="recent-occurrence">
+                <div class="occurrence-title">
+                  <strong
+                    [class.red-text]="occurrence.status === 'OPEN'"
+                  >
+                    #{{ occurrence.occurrenceId }} - {{ occurrenceTypeLabel(occurrence.type) }}
+                  </strong>
+                  <span>{{ timeAgo(occurrence.createdAt) }}</span>
+                </div>
+                <p>{{ occurrence.carrierName }}</p>
+              </div>
+            }
+          </article>
+        </div>
+      </section>
+    }
+  </div>
+</section>

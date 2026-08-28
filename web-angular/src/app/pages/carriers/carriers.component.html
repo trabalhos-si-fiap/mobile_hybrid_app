@@ -1,0 +1,209 @@
+<section class="carriers-page">
+  <div class="page-header">
+    <div>
+      <h1>Transportadoras</h1>
+      <p>Gestão de parceiros logísticos e SLA de entregas.</p>
+    </div>
+
+    <button
+      class="new-carrier-button"
+      type="button"
+      (click)="openNewCarrier()"
+    >
+      <span>＋</span>
+      Nova Transportadora
+    </button>
+  </div>
+
+  <div class="summary-grid">
+    <article class="summary-card">
+      <div class="round-icon blue">▣</div>
+      <span>TOTAL DE<br />TRANSPORTADORAS</span>
+      <strong>{{ summary.total }}</strong>
+    </article>
+
+    <article class="summary-card">
+      <div class="round-icon green">✓</div>
+      <span>ATIVAS</span>
+      <strong>{{ summary.active }}</strong>
+    </article>
+
+    <article class="summary-card">
+      <div class="round-icon gray">Ⅱ</div>
+      <span>INATIVAS</span>
+      <strong>{{ summary.inactive }}</strong>
+    </article>
+
+    <article class="summary-card">
+      <div class="round-icon red">△</div>
+      <span>OCORRÊNCIAS ABERTAS</span>
+      <strong class="danger">{{ openOccurrences }}</strong>
+    </article>
+  </div>
+
+  <article class="directory-card">
+    <div class="directory-header">
+      <h2>Diretório de Transportadoras</h2>
+
+      <div class="header-buttons">
+        <div class="filter-wrap">
+          <button
+            class="outline-button"
+            type="button"
+            (click)="showFilters = !showFilters"
+          >
+            ☰ <span>Filtros</span>
+          </button>
+
+          @if (showFilters) {
+            <div class="filter-popover">
+              <button type="button" (click)="applyStatusFilter('')">
+                Todas
+              </button>
+              <button type="button" (click)="applyStatusFilter('ACTIVE')">
+                Ativas
+              </button>
+              <button type="button" (click)="applyStatusFilter('INACTIVE')">
+                Inativas
+              </button>
+            </div>
+          }
+        </div>
+
+        <button class="outline-button" type="button" (click)="exportCsv()">
+          ⇩ <span>Exportar</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>NOME</th>
+            <th>STATUS</th>
+            <th>LOCALIDADE</th>
+            <th>E-MAIL</th>
+            <th>PRAZO<br />MÉDIO</th>
+            <th>AVALIAÇÃO</th>
+            <th>SLA</th>
+            <th>AÇÕES</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          @if (loading) {
+            <tr>
+              <td colspan="8" class="state-cell">Carregando...</td>
+            </tr>
+          } @else if (pageData?.content?.length) {
+            @for (carrier of pageData!.content; track carrier.id) {
+              <tr [class.inactive-row]="carrier.status === 'INACTIVE'">
+                <td>
+                  <div class="name-cell">
+                    <span class="carrier-avatar">
+                      {{ initials(carrier.name) }}
+                    </span>
+                    <strong>{{ carrier.name }}</strong>
+                  </div>
+                </td>
+
+                <td>
+                  <span
+                    class="status-badge"
+                    [class.inactive]="carrier.status === 'INACTIVE'"
+                  >
+                    {{ statusLabel(carrier.status) }}
+                  </span>
+                </td>
+
+                <td>{{ carrier.location }}</td>
+                <td>{{ carrier.email }}</td>
+                <td>{{ carrier.averageDeliveryDays }} dias</td>
+
+                <td>
+                  <span
+                    class="rating"
+                    [class.muted]="carrier.status === 'INACTIVE'"
+                  >
+                    ★ {{ carrier.rating | number:'1.1-1' }}
+                  </span>
+                </td>
+
+                <td>
+                  <div class="sla">
+                    <span [class.bad]="carrier.slaPercentage < 85">
+                      {{ carrier.slaPercentage | number:'1.0-0' }}%
+                    </span>
+                    <div class="sla-track">
+                      <div
+                        class="sla-fill"
+                        [class.bad]="carrier.slaPercentage < 85"
+                        [style.width.%]="carrier.slaPercentage"
+                      ></div>
+                    </div>
+                  </div>
+                </td>
+
+                <td>
+                  <button
+                    class="more-button"
+                    type="button"
+                    title="Editar transportadora"
+                    aria-label="Editar transportadora"
+                    (click)="openEditCarrier(carrier)"
+                  >
+                    ⋮
+                  </button>
+                </td>
+              </tr>
+            }
+          } @else {
+            <tr>
+              <td colspan="8" class="state-cell">
+                Nenhuma transportadora encontrada.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <footer class="directory-footer">
+      <p>
+        Mostrando {{ startResult }} a {{ endResult }}
+        de {{ pageData?.totalElements ?? 0 }} transportadoras
+      </p>
+
+      <div class="pager">
+        <button
+          type="button"
+          [disabled]="page === 0"
+          (click)="previous()"
+        >
+          ‹
+        </button>
+
+        <button
+          type="button"
+          [disabled]="!hasNext"
+          (click)="next()"
+        >
+          ›
+        </button>
+      </div>
+    </footer>
+  </article>
+</section>
+
+@if (showCarrierModal) {
+  <app-new-carrier-modal
+    [carrier]="selectedCarrier"
+    (closed)="closeCarrierModal()"
+    (saved)="carrierSaved($event)"
+  />
+}
+
+@if (successMessage) {
+  <app-success-toast [message]="successMessage" />
+}

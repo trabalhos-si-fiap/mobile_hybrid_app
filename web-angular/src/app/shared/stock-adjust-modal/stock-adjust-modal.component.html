@@ -1,0 +1,90 @@
+<div class="modal-backdrop" (mousedown)="onBackdropMouseDown($event)">
+  <section class="modal-card" role="dialog" aria-modal="true">
+    <header class="modal-header">
+      <h2>Ajustar estoque</h2>
+
+      <button
+        class="close-button"
+        type="button"
+        aria-label="Fechar"
+        (click)="close()"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M6 6l12 12"></path>
+          <path d="M18 6 6 18"></path>
+        </svg>
+      </button>
+    </header>
+
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <div class="modal-body">
+        <div class="product-summary">
+          <img [src]="productImage()" alt="" />
+
+          <div>
+            <strong>{{ item.productName }}</strong>
+            <span>
+              Estoque atual:
+              <b>{{ item.quantity }}</b>
+              unidades
+            </span>
+          </div>
+        </div>
+
+        <label class="field">
+          <span>NOVA QUANTIDADE</span>
+          <input type="number" min="0" formControlName="quantity" />
+        </label>
+
+        <label class="field">
+          <span>MOTIVO DO AJUSTE</span>
+
+          <div class="select-shell">
+            <select formControlName="reasonPreset">
+              @for (reason of reasonOptions; track reason) {
+                <option [value]="reason">{{ reason }}</option>
+              }
+            </select>
+
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m7 9 5 5 5-5"></path>
+            </svg>
+          </div>
+        </label>
+
+        <label class="field">
+          <span>OBSERVAÇÕES (OPCIONAL)</span>
+          <textarea
+            rows="3"
+            maxlength="220"
+            formControlName="observations"
+            placeholder="Detalhes do ajuste..."
+          ></textarea>
+        </label>
+
+        @if (errorMessage) {
+          <div class="modal-error">{{ errorMessage }}</div>
+        }
+      </div>
+
+      <footer class="modal-footer">
+        <button
+          class="cancel"
+          type="button"
+          [disabled]="saving"
+          (click)="close()"
+        >
+          CANCELAR
+        </button>
+
+        <button
+          class="confirm"
+          type="submit"
+          [disabled]="saving"
+        >
+          {{ saving ? 'SALVANDO...' : 'CONFIRMAR' }}
+        </button>
+      </footer>
+    </form>
+  </section>
+</div>
