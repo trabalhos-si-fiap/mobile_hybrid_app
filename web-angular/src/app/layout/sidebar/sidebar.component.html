@@ -1,0 +1,82 @@
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-square">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m3 9 9-5 9 5-9 5-9-5z"></path>
+        <path d="M7 12v5c3 2 7 2 10 0v-5"></path>
+      </svg>
+    </div>
+
+    <div class="brand-copy">
+      <strong>Edu Admin</strong>
+      <span>Plataforma Educacional</span>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <a
+      class="nav-item"
+      routerLink="/dashboard"
+      routerLinkActive="active"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="3" y="3" width="7" height="7"></rect>
+        <rect x="14" y="3" width="7" height="7"></rect>
+        <rect x="3" y="14" width="7" height="7"></rect>
+        <rect x="14" y="14" width="7" height="7"></rect>
+      </svg>
+      <span>Dashboard</span>
+    </a>
+
+    <a
+      class="nav-item"
+      routerLink="/produtos-estoque"
+      routerLinkActive="active"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3 6h18"></path>
+        <path d="M5 6v14h14V6"></path>
+        <path d="M8 10h8"></path>
+      </svg>
+      <span>Produtos e Estoque</span>
+    </a>
+
+    <a
+      class="nav-item"
+      routerLink="/transportadoras"
+      routerLinkActive="active"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3 7h11v10H3z"></path>
+        <path d="M14 10h4l3 3v4h-7z"></path>
+        <circle cx="7" cy="18" r="2"></circle>
+        <circle cx="18" cy="18" r="2"></circle>
+      </svg>
+      <span>Transportadoras</span>
+    </a>
+
+    <a
+      class="nav-item"
+      routerLink="/ocorrencias"
+      routerLinkActive="active"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 3 2.8 20h18.4L12 3z"></path>
+        <path d="M12 9v5"></path>
+        <path d="M12 17h.01"></path>
+      </svg>
+      <span>Ocorrências</span>
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <button class="logout" type="button" (click)="logout()">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M10 17l5-5-5-5"></path>
+        <path d="M15 12H3"></path>
+        <path d="M13 3h8v18h-8"></path>
+      </svg>
+      <span>Sair</span>
+    </button>
+  </div>
+</aside>

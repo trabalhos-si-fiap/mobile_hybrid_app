@@ -1,0 +1,113 @@
+<div class="backdrop" (mousedown)="onBackdrop($event)">
+  <section class="modal" role="dialog" aria-modal="true">
+    <header>
+      <h2>{{ isEdit ? 'Editar Transportadora' : 'Nova Transportadora' }}</h2>
+      <button type="button" aria-label="Fechar" (click)="close()">×</button>
+    </header>
+
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <div class="body">
+        <div class="two-cols">
+          <label>
+            <span>NOME DA TRANSPORTADORA</span>
+            <input
+              type="text"
+              formControlName="name"
+              placeholder="Ex: TransLogística S/A"
+            />
+          </label>
+
+          <label>
+            <span>LOCALIDADE (SEDE)</span>
+            <input
+              type="text"
+              formControlName="location"
+              placeholder="Ex: Curitiba, PR"
+            />
+          </label>
+        </div>
+
+        <label>
+          <span>E-MAIL DE CONTATO PRINCIPAL</span>
+          <input
+            type="email"
+            formControlName="email"
+            placeholder="contato@empresa.com.br"
+          />
+        </label>
+
+        <div class="two-cols">
+          <label>
+            <span>PRAZO MÉDIO (DIAS)</span>
+            <input
+              type="number"
+              min="1"
+              formControlName="averageDeliveryDays"
+            />
+          </label>
+
+          <label>
+            <span>META SLA (%)</span>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              formControlName="slaPercentage"
+            />
+          </label>
+        </div>
+
+        <div class="status-field">
+          <span>STATUS DA TRANSPORTADORA</span>
+
+          <div class="status-buttons">
+            <button
+              type="button"
+              [class.selected]="form.controls.status.value === 'ACTIVE'"
+              (click)="setStatus('ACTIVE')"
+            >
+              Ativa
+            </button>
+
+            <button
+              type="button"
+              [class.selected]="form.controls.status.value === 'INACTIVE'"
+              (click)="setStatus('INACTIVE')"
+            >
+              Inativa
+            </button>
+          </div>
+        </div>
+
+        @if (errorMessage) {
+          <div class="error">{{ errorMessage }}</div>
+        }
+      </div>
+
+      <footer>
+        <button
+          class="cancel"
+          type="button"
+          [disabled]="saving"
+          (click)="close()"
+        >
+          Cancelar
+        </button>
+
+        <button
+          class="save"
+          type="submit"
+          [disabled]="saving"
+        >
+          {{
+            saving
+              ? 'Salvando...'
+              : isEdit
+                ? 'Salvar Alterações'
+                : 'Salvar Transportadora'
+          }}
+        </button>
+      </footer>
+    </form>
+  </section>
+</div>

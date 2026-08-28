@@ -1,0 +1,147 @@
+<section class="occurrences-page">
+  <div class="page-header">
+    <h1>Gestão de Ocorrências</h1>
+    <p>Acompanhe e gerencie problemas com entregas e materiais.</p>
+  </div>
+
+  <div class="filters-card">
+    <div class="filters-title">
+      <span class="filter-icon">≡</span>
+      <strong>FILTROS</strong>
+    </div>
+
+    <label class="select-box">
+      <select (change)="carrierChanged($event)">
+        <option value="">Todas as Transportadoras</option>
+        @for (carrier of carriers; track carrier.id) {
+          <option [value]="carrier.id">{{ carrier.name }}</option>
+        }
+      </select>
+      <span>⌄</span>
+    </label>
+
+    <label class="select-box">
+      <select (change)="typeChanged($event)">
+        <option value="">Todos os Tipos</option>
+        <option value="DAMAGE">Dano</option>
+        <option value="DELIVERY_DELAY">Atraso</option>
+        <option value="DELIVERY_FAILURE">Falha na entrega</option>
+        <option value="OTHER">Outro</option>
+      </select>
+      <span>⌄</span>
+    </label>
+
+    <label class="select-box">
+      <select (change)="statusChanged($event)">
+        <option value="">Todos os Status</option>
+        <option value="OPEN">OPEN</option>
+        <option value="RESOLVED">RESOLVED</option>
+      </select>
+      <span>⌄</span>
+    </label>
+  </div>
+
+  <article class="occurrences-card">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>TRANSPORTADORA</th>
+            <th>TIPO</th>
+            <th>DESCRIÇÃO</th>
+            <th>DATA DE<br />REGISTRO</th>
+            <th>STATUS</th>
+            <th>AÇÕES</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          @if (loading) {
+            <tr>
+              <td colspan="6" class="state-cell">Carregando...</td>
+            </tr>
+          } @else if (pageData?.content?.length) {
+            @for (occurrence of pageData!.content; track occurrence.id) {
+              <tr>
+                <td>
+                  <div class="carrier-cell">
+                    <span class="truck-circle">▣</span>
+                    <strong>{{ occurrence.carrierName }}</strong>
+                  </div>
+                </td>
+
+                <td>
+                  <span
+                    class="type-badge"
+                    [ngClass]="typeClass(occurrence.type)"
+                  >
+                    {{ typeLabel(occurrence.type) }}
+                  </span>
+                </td>
+
+                <td>
+                  <span class="description">
+                    {{ occurrence.description }}
+                  </span>
+                </td>
+
+                <td class="date-cell">
+                  {{ formatDate(occurrence.createdAt) }}
+                </td>
+
+                <td>
+                  <span
+                    class="status-pill"
+                    [class.resolved]="occurrence.status === 'RESOLVED'"
+                  >
+                    <i></i>{{ statusLabel(occurrence.status) }}
+                  </span>
+                </td>
+
+                <td>
+                  <button
+                    class="view-button"
+                    type="button"
+                    aria-label="Ver ocorrência"
+                    (click)="selectedOccurrence = occurrence"
+                  >
+                    <svg viewBox="0 0 24 24">
+                      <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"></path>
+                      <circle cx="12" cy="12" r="2.5"></circle>
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+            }
+          } @else {
+            <tr>
+              <td colspan="6" class="state-cell">
+                Nenhuma ocorrência encontrada.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <footer>
+      <p>
+        Mostrando {{ startResult }} a {{ endResult }}
+        de {{ pageData?.totalElements ?? 0 }} ocorrências
+      </p>
+
+      <div class="pager">
+        <button type="button" [disabled]="page === 0" (click)="previous()">‹</button>
+        <button type="button" [disabled]="!hasNext" (click)="next()">›</button>
+      </div>
+    </footer>
+  </article>
+</section>
+
+@if (selectedOccurrence) {
+  <app-occurrence-detail-modal
+    [occurrence]="selectedOccurrence"
+    (closed)="selectedOccurrence = null"
+    (updated)="occurrenceUpdated()"
+  />
+}
