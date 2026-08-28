@@ -1,21 +1,30 @@
 spring:
   application:
     name: edu-admin-api
+
   datasource:
     url: jdbc:h2:file:./data/edu-admin;MODE=PostgreSQL;AUTO_SERVER=TRUE
     driver-class-name: org.h2.Driver
     username: sa
-    password: ""
+    password: "teste"
+
   jpa:
     hibernate:
       ddl-auto: update
     open-in-view: false
+
   flyway:
     enabled: false
+
   h2:
     console:
       enabled: true
       path: /h2-console
+
+  session:
+    store-type: jdbc
+    jdbc:
+      initialize-schema: always
 
 server:
   port: ${SERVER_PORT:8080}
@@ -25,10 +34,12 @@ server:
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
+    url: /openapi.yaml
 
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:4200,http://localhost:3000}
+
   security:
     jwt-secret: ${JWT_SECRET:troque-esta-chave-em-ambiente-real}
     jwt-expiration-minutes: ${JWT_EXPIRATION_MINUTES:120}

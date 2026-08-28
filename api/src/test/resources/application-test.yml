@@ -1,0 +1,8 @@
+spring:
+  session:
+    store-type: none
+
+app:
+  security:
+    jwt-secret: test-secret-key-for-jwt-tests-edu-admin
+    jwt-expiration-minutes: 60
