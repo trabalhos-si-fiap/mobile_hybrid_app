@@ -1,0 +1,139 @@
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  background: #f7f9fc;
+  border-right: 1px solid #dfe4ea;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 8px 0 8px;
+}
+
+.brand-square {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  background: #0873aa;
+  color: #fff;
+
+  svg {
+    width: 24px;
+    height: 24px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
+
+.brand-copy {
+  min-width: 0;
+  line-height: 1.05;
+
+  strong {
+    display: block;
+    color: #075886;
+    font-size: 20px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  span {
+    display: block;
+    margin-top: 4px;
+    color: #242a31;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+}
+
+.nav {
+  margin-top: 37px;
+  display: grid;
+  gap: 7px;
+}
+
+.nav-item,
+.logout {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  color: #414650;
+
+  svg {
+    width: 23px;
+    height: 23px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex: 0 0 auto;
+  }
+}
+
+.nav-item {
+  min-height: 48px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 400;
+
+  &.active {
+    background: #39b8fd;
+    color: #035b88;
+  }
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 24px;
+  border-top: 1px solid #d9dee4;
+}
+
+.logout {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 16px;
+  font-size: 16px;
+}
+
+@media (max-width: 900px) {
+  .sidebar {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .brand {
+    padding: 0;
+    justify-content: center;
+  }
+
+  .brand-copy,
+  .nav-item span,
+  .logout span {
+    display: none;
+  }
+
+  .nav-item,
+  .logout {
+    justify-content: center;
+    padding: 0;
+  }
+}

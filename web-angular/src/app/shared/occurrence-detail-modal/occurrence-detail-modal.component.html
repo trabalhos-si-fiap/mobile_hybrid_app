@@ -1,0 +1,51 @@
+<div class="backdrop" (mousedown)="onBackdrop($event)">
+  <section class="modal">
+    <header>
+      <div>
+        <span>OCORRÊNCIA #{{ occurrence.id }}</span>
+        <h2>{{ occurrence.carrierName }}</h2>
+      </div>
+      <button type="button" (click)="close()">×</button>
+    </header>
+
+    <div class="body">
+      <div class="info-grid">
+        <div>
+          <span>TIPO</span>
+          <strong>{{ typeLabel(occurrence.type) }}</strong>
+        </div>
+        <div>
+          <span>STATUS</span>
+          <strong>{{ occurrence.status }}</strong>
+        </div>
+        <div>
+          <span>REGISTRADA EM</span>
+          <strong>{{ formatDate(occurrence.createdAt) }}</strong>
+        </div>
+      </div>
+
+      <div class="description">
+        <span>DESCRIÇÃO</span>
+        <p>{{ occurrence.description }}</p>
+      </div>
+    </div>
+
+    <footer>
+      <button class="cancel" type="button" (click)="close()">Fechar</button>
+      <button
+        class="action"
+        type="button"
+        [disabled]="saving"
+        (click)="toggleStatus()"
+      >
+        @if (saving) {
+          Salvando...
+        } @else if (occurrence.status === 'OPEN') {
+          Marcar como resolvida
+        } @else {
+          Reabrir ocorrência
+        }
+      </button>
+    </footer>
+  </section>
+</div>

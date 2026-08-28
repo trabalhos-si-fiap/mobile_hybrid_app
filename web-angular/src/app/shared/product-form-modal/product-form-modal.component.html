@@ -1,0 +1,150 @@
+<div class="backdrop" (mousedown)="onBackdrop($event)">
+  <section class="modal" role="dialog" aria-modal="true">
+    <header>
+      <h2>{{ isEdit ? 'Editar Produto' : 'Novo Produto' }}</h2>
+
+      <button
+        class="close-button"
+        type="button"
+        aria-label="Fechar"
+        (click)="close()"
+      >
+        ×
+      </button>
+    </header>
+
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <div class="body">
+        @if (loadingProduct) {
+          <div class="loading">Carregando produto...</div>
+        } @else {
+          <div class="two-cols">
+            <label>
+              <span>NOME DO PRODUTO</span>
+              <input
+                type="text"
+                formControlName="name"
+                placeholder="Ex: Caderno Universitário"
+              />
+            </label>
+
+            <label>
+              <span>SKU</span>
+              <input
+                type="text"
+                formControlName="sku"
+                placeholder="Ex: CAD-UNI-001"
+              />
+            </label>
+          </div>
+
+          <label>
+            <span>DESCRIÇÃO</span>
+            <textarea
+              rows="3"
+              formControlName="description"
+              placeholder="Descrição do produto"
+            ></textarea>
+          </label>
+
+          <div class="two-cols">
+            <label>
+              <span>ESTOQUE MÍNIMO</span>
+              <input
+                type="number"
+                min="0"
+                formControlName="minimumStock"
+              />
+            </label>
+
+            @if (!isEdit) {
+              <label>
+                <span>QUANTIDADE INICIAL</span>
+                <input
+                  type="number"
+                  min="0"
+                  formControlName="initialQuantity"
+                />
+              </label>
+            } @else {
+              <label>
+                <span>PREÇO</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  formControlName="price"
+                />
+              </label>
+            }
+          </div>
+
+          @if (!isEdit) {
+            <label>
+              <span>PREÇO</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                formControlName="price"
+              />
+            </label>
+          }
+
+          @if (isEdit) {
+            <div class="status-field">
+              <span>STATUS DO PRODUTO</span>
+
+              <div class="status-buttons">
+                <button
+                  type="button"
+                  [class.selected]="form.controls.active.value"
+                  (click)="setActive(true)"
+                >
+                  Ativo
+                </button>
+
+                <button
+                  type="button"
+                  [class.selected]="!form.controls.active.value"
+                  (click)="setActive(false)"
+                >
+                  Inativo
+                </button>
+              </div>
+            </div>
+          }
+        }
+
+        @if (errorMessage) {
+          <div class="error">{{ errorMessage }}</div>
+        }
+      </div>
+
+      <footer>
+        <button
+          class="cancel"
+          type="button"
+          [disabled]="saving"
+          (click)="close()"
+        >
+          Cancelar
+        </button>
+
+        <button
+          class="save"
+          type="submit"
+          [disabled]="saving || loadingProduct"
+        >
+          {{
+            saving
+              ? 'Salvando...'
+              : isEdit
+                ? 'Salvar Alterações'
+                : 'Adicionar Produto'
+          }}
+        </button>
+      </footer>
+    </form>
+  </section>
+</div>
