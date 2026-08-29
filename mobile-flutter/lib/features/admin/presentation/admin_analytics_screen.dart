@@ -261,8 +261,7 @@ String _rotuloTipoOcorrencia(String type) {
 class _BannerDashboardWeb extends StatelessWidget {
   const _BannerDashboardWeb();
 
-  // TODO: substituir pela URL real do dashboard web quando disponível.
-  static const _url = '';
+  static const _url = 'http://localhost:4200';
 
   Future<void> _abrir() async {
     if (_url.isEmpty) return;
