@@ -2,6 +2,7 @@ package com.edu.api.db;
 
 import com.edu.api.support.OracleIntegrationTest;
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.Location;
 import org.flywaydb.core.api.MigrationInfo;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,8 +32,12 @@ class FlywayMigrationIT extends OracleIntegrationTest {
 
         assertThat(applied).isNotEmpty();
         assertThat(applied).allSatisfy(m -> assertThat(m.getState().isFailed()).isFalse());
-        assertThat(applied).extracting(MigrationInfo::getScript)
-                .noneMatch(script -> script.contains("seed"));
+        // Pela pasta, não pelo nome: um seed sem "seed" no nome também é pego.
+        assertThat(flyway.getConfiguration().getLocations())
+                .extracting(Location::getPath)
+                .noneMatch(path -> path.contains("db/seed"));
+        assertThat(applied).extracting(MigrationInfo::getPhysicalLocation)
+                .noneMatch(location -> location.replace('\\', '/').contains("/db/seed/"));
     }
 
     @Test

@@ -8,7 +8,8 @@ services:
       APP_USER: ${DB_USERNAME:-edu_admin}
       APP_USER_PASSWORD: ${DB_PASSWORD:-edu_admin}
     ports:
-      - "${ORACLE_PORT:-1521}:1521"
+      # Só no localhost: o banco tem senhas padrão e não deve ficar exposto na rede.
+      - "127.0.0.1:${ORACLE_PORT:-1521}:1521"
     volumes:
       - edu_admin_oracle_data:/opt/oracle/oradata
     healthcheck:

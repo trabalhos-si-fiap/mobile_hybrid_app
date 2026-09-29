@@ -12,8 +12,8 @@ info:
     O endpoint de login gera um token Bearer que deve ser enviado
     no header Authorization nas rotas protegidas.
 
-    A API pode ser executada utilizando H2 para desenvolvimento
-    local ou PostgreSQL para integração e testes.
+    A API usa Oracle Database Free 23ai como banco único e roda em
+    container (docker compose up -d --build na pasta api/).
 
 servers:
   - url: http://localhost:8080/api/v1

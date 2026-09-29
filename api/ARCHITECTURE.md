@@ -34,6 +34,18 @@ src/main/resources/db/
 └── seed/        # V__: massa de dados de demonstração (fora do perfil de teste)
 ```
 
+Regras de versionamento:
+
+- A numeração `V__` é única entre `migration/` e `seed/`: a próxima versão é
+  o maior `V` existente nas duas pastas + 1. O perfil de teste não lê
+  `seed/`, então uma colisão não apareceria nos testes de integração; o
+  `FlywayScriptVersionsTest` (unitário, sem banco) falha nesse caso.
+- Um script `V__` já aplicado nunca é editado; mudanças entram numa versão
+  nova.
+- Scripts `R__` ficam só em `plsql/`. O Flyway os aplica depois de todos os
+  `V__` pendentes, inclusive o seed; por isso o seed não pode depender de
+  objetos PL/SQL.
+
 ## Domínios persistidos
 
 - `products`, `inventories` e `inventory_adjustments`
