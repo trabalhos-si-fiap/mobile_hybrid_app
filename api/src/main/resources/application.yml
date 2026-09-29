@@ -19,6 +19,11 @@ spring:
       - classpath:db/plsql
       - classpath:db/seed
 
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 26MB
+
 server:
   port: ${SERVER_PORT:8080}
   servlet:
