@@ -1,5 +1,8 @@
 package com.edu.api.auth.service;
 
+import com.edu.api.security.AuthenticatedUser;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
@@ -9,6 +12,7 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.Optional;
 
 @Service
 public class JwtService {
@@ -50,30 +54,26 @@ public class JwtService {
                 .compact();
     }
 
-    public String extractEmail(String token) {
-
-        return Jwts.parser()
-                .verifyWith(secretKey)
-                .build()
-                .parseSignedClaims(token)
-                .getPayload()
-                .getSubject();
-    }
-
-    public boolean isValid(String token) {
-
+    /** Claims de um token válido, ou vazio se o token for inválido ou incompleto. */
+    public Optional<AuthenticatedUser> parse(String token) {
         try {
-
-            Jwts.parser()
+            Claims claims = Jwts.parser()
                     .verifyWith(secretKey)
                     .build()
-                    .parseSignedClaims(token);
+                    .parseSignedClaims(token)
+                    .getPayload();
 
-            return true;
+            Number userId = claims.get("userId", Number.class);
+            String role = claims.get("role", String.class);
 
-        } catch (Exception e) {
+            if (userId == null || role == null) {
+                return Optional.empty();
+            }
 
-            return false;
+            return Optional.of(new AuthenticatedUser(userId.longValue(), claims.getSubject(), role));
+
+        } catch (JwtException | IllegalArgumentException e) {
+            return Optional.empty();
         }
     }
 }

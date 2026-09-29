@@ -59,6 +59,21 @@ public class SecurityConfig {
                                 "/openapi.yaml"
                         ).permitAll()
 
+                        .requestMatchers(
+                                "/products/**",
+                                "/inventory/**",
+                                "/carriers/**",
+                                "/carrier-occurrences/**",
+                                "/dashboard/**",
+                                "/employees/**",
+                                "/tickets/queue",
+                                "/tickets/*/events",
+                                "/tickets/*/assume",
+                                "/tickets/*/resolve",
+                                "/tickets/*/transfer",
+                                "/tickets/*/engineering-alert"
+                        ).hasAnyRole(AuthenticatedUser.EMPLOYEE, AuthenticatedUser.ADMIN)
+
                         .anyRequest().authenticated()
                 )
 
