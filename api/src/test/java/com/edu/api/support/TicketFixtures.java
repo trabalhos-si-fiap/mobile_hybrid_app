@@ -72,6 +72,11 @@ public final class TicketFixtures {
                 assigned == null ? null : assigned.longValue());
     }
 
+    public long notification(long recipientUserId) {
+        return insert("INSERT INTO notifications (recipient_user_id, type, title, body)"
+                + " VALUES (?, 'NOVA_MENSAGEM', 'Título', 'Corpo')", recipientUserId);
+    }
+
     public int count(String sql, Object... args) {
         return jdbc.queryForObject(sql, Integer.class, args);
     }

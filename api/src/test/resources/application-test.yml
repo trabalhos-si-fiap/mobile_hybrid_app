@@ -9,3 +9,6 @@ app:
   security:
     jwt-secret: test-secret-key-for-jwt-tests-edu-admin
     jwt-expiration-minutes: 60
+
+  tickets:
+    jobs-enabled: false

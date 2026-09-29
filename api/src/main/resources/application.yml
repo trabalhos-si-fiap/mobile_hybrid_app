@@ -48,3 +48,7 @@ app:
       access-key: ${MINIO_ACCESS_KEY:edu_admin}
       secret-key: ${MINIO_SECRET_KEY:edu_admin_minio}
       bucket: ${MINIO_BUCKET:ticket-attachments}
+
+  tickets:
+    jobs-enabled: ${TICKET_JOBS_ENABLED:true}
+    sla-job-interval: ${TICKET_SLA_JOB_INTERVAL:60s}
