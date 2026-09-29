@@ -2,295 +2,575 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Trocar H2/PostgreSQL por Oracle como banco único da API Spring Boot, com schema e seed em Flyway, testes contra Oracle real (Testcontainers) e README desarquivado.
+**Goal:** Trocar H2/PostgreSQL por Oracle como banco único da API Spring Boot, rodar todo Java em container, reorganizar os testes numa pirâmide isolada (sem depender do seed) e desarquivar o README.
 
-**Architecture:** A API (`api/`) passa a usar Oracle Free 23ai (Docker) como único datasource. O Flyway aplica `V1__baseline_oracle.sql` (DDL) e `V2__seed_demo_data.sql` (massa de dados). O Hibernate só valida (`ddl-auto: validate`). Os testes compartilham um único container Oracle, iniciado uma vez por JVM, via uma classe base.
+**Architecture:** A API (`api/`) e o Oracle Free 23ai sobem via Docker Compose; build e testes rodam num serviço `maven` do Compose, e o host só precisa de Docker. O Flyway aplica o DDL (`db/migration`) e, fora dos testes, o seed (`db/seed`); o Hibernate só valida. Os testes seguem três camadas:
+- unit, com Mockito;
+- slice `@WebMvcTest`, sem banco;
+- integração `*IT`, contra um Oracle efêmero do Testcontainers, com dados próprios em cada teste.
 
-**Tech Stack:** Java 21 (Temurin via asdf), Spring Boot 4.0.7, Hibernate 7.2, Flyway 11.14 (`flyway-database-oracle`), `ojdbc11` 23.9, Testcontainers 2.0.5 (`testcontainers-oracle-free`), Docker Compose, imagem `gvenzl/oracle-free`.
+**Tech Stack:** Spring Boot 4.0.7, Java 21 (só em container: `maven:3.9-eclipse-temurin-21` e `eclipse-temurin:21-jre`), Hibernate 7.2, Flyway 11.14 (`flyway-database-oracle`), `ojdbc11` 23.9, Testcontainers 2.0.5 (`testcontainers-oracle-free`), JUnit 5, Mockito, AssertJ, Docker Compose, `gvenzl/oracle-free`.
 
 **Spec:** `docs/superpowers/specs/2026-09-28-base-oracle-design.md`
 
 ## Global Constraints
 
-- Java 21. Os comandos Maven rodam em `api/` com `./mvnw`. O Java vem do `.tool-versions` na raiz do repositório (`java temurin-21.0.9+10.0.LTS`).
-- Imagem de runtime: `gvenzl/oracle-free:23-slim`. Imagem de teste: `gvenzl/oracle-free:23-slim-faststart`.
+- **Nenhum passo usa JDK ou Maven do host.** Todo comando Java/Maven roda em container:
+  - `docker compose run --rm maven <goals>`, executado em `api/`;
+  - `docker compose up -d --build`.
+- Imagem Oracle de runtime: `gvenzl/oracle-free:23-slim`. Imagem de teste: `gvenzl/oracle-free:23-slim-faststart`.
 - Schema da aplicação: usuário `edu_admin` / senha `edu_admin`, no PDB `FREEPDB1`. A API nunca usa `SYSTEM`.
-- URL JDBC padrão: `jdbc:oracle:thin:@localhost:1521/FREEPDB1`.
 - `spring.jpa.hibernate.ddl-auto: validate`. Um mapeamento rejeitado é corrigido no DDL ou na entidade, nunca afrouxando a validação.
 - Nomes de tabela em inglês, os mesmos de hoje. Constraints com nome explícito: `PK_`, `FK_`, `UQ_`, `CK_`. Índices com prefixo `IX_`.
 - Tipos Oracle: `NUMBER(19)` para ids, `VARCHAR2(n CHAR)`, `NUMBER(10)` para `int`, `NUMBER(p,s)` para decimais, `BOOLEAN` nativo, `TIMESTAMP(6) WITH TIME ZONE DEFAULT SYSTIMESTAMP`.
-- Seed: `admin@edu.com` / `admin123` (papel `ADMIN`) e `usuario@edu.com` / `usuario123` (papel `USER`).
+- **Testes:**
+  - Nenhum teste lê dados do seed.
+  - Unit e slice (`*Test`, fase `test`) não usam banco nem Docker.
+  - Integração (`*IT`, fase `verify`) monta os próprios dados e termina em rollback.
+- O perfil `test` limita o Flyway a `db/migration` e `db/plsql`. O seed (`db/seed`) nunca roda em teste.
+- Seed de demonstração: `admin@edu.com` / `admin123` (papel `ADMIN`) e `usuario@edu.com` / `usuario123` (papel `USER`).
 - Nenhuma alteração em `web-angular/` ou `mobile-flutter/`.
-- Mensagens de commit em inglês, Conventional Commits, terminando com a linha `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
-- Trabalhar no branch `feat/base-oracle`, que já existe e contém a spec.
+- Commits:
+  - mensagem em inglês, no padrão Conventional Commits;
+  - última linha `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`;
+  - branch `feat/base-oracle`, que já existe e contém a spec.
 
 ## Review Focus
 
-- Login com e-mail inexistente ou senha errada deve responder **401**, não 500. Hoje responde 500. Teste em Task 3 (`AuthLoginIT`).
-- Texto acentuado do seed ("Caderno Universitário 200fls", "São Paulo, SP") precisa voltar intacto do Oracle. Teste em Task 3 (`SchemaSeedIT.seedPreservesAccents`).
-- Criar um produto novo depois do seed não pode colidir com os ids do seed, o que aconteceria com ids explícitos numa coluna identity. Teste em Task 3 (`ProductPersistenceIT.createsProductAfterSeed`).
-- `Product.active = false` precisa sobreviver a salvar e reler, por causa do mapeamento `BOOLEAN` nativo. Teste em Task 3 (`ProductPersistenceIT.persistsInactiveFlag`).
-- Reiniciar a API sobre um banco já migrado não pode duplicar o seed, ou seja, V2 aplicada uma vez só. Teste em Task 3 (`SchemaSeedIT.flywayAppliedEachMigrationOnce`).
+- **Login com e-mail inexistente ou senha errada deve responder 401, não 500.**
+  - Task 3: `AuthServiceTest` e `AuthControllerTest.shouldReturnUnauthorizedWhenCredentialsAreInvalid`.
+  - Task 4: `ApplicationContextIT.loginOfUnknownUserIsUnauthorized`, com a segurança real.
+- **Texto acentuado precisa voltar intacto do Oracle.** Task 4: `ProductRepositoryIT.keepsAccentedText`, com `flush` e `clear` antes de reler, para não ler do cache de primeiro nível.
+- **`Product.active = false` precisa sobreviver ao round-trip** (o mapeamento usa `BOOLEAN` nativo). Task 4: `ProductRepositoryIT.persistsInactiveFlag`.
+- **O seed nunca pode vazar para os testes.** Task 4: `FlywayMigrationIT.migrationsSucceedWithoutSeed` falha se algum script aplicado no perfil `test` vier de `db/seed`.
+- **Criar produto depois do seed e reiniciar a API não pode duplicar nem colidir com ids.** Isso não é testado automaticamente, porque o seed está fora dos testes. É verificado na Task 7 (Steps 3 e 4).
 
 ---
 
 ## File Structure
 
 ```text
-.tool-versions                                   # CREATE — fixa Java 21 via asdf
-README.md                                        # MODIFY — restaurado de 4324cff, adaptado para Oracle
-.gitignore                                       # (não existe na raiz; nada a fazer)
+README.md                                        # MODIFY (Task 6): restaurado de 4324cff e adaptado
 api/
-├── .gitignore                                   # MODIFY — ignora data/
-├── .env.example                                 # MODIFY — variáveis Oracle
-├── ARCHITECTURE.md                              # MODIFY — Oracle, Flyway, db/plsql
-├── docker-compose.yml                           # MODIFY — postgres → oracle
-├── pom.xml                                      # MODIFY — dependências
-├── data/                                        # DELETE (git rm) — arquivos H2
+├── .dockerignore                                # CREATE (Task 5)
+├── .env.example                                 # MODIFY (Task 5)
+├── .gitignore                                   # MODIFY (Task 6): ignora data/
+├── ARCHITECTURE.md                              # MODIFY (Task 6)
+├── Dockerfile                                   # CREATE (Task 5): build + runtime
+├── docker-compose.yml                           # MODIFY (Tasks 1, 4, 5): maven → oracle → api
+├── pom.xml                                      # MODIFY (Task 4)
+├── data/                                        # DELETE (Task 6): arquivos H2 versionados
 └── src/
     ├── main/java/com/edu/api/
-    │   ├── auth/service/AuthService.java        # MODIFY — e-mail desconhecido → UnauthorizedException
-    │   ├── security/
-    │   │   ├── PasswordEncoderConfig.java       # CREATE — bean PasswordEncoder sem perfil
-    │   │   ├── SecurityConfig.java              # MODIFY — remove bean PasswordEncoder
-    │   │   └── AdminUserInitializer.java        # DELETE
-    │   └── shared/
-    │       ├── DataSeeder.java                  # DELETE
-    │       └── exception/GlobalExceptionHandler.java  # MODIFY — UnauthorizedException → 401
+    │   ├── auth/service/AuthService.java                  # MODIFY (Task 3)
+    │   ├── security/SecurityConfig.java                   # MODIFY (Task 4): sem @Profile
+    │   ├── security/AdminUserInitializer.java             # DELETE (Task 4)
+    │   ├── shared/DataSeeder.java                         # DELETE (Task 4)
+    │   └── shared/exception/GlobalExceptionHandler.java   # MODIFY (Task 3): 401
     ├── main/resources/
-    │   ├── application.yml                      # MODIFY — Oracle, Flyway, validate
-    │   ├── application-postgres.yml             # DELETE
+    │   ├── application.yml                      # MODIFY (Tasks 4, 5)
+    │   ├── application-postgres.yml             # DELETE (Task 4)
     │   └── db/
-    │       ├── migration/
-    │       │   ├── V1__create_initial_schema.sql      # DELETE
-    │       │   ├── V2__add_product_price.sql          # DELETE
-    │       │   ├── V3__create_admin_users.sql         # DELETE
-    │       │   ├── V1__baseline_oracle.sql            # CREATE
-    │       │   └── V2__seed_demo_data.sql             # CREATE
-    │       └── plsql/.gitkeep                   # CREATE — pasta das R__ futuras
+    │       ├── migration/V1__baseline_oracle.sql          # CREATE (Task 4); apaga V1-V3 PostgreSQL
+    │       ├── plsql/.gitkeep                             # CREATE (Task 4)
+    │       └── seed/V2__seed_demo_data.sql                # CREATE (Task 5)
     └── test/
         ├── java/com/edu/api/
-        │   ├── support/OracleIntegrationTest.java     # CREATE — container Oracle singleton
-        │   ├── db/SchemaIT.java                        # CREATE (Task 2)
-        │   ├── db/SchemaSeedIT.java                    # CREATE (Task 3)
-        │   ├── product/ProductPersistenceIT.java       # CREATE (Task 3)
-        │   ├── auth/AuthLoginIT.java                   # CREATE (Task 3)
-        │   ├── security/TestSecurityConfig.java        # MODIFY — remove bean PasswordEncoder
-        │   └── (7 classes de teste existentes)         # MODIFY — extends OracleIntegrationTest
+        │   ├── ApiApplicationTests.java                   # DELETE (Task 2)
+        │   ├── auth/WebMvcTest.java                       # DELETE (Task 2): anotação falsa
+        │   ├── security/TestSecurityConfig.java           # DELETE (Task 2)
+        │   ├── support/ControllerSliceTest.java           # CREATE (Task 2)
+        │   ├── support/OracleIntegrationTest.java         # CREATE (Task 4)
+        │   ├── auth/AuthControllerTest.java               # MODIFY (Tasks 2, 3)
+        │   ├── auth/service/AuthServiceTest.java          # CREATE (Task 3)
+        │   ├── carrier/CarrierControllerTest.java         # MODIFY (Task 2)
+        │   ├── product/ProductControllerTest.java         # MODIFY (Task 2)
+        │   ├── inventory/InventoryControllerTest.java     # MODIFY (Task 2)
+        │   ├── dashboard/DashboardControllerTest.java     # MODIFY (Task 2)
+        │   ├── occurrence/CarrierOccurrenceControllerTest.java  # MODIFY (Task 2)
+        │   ├── db/FlywayMigrationIT.java                  # CREATE (Task 4)
+        │   ├── product/ProductRepositoryIT.java           # CREATE (Task 4)
+        │   ├── user/AdminUserRepositoryIT.java            # CREATE (Task 4)
+        │   └── ApplicationContextIT.java                  # CREATE (Task 4)
         └── resources/
-            ├── application.yml                  # DELETE — hoje sombreia o application.yml principal
-            └── application-test.yml             # MODIFY — só segredos JWT de teste
+            ├── application.yml                  # DELETE (Task 4): sombreia o application.yml principal
+            └── application-test.yml             # MODIFY (Task 4)
 ```
 
-Observação sobre `src/test/resources/application.yml`: no classpath de teste, ele **substitui** o `src/main/resources/application.yml`, porque os dois têm o mesmo nome e o de teste vem primeiro. Por isso os testes hoje não enxergam a configuração principal. Remover esse arquivo faz os testes usarem a mesma configuração de Flyway e JPA da aplicação.
+Contagem de testes esperada ao fim de cada task, para conferência:
 
-Nomes de testes: o Surefire padrão só executa classes `*Test`, `*Tests` e `Test*`. Os testes novos terminam em `IT`, então a Task 2 configura o Surefire para incluir `**/*IT.java`. Isso mantém um único comando: `./mvnw test`.
+| Após | `maven test` (surefire) | `maven verify` (failsafe, `*IT`) |
+|---|---|---|
+| Task 1 (estado atual) | 31 rodados, 4 erros | — |
+| Task 2 | 30, verdes | — |
+| Task 3 | 34, verdes | — |
+| Task 4 | 34, verdes | 11, verdes |
 
 ---
 
-### Task 1: Toolchain Java e suíte verde no estado atual
+### Task 1: Ferramental Maven em container
 
-A suíte atual tem 31 testes e 4 erros. `ApiApplicationTests` e `AuthControllerTest` não sobem o contexto: o único `PasswordEncoder` fica em `SecurityConfig`, que tem `@Profile("!test")`. Esta task corrige isso ainda sobre H2, para que a troca de banco parta de uma base verde.
+Cria o serviço `maven` no Compose e confirma, sem Java no host, o estado atual da suíte.
 
 **Files:**
-- Create: `.tool-versions`
-- Create: `api/src/main/java/com/edu/api/security/PasswordEncoderConfig.java`
-- Modify: `api/src/main/java/com/edu/api/security/SecurityConfig.java:75-78` (remove o método `passwordEncoder()` e os imports de `BCryptPasswordEncoder`/`PasswordEncoder`)
-- Modify: `api/src/test/java/com/edu/api/security/TestSecurityConfig.java` (remove o bean `passwordEncoder()` e os imports correspondentes)
-- Modify: `api/src/test/java/com/edu/api/auth/AuthControllerTest.java` (importa `TestSecurityConfig`)
+- Modify: `api/docker-compose.yml`
 
 **Interfaces:**
-- Produces: bean `PasswordEncoder` (BCrypt) disponível em todos os perfis, inclusive `test`.
+- Produces: `docker compose run --rm maven <goals...>`, executado em `api/`, roda `mvn -B <goals...>` sobre uma cópia do código. Nada é escrito no host. O cache do Maven fica no volume `maven-repo`, e o socket do Docker fica disponível para o Testcontainers.
 
-- [ ] **Step 1: Fixar Java 21**
+- [ ] **Step 1: Adicionar o serviço `maven`**
 
-Criar `.tool-versions` na raiz do repositório (`mobile_hybrid_app/.tool-versions`):
+Em `api/docker-compose.yml`, acrescentar o serviço abaixo em `services:`, ao lado do `postgres` existente, que só sai na Task 4. Acrescentar também `maven-repo:` em `volumes:`. O arquivo fica assim:
 
-```text
-java temurin-21.0.9+10.0.LTS
+```yaml
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: edu-admin-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-edu_admin}
+      POSTGRES_USER: ${POSTGRES_USER:-edu_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-edu_admin}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - edu_admin_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Build e testes Java sem JDK no host: docker compose run --rm maven test|verify
+  # O código entra read-only e é copiado para /build, então nada é escrito no host.
+  # O socket do Docker permite ao Testcontainers criar o Oracle efêmero dos *IT
+  # e dá a este container acesso equivalente a root no Docker do host.
+  maven:
+    image: maven:3.9-eclipse-temurin-21
+    profiles: ["tools"]
+    working_dir: /build
+    entrypoint:
+      - sh
+      - -c
+      - 'tar -C /src --exclude=./target --exclude=./data -cf - . | tar -xf - && exec mvn -B "$$@"'
+      - mvn
+    volumes:
+      - ./:/src:ro
+      - maven-repo:/root/.m2
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      TESTCONTAINERS_HOST_OVERRIDE: host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  edu_admin_postgres_data:
+  maven-repo:
 ```
 
-Run: `cd api && java -version`
-Expected: `openjdk version "21.0.9"`
+Como funciona o `entrypoint`:
+- `$$@` é o escape do Compose para `$@`.
+- `sh -c '<script>' mvn test` faz `$0=mvn` e `$@=test`, então o `exec mvn -B "$@"` recebe os goals passados no `docker compose run`.
 
-- [ ] **Step 2: Confirmar a falha atual**
+- [ ] **Step 2: Validar o Compose**
 
-Run: `cd api && ./mvnw -q test 2>&1 | grep -E "Tests run:|NoSuchBeanDefinition" | tail -3`
-Expected: `Tests run: 31, Failures: 0, Errors: 4`, mais uma menção a `No qualifying bean of type 'org.springframework.security.crypto.password.PasswordEncoder'`.
+Run: `cd api && docker compose --profile tools config --services`
+Expected: lista contendo `postgres` e `maven`.
 
-- [ ] **Step 3: Mover o PasswordEncoder para uma config sem perfil**
+- [ ] **Step 3: Rodar a suíte atual no container**
 
-Criar `api/src/main/java/com/edu/api/security/PasswordEncoderConfig.java`:
+Run: `cd api && docker compose run --rm maven test 2>&1 | grep -E "Tests run:|NoSuchBeanDefinition" | tail -3`
+Expected:
+- `Tests run: 31, Failures: 0, Errors: 4`;
+- uma menção a `No qualifying bean of type 'org.springframework.security.crypto.password.PasswordEncoder'`.
 
-```java
-package com.edu.api.security;
+Esse é o estado de partida conhecido. A primeira execução baixa as dependências e leva alguns minutos.
 
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
+Run: `cd api && git status --short`
+Expected: só `docker-compose.yml` modificado. O container não escreveu nada no host.
 
-/**
- * Fica fora de {@link SecurityConfig} porque aquela classe é desligada no
- * perfil de teste, e o {@code AuthService} precisa do encoder em qualquer perfil.
- */
-@Configuration
-public class PasswordEncoderConfig {
-
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-}
-```
-
-Em `SecurityConfig.java`, apagar o bloco:
-
-```java
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-```
-
-e os imports `org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder` e `org.springframework.security.crypto.password.PasswordEncoder`.
-
-Em `TestSecurityConfig.java`, apagar o bloco:
-
-```java
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-```
-
-e os mesmos dois imports. Sem isso haveria dois beans `PasswordEncoder` no contexto de teste, e a injeção ficaria ambígua.
-
-- [ ] **Step 4: Alinhar `AuthControllerTest` aos outros testes de controller**
-
-Com o contexto subindo, `AuthControllerTest` passaria a usar a segurança padrão do Spring, que exige autenticação e CSRF, porque ele não importa `TestSecurityConfig`. Em `AuthControllerTest.java`, trocar:
-
-```java
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
-class AuthControllerTest {
-```
-
-por:
-
-```java
-@SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
-@ActiveProfiles("test")
-@Import(TestSecurityConfig.class)
-class AuthControllerTest {
-```
-
-e adicionar os imports:
-
-```java
-import com.edu.api.security.TestSecurityConfig;
-import org.springframework.context.annotation.Import;
-```
-
-- [ ] **Step 5: Rodar a suíte**
-
-Run: `cd api && ./mvnw -q test 2>&1 | grep -E "Tests run:|ERROR" | tail -3; echo exit=$?`
-Expected: nenhuma linha `[ERROR]`. Para ver o total, rodar `./mvnw test | grep "Tests run:" | tail -1`, que deve mostrar `Tests run: 31, Failures: 0, Errors: 0`.
-
-- [ ] **Step 6: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add .tool-versions api/src/main/java/com/edu/api/security/PasswordEncoderConfig.java \
-  api/src/main/java/com/edu/api/security/SecurityConfig.java \
-  api/src/test/java/com/edu/api/security/TestSecurityConfig.java \
-  api/src/test/java/com/edu/api/auth/AuthControllerTest.java
-git commit -m "fix(api): expose PasswordEncoder in every profile so the test context loads
+git add api/docker-compose.yml
+git commit -m "build(api): run Maven in a container instead of the host JDK
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
 
-### Task 2: Oracle como banco único (infra, schema e testes)
+### Task 2: Testes de controller como slices `@WebMvcTest`
+
+Hoje os 6 testes de controller sobem o contexto inteiro (`@SpringBootTest`), e com ele JPA e o banco, só para testar o HTTP de um controller com o service mockado. Esta task os converte em slices, que carregam só a camada web. O comportamento testado não muda: é refatoração de teste.
+
+**Files:**
+- Create: `api/src/test/java/com/edu/api/support/ControllerSliceTest.java`
+- Modify: `api/src/test/java/com/edu/api/auth/AuthControllerTest.java`, `carrier/CarrierControllerTest.java`, `product/ProductControllerTest.java`, `inventory/InventoryControllerTest.java`, `dashboard/DashboardControllerTest.java`, `occurrence/CarrierOccurrenceControllerTest.java`, todos em `api/src/test/java/com/edu/api/`
+- Delete: `api/src/test/java/com/edu/api/auth/WebMvcTest.java`
+- Delete: `api/src/test/java/com/edu/api/security/TestSecurityConfig.java`
+- Delete: `api/src/test/java/com/edu/api/ApiApplicationTests.java`. O smoke do contexto completo volta na Task 4 como `ApplicationContextIT`, contra um Oracle real.
+
+**Interfaces:**
+- Produces: `@com.edu.api.support.ControllerSliceTest(XController.class)`, anotação de classe para testes de controller:
+  - carrega só a camada web do controller informado, o `GlobalExceptionHandler` e o que for `@MockitoBean`;
+  - desliga os filtros de segurança;
+  - ativa o perfil `test`.
+
+- [ ] **Step 1: Apagar a anotação falsa**
+
+`api/src/test/java/com/edu/api/auth/WebMvcTest.java` declara `public @interface WebMvcTest` vazia, no pacote `com.edu.api.auth`. Qualquer `@WebMvcTest` sem import explícito nesse pacote usaria essa anotação, e não a do Spring. Apagar:
+
+```bash
+git rm api/src/test/java/com/edu/api/auth/WebMvcTest.java
+```
+
+- [ ] **Step 2: Criar a anotação composta**
+
+Criar `api/src/test/java/com/edu/api/support/ControllerSliceTest.java`:
+
+```java
+package com.edu.api.support;
+
+import com.edu.api.security.JwtAuthenticationFilter;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
+import org.springframework.core.annotation.AliasFor;
+import org.springframework.test.context.ActiveProfiles;
+
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+/**
+ * Slice de teste de um controller: só a camada web (controller, advice,
+ * conversores), sem JPA nem banco. Os services devem ser {@code @MockitoBean}.
+ *
+ * <p>O {@link JwtAuthenticationFilter} é excluído porque o {@code @WebMvcTest}
+ * carrega todo bean do tipo {@code Filter}, e esse filtro puxaria o
+ * {@code JwtService}. A segurança fica desligada no MockMvc; o wiring real
+ * de segurança é coberto por {@code ApplicationContextIT}.
+ */
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+@WebMvcTest(excludeFilters = @ComponentScan.Filter(
+        type = FilterType.ASSIGNABLE_TYPE,
+        classes = JwtAuthenticationFilter.class))
+@AutoConfigureMockMvc(addFilters = false)
+@ActiveProfiles("test")
+public @interface ControllerSliceTest {
+
+    /** Controllers a carregar no slice. */
+    @AliasFor(annotation = WebMvcTest.class, attribute = "controllers")
+    Class<?>[] value() default {};
+}
+```
+
+- [ ] **Step 3: Converter os 6 testes de controller**
+
+Em cada arquivo, substituir o bloco de anotações da classe pela anotação composta e ajustar os imports. Os métodos de teste não mudam.
+
+| Arquivo | Bloco atual | Novo |
+|---|---|---|
+| `auth/AuthControllerTest.java` | `@SpringBootTest` `@AutoConfigureMockMvc` `@ActiveProfiles("test")` | `@ControllerSliceTest(AuthController.class)` |
+| `carrier/CarrierControllerTest.java` | `@SpringBootTest` `@AutoConfigureMockMvc(addFilters = false)` `@ActiveProfiles("test")` `@Import(TestSecurityConfig.class)` | `@ControllerSliceTest(CarrierController.class)` |
+| `product/ProductControllerTest.java` | idem | `@ControllerSliceTest(ProductController.class)` |
+| `inventory/InventoryControllerTest.java` | idem | `@ControllerSliceTest(InventoryController.class)` |
+| `dashboard/DashboardControllerTest.java` | idem | `@ControllerSliceTest(DashboardController.class)` |
+| `occurrence/CarrierOccurrenceControllerTest.java` | idem | `@ControllerSliceTest(CarrierOccurrenceController.class)` |
+
+Em cada arquivo:
+- **Remover os imports que ficarem sem uso:**
+  - `org.springframework.boot.test.context.SpringBootTest`
+  - `org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc`
+  - `org.springframework.test.context.ActiveProfiles`
+  - `org.springframework.context.annotation.Import`
+  - `com.edu.api.security.TestSecurityConfig`
+- **Adicionar os imports:**
+  - `com.edu.api.support.ControllerSliceTest`
+  - o controller: `com.edu.api.<dominio>.controller.<Nome>Controller`.
+
+Exemplo, `product/ProductControllerTest.java`, trecho da declaração:
+
+```java
+import com.edu.api.product.controller.ProductController;
+import com.edu.api.support.ControllerSliceTest;
+// ... demais imports existentes (DTOs, service, Mockito, MockMvc) permanecem
+
+@ControllerSliceTest(ProductController.class)
+class ProductControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @MockitoBean
+    private ProductService productService;
+```
+
+- [ ] **Step 4: Apagar `TestSecurityConfig` e `ApiApplicationTests`**
+
+```bash
+git rm api/src/test/java/com/edu/api/security/TestSecurityConfig.java \
+       api/src/test/java/com/edu/api/ApiApplicationTests.java
+```
+
+Run: `cd api && grep -rn "TestSecurityConfig\|SpringBootTest" src/test/java`
+Expected: nenhuma saída.
+
+- [ ] **Step 5: Rodar a suíte**
+
+Run: `cd api && docker compose run --rm maven test 2>&1 | grep -E "Tests run:|ERROR\]" | tail -3`
+Expected: `Tests run: 30, Failures: 0, Errors: 0`. São os 31 anteriores menos o `contextLoads` apagado. Os 3 do `AuthControllerTest`, que antes quebravam no contexto, agora passam.
+
+Se um slice falhar com `NoSuchBeanDefinitionException` para um tipo da aplicação, o controller depende desse bean além do service já mockado. Adicionar um `@MockitoBean` desse tipo no teste. Não voltar para `@SpringBootTest`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add -A api/src/test
+git commit -m "test(api): turn controller tests into @WebMvcTest slices without a database
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 3: Credencial inválida responde 401
+
+Hoje as duas situações de login inválido respondem 500:
+- senha errada lança `UnauthorizedException`, que não tem handler;
+- e-mail desconhecido lança `RuntimeException`.
+
+O app Flutter espera 401.
+
+**Files:**
+- Create: `api/src/test/java/com/edu/api/auth/service/AuthServiceTest.java`
+- Modify: `api/src/test/java/com/edu/api/auth/AuthControllerTest.java`
+- Modify: `api/src/main/java/com/edu/api/auth/service/AuthService.java`
+- Modify: `api/src/main/java/com/edu/api/shared/exception/GlobalExceptionHandler.java`
+
+**Interfaces:**
+- Consumes: `@ControllerSliceTest` (Task 2).
+- Consumes (código existente):
+  - `AuthService(AdminUserRepository, PasswordEncoder, JwtService)`;
+  - `AuthService.login(LoginRequest)`, que retorna `AuthResponse(String accessToken, String tokenType, AdminUserResponse user)`;
+  - `AdminUserResponse(Long id, String name, String email, String role)`;
+  - `JwtService.generateToken(Long userId, String email, String role)`;
+  - `AdminUser(String name, String email, String password, String role)`.
+- Produces: `POST /auth/login` com credencial inválida responde 401 com corpo `ApiErrorResponse`, onde `error = "UNAUTHORIZED"` e `message = "Email ou senha inválidos"`.
+
+- [ ] **Step 1: Teste unitário do `AuthService` (falha)**
+
+Criar `api/src/test/java/com/edu/api/auth/service/AuthServiceTest.java`:
+
+```java
+package com.edu.api.auth.service;
+
+import com.edu.api.auth.dto.AuthResponse;
+import com.edu.api.auth.dto.LoginRequest;
+import com.edu.api.shared.exception.UnauthorizedException;
+import com.edu.api.user.entity.AdminUser;
+import com.edu.api.user.repository.AdminUserRepository;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class AuthServiceTest {
+
+    @Mock
+    private AdminUserRepository adminUserRepository;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private JwtService jwtService;
+
+    @InjectMocks
+    private AuthService authService;
+
+    private final AdminUser admin = new AdminUser("Admin", "admin@edu.com", "hash", "ADMIN");
+
+    @Test
+    void returnsTokenAndUserWhenCredentialsMatch() {
+        when(adminUserRepository.findByEmail("admin@edu.com")).thenReturn(Optional.of(admin));
+        when(passwordEncoder.matches("secret", "hash")).thenReturn(true);
+        when(jwtService.generateToken(null, "admin@edu.com", "ADMIN")).thenReturn("jwt");
+
+        AuthResponse response = authService.login(new LoginRequest("admin@edu.com", "secret"));
+
+        assertThat(response.accessToken()).isEqualTo("jwt");
+        assertThat(response.tokenType()).isEqualTo("Bearer");
+        assertThat(response.user().email()).isEqualTo("admin@edu.com");
+        assertThat(response.user().role()).isEqualTo("ADMIN");
+    }
+
+    @Test
+    void rejectsWrongPassword() {
+        when(adminUserRepository.findByEmail("admin@edu.com")).thenReturn(Optional.of(admin));
+        when(passwordEncoder.matches("wrong", "hash")).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.login(new LoginRequest("admin@edu.com", "wrong")))
+                .isInstanceOf(UnauthorizedException.class)
+                .hasMessage("Email ou senha inválidos");
+        verifyNoInteractions(jwtService);
+    }
+
+    @Test
+    void rejectsUnknownEmailTheSameWayAsWrongPassword() {
+        when(adminUserRepository.findByEmail("nobody@edu.com")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.login(new LoginRequest("nobody@edu.com", "any")))
+                .isInstanceOf(UnauthorizedException.class)
+                .hasMessage("Email ou senha inválidos");
+        verifyNoInteractions(passwordEncoder, jwtService);
+    }
+}
+```
+
+O `id` do `AdminUser` é `null` porque a entidade não foi persistida. Por isso o stub de `generateToken` usa `null`.
+
+- [ ] **Step 2: Teste do slice para o 401 (falha)**
+
+Em `api/src/test/java/com/edu/api/auth/AuthControllerTest.java`, adicionar o método abaixo e os imports `com.edu.api.shared.exception.UnauthorizedException` e `static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath`:
+
+```java
+    @Test
+    void shouldReturnUnauthorizedWhenCredentialsAreInvalid() throws Exception {
+
+        LoginRequest request = new LoginRequest(
+                "admin@edu.com",
+                "senha-errada"
+        );
+
+        when(authService.login(any(LoginRequest.class)))
+                .thenThrow(new UnauthorizedException("Email ou senha inválidos"));
+
+        mockMvc.perform(
+                        post("/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("UNAUTHORIZED"))
+                .andExpect(jsonPath("$.message").value("Email ou senha inválidos"));
+    }
+```
+
+- [ ] **Step 3: Ver os testes falharem**
+
+Run: `cd api && docker compose run --rm maven test -Dtest='AuthServiceTest,AuthControllerTest' 2>&1 | grep -E "Tests run:|FAIL|expected" | tail -8`
+Expected:
+- `rejectsUnknownEmailTheSameWayAsWrongPassword` falha, porque a exceção é `RuntimeException` e não `UnauthorizedException`;
+- `shouldReturnUnauthorizedWhenCredentialsAreInvalid` falha, porque o status recebido é 500 e não 401.
+
+- [ ] **Step 4: Implementar**
+
+Em `AuthService.login`, trocar:
+
+```java
+                .orElseThrow(() ->
+                        new RuntimeException("Email ou senha inválidos")
+                );
+```
+
+por:
+
+```java
+                .orElseThrow(() ->
+                        new UnauthorizedException("Email ou senha inválidos")
+                );
+```
+
+O import `com.edu.api.shared.exception.UnauthorizedException` já existe no arquivo.
+
+Em `GlobalExceptionHandler`, logo depois do método `handleNotFound`, adicionar:
+
+```java
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ApiErrorResponse> handleUnauthorized(
+            UnauthorizedException exception,
+            HttpServletRequest request
+    ) {
+
+        return buildResponse(
+                HttpStatus.UNAUTHORIZED,
+                "UNAUTHORIZED",
+                exception.getMessage(),
+                request
+        );
+    }
+```
+
+`UnauthorizedException` está no mesmo pacote, então não precisa de import.
+
+- [ ] **Step 5: Rodar a suíte**
+
+Run: `cd api && docker compose run --rm maven test 2>&1 | grep -E "Tests run:|ERROR\]" | tail -3`
+Expected: `Tests run: 34, Failures: 0, Errors: 0`
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add api/src/main/java/com/edu/api/auth/service/AuthService.java \
+  api/src/main/java/com/edu/api/shared/exception/GlobalExceptionHandler.java \
+  api/src/test/java/com/edu/api/auth
+git commit -m "fix(auth): answer 401 instead of 500 for invalid credentials
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 4: Oracle como banco único e camada de integração
 
 **Files:**
 - Modify: `api/pom.xml`
-- Modify: `api/docker-compose.yml`
-- Modify: `api/.env.example`
+- Modify: `api/docker-compose.yml` (o `postgres` sai e entra o `oracle`)
 - Modify: `api/src/main/resources/application.yml`
 - Delete: `api/src/main/resources/application-postgres.yml`
 - Delete: `api/src/main/resources/db/migration/V1__create_initial_schema.sql`, `V2__add_product_price.sql`, `V3__create_admin_users.sql`
 - Create: `api/src/main/resources/db/migration/V1__baseline_oracle.sql`
 - Create: `api/src/main/resources/db/plsql/.gitkeep`
+- Modify: `api/src/main/java/com/edu/api/security/SecurityConfig.java` (remove `@Profile("!test")`)
+- Delete: `api/src/main/java/com/edu/api/shared/DataSeeder.java`, `api/src/main/java/com/edu/api/security/AdminUserInitializer.java`
 - Delete: `api/src/test/resources/application.yml`
 - Modify: `api/src/test/resources/application-test.yml`
 - Create: `api/src/test/java/com/edu/api/support/OracleIntegrationTest.java`
-- Create: `api/src/test/java/com/edu/api/db/SchemaIT.java`
-- Modify (adicionar `extends OracleIntegrationTest`): `ApiApplicationTests.java`, `auth/AuthControllerTest.java`, `carrier/CarrierControllerTest.java`, `product/ProductControllerTest.java`, `inventory/InventoryControllerTest.java`, `dashboard/DashboardControllerTest.java`, `occurrence/CarrierOccurrenceControllerTest.java` (todos em `api/src/test/java/com/edu/api/`)
+- Create: `api/src/test/java/com/edu/api/db/FlywayMigrationIT.java`
+- Create: `api/src/test/java/com/edu/api/product/ProductRepositoryIT.java`
+- Create: `api/src/test/java/com/edu/api/user/AdminUserRepositoryIT.java`
+- Create: `api/src/test/java/com/edu/api/ApplicationContextIT.java`
 
 **Interfaces:**
-- Consumes: bean `PasswordEncoder` da Task 1.
+- Consumes: serviço `maven` (Task 1); handler 401 (Task 3).
 - Produces:
-  - `com.edu.api.support.OracleIntegrationTest`: classe abstrata. Quem a estende recebe `spring.datasource.url/username/password` apontando para o container compartilhado.
-  - Tabelas `products`, `inventories`, `inventory_adjustments`, `carriers`, `carrier_occurrences`, `admin_users` no schema `EDU_ADMIN`.
-  - Pasta `classpath:db/plsql`, lida pelo Flyway.
+  - `com.edu.api.support.OracleIntegrationTest`: classe abstrata. Quem a estende recebe `spring.datasource.url/username/password` do container Oracle compartilhado, iniciado uma vez por JVM.
+  - Tabelas `products`, `inventories`, `inventory_adjustments`, `carriers`, `carrier_occurrences` e `admin_users`, sem dados.
+  - Pasta `classpath:db/plsql`, lida pelo Flyway em todos os perfis.
+  - Serviço `oracle` no Compose, usado pela Task 5.
+  - Os `*IT` rodam em `maven verify`.
 
-- [ ] **Step 1: Escrever o teste de schema (falha: ainda é H2)**
-
-Criar `api/src/test/java/com/edu/api/db/SchemaIT.java`:
-
-```java
-package com.edu.api.db;
-
-import com.edu.api.support.OracleIntegrationTest;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
-@SpringBootTest
-@ActiveProfiles("test")
-class SchemaIT extends OracleIntegrationTest {
-
-    @Autowired
-    private JdbcTemplate jdbc;
-
-    @Test
-    void runsOnOracle() {
-        String product = jdbc.queryForObject(
-                "SELECT product FROM product_component_version WHERE ROWNUM = 1",
-                String.class);
-        assertThat(product).contains("Oracle");
-    }
-
-    @Test
-    void createsAllApplicationTables() {
-        List<String> tables = jdbc.queryForList(
-                "SELECT LOWER(table_name) FROM user_tables", String.class);
-        assertThat(tables).contains(
-                "products", "inventories", "inventory_adjustments",
-                "carriers", "carrier_occurrences", "admin_users");
-        assertThat(tables).doesNotContain("student_metrics");
-    }
-
-    @Test
-    void namesConstraintsExplicitly() {
-        List<String> names = jdbc.queryForList(
-                "SELECT constraint_name FROM user_constraints WHERE table_name = 'PRODUCTS'",
-                String.class);
-        assertThat(names).contains(
-                "PK_PRODUCTS", "UQ_PRODUCTS_SKU",
-                "CK_PRODUCTS_MINIMUM_STOCK", "CK_PRODUCTS_PRICE");
-    }
-}
-```
+- [ ] **Step 1: Escrever os testes de integração**
 
 Criar `api/src/test/java/com/edu/api/support/OracleIntegrationTest.java`:
 
@@ -302,9 +582,10 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.oracle.OracleContainer;
 
 /**
- * Base dos testes que sobem o contexto Spring. O container é iniciado uma
- * única vez por JVM e compartilhado por todos os contextos; o Ryuk do
- * Testcontainers o remove ao fim da execução.
+ * Base dos testes de integração. Um único Oracle efêmero é iniciado por JVM
+ * e compartilhado por todos os contextos; o Ryuk do Testcontainers o remove
+ * ao fim da execução. O schema nasce vazio, então cada teste cria os
+ * próprios dados.
  */
 public abstract class OracleIntegrationTest {
 
@@ -326,7 +607,272 @@ public abstract class OracleIntegrationTest {
 }
 ```
 
-- [ ] **Step 2: Trocar as dependências no `pom.xml`**
+Criar `api/src/test/java/com/edu/api/db/FlywayMigrationIT.java`:
+
+```java
+package com.edu.api.db;
+
+import com.edu.api.support.OracleIntegrationTest;
+import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.MigrationInfo;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.boot.jdbc.test.autoconfigure.JdbcTest;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.ActiveProfiles;
+
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@JdbcTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@ActiveProfiles("test")
+class FlywayMigrationIT extends OracleIntegrationTest {
+
+    @Autowired
+    private Flyway flyway;
+
+    @Autowired
+    private JdbcTemplate jdbc;
+
+    @Test
+    void migrationsSucceedWithoutSeed() {
+        MigrationInfo[] applied = flyway.info().applied();
+
+        assertThat(applied).isNotEmpty();
+        assertThat(applied).allSatisfy(m -> assertThat(m.getState().isFailed()).isFalse());
+        assertThat(applied).extracting(MigrationInfo::getScript)
+                .noneMatch(script -> script.contains("seed"));
+    }
+
+    @Test
+    void createsApplicationTables() {
+        List<String> tables = jdbc.queryForList(
+                "SELECT LOWER(table_name) FROM user_tables", String.class);
+
+        assertThat(tables).contains(
+                "products", "inventories", "inventory_adjustments",
+                "carriers", "carrier_occurrences", "admin_users");
+        assertThat(tables).doesNotContain("student_metrics");
+    }
+
+    @Test
+    void namesKeyConstraintsExplicitly() {
+        List<String> unnamed = jdbc.queryForList(
+                "SELECT table_name || '.' || constraint_name FROM user_constraints "
+                        + "WHERE constraint_type IN ('P', 'U', 'R') AND constraint_name LIKE 'SYS\\_C%' ESCAPE '\\'",
+                String.class);
+        assertThat(unnamed).isEmpty();
+
+        List<String> productChecks = jdbc.queryForList(
+                "SELECT constraint_name FROM user_constraints WHERE table_name = 'PRODUCTS'",
+                String.class);
+        assertThat(productChecks).contains(
+                "PK_PRODUCTS", "UQ_PRODUCTS_SKU", "CK_PRODUCTS_MINIMUM_STOCK", "CK_PRODUCTS_PRICE");
+    }
+}
+```
+
+Por que o filtro fica restrito a `P`, `U` e `R`: o Oracle nomeia sozinho as constraints `NOT NULL` como `SYS_C…`, do tipo `C`. As constraints `CHECK` nomeadas são conferidas pelo nome, na segunda query.
+
+Criar `api/src/test/java/com/edu/api/product/ProductRepositoryIT.java`:
+
+```java
+package com.edu.api.product;
+
+import com.edu.api.inventory.entity.Inventory;
+import com.edu.api.product.entity.Product;
+import com.edu.api.product.repository.ProductRepository;
+import com.edu.api.support.OracleIntegrationTest;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
+import org.springframework.test.context.ActiveProfiles;
+
+import java.math.BigDecimal;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@ActiveProfiles("test")
+class ProductRepositoryIT extends OracleIntegrationTest {
+
+    @Autowired
+    private ProductRepository products;
+
+    @Autowired
+    private TestEntityManager entityManager;
+
+    /** Relê do banco, e não do cache de primeiro nível. */
+    private Product reload(Product product) {
+        entityManager.flush();
+        entityManager.clear();
+        return products.findById(product.getId()).orElseThrow();
+    }
+
+    private Product newProduct(String name, String description) {
+        return new Product(name, description, new BigDecimal("9.90"), 3);
+    }
+
+    @Test
+    void generatesDistinctIdsForNewProducts() {
+        Product first = products.save(newProduct("Lápis HB", "Grafite nº 2"));
+        Product second = products.save(newProduct("Apontador", "Com depósito"));
+        entityManager.flush();
+
+        assertThat(first.getId()).isNotNull();
+        assertThat(second.getId()).isNotNull().isNotEqualTo(first.getId());
+    }
+
+    @Test
+    void keepsAccentedText() {
+        Product saved = products.save(newProduct(
+                "Caderno Universitário", "Capa dura — 200 folhas, pautação ção"));
+
+        Product found = reload(saved);
+
+        assertThat(found.getName()).isEqualTo("Caderno Universitário");
+        assertThat(found.getDescription()).isEqualTo("Capa dura — 200 folhas, pautação ção");
+    }
+
+    @Test
+    void persistsInactiveFlag() {
+        Product saved = products.save(newProduct("Régua 30cm", "Acrílica"));
+        saved.update(saved.getName(), saved.getDescription(), saved.getPrice(),
+                saved.getMinimumStock(), false);
+
+        assertThat(reload(saved).isActive()).isFalse();
+    }
+
+    @Test
+    void persistsProductWithInventory() {
+        Product product = newProduct("Mochila", "Reforçada");
+        new Inventory(product, 7);
+        products.save(product);
+
+        Product found = reload(product);
+
+        assertThat(found.getInventory().getQuantity()).isEqualTo(7);
+    }
+}
+```
+
+`new Inventory(product, 7)` liga o estoque ao produto via `product.attachInventory`, e o `cascade = ALL` de `Product.inventory` persiste os dois.
+
+Criar `api/src/test/java/com/edu/api/user/AdminUserRepositoryIT.java`:
+
+```java
+package com.edu.api.user;
+
+import com.edu.api.support.OracleIntegrationTest;
+import com.edu.api.user.entity.AdminUser;
+import com.edu.api.user.repository.AdminUserRepository;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
+import org.springframework.boot.jpa.test.autoconfigure.TestEntityManager;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.test.context.ActiveProfiles;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@ActiveProfiles("test")
+class AdminUserRepositoryIT extends OracleIntegrationTest {
+
+    @Autowired
+    private AdminUserRepository users;
+
+    @Autowired
+    private TestEntityManager entityManager;
+
+    @Test
+    void findsUserByEmail() {
+        users.save(new AdminUser("Ana Souza", "ana@edu.com", "hash", "USER"));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(users.findByEmail("ana@edu.com"))
+                .get()
+                .extracting(AdminUser::getRole)
+                .isEqualTo("USER");
+        assertThat(users.findByEmail("outra@edu.com")).isEmpty();
+    }
+
+    @Test
+    void rejectsDuplicateEmail() {
+        users.saveAndFlush(new AdminUser("Ana Souza", "ana@edu.com", "hash", "USER"));
+
+        assertThatThrownBy(() -> users.saveAndFlush(
+                new AdminUser("Ana Clara", "ana@edu.com", "hash", "USER")))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+}
+```
+
+Criar `api/src/test/java/com/edu/api/ApplicationContextIT.java`:
+
+```java
+package com.edu.api;
+
+import com.edu.api.support.OracleIntegrationTest;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/**
+ * Smoke do contexto completo: wiring, validate do Hibernate e a cadeia de
+ * segurança real. Não depende de dados; o banco está vazio.
+ */
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+class ApplicationContextIT extends OracleIntegrationTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Test
+    void protectedEndpointRequiresToken() throws Exception {
+        mockMvc.perform(get("/products"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void loginOfUnknownUserIsUnauthorized() throws Exception {
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"ninguem@edu.com\",\"password\":\"qualquer\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
+    }
+}
+```
+
+- [ ] **Step 2: Ver os testes falharem**
+
+Run: `cd api && docker compose run --rm maven verify 2>&1 | grep -E "COMPILATION ERROR|cannot find symbol|package .* does not exist" | head -5`
+Expected: erro de compilação, porque `org.testcontainers.oracle` não existe. A dependência ainda não foi adicionada.
+
+- [ ] **Step 3: Dependências e failsafe no `pom.xml`**
 
 Remover estes blocos `<dependency>` inteiros:
 - `org.springframework.boot:spring-boot-h2console`
@@ -336,7 +882,7 @@ Remover estes blocos `<dependency>` inteiros:
 - `org.flywaydb:flyway-database-postgresql`
 - `org.springframework.boot:spring-boot-starter-session-jdbc-test`
 
-Adicionar, depois de `flyway-core`:
+Depois de `flyway-core`, adicionar:
 
 ```xml
 		<dependency>
@@ -350,7 +896,7 @@ Adicionar, depois de `flyway-core`:
 		</dependency>
 ```
 
-Adicionar, junto das dependências de teste:
+Junto das dependências de teste, adicionar:
 
 ```xml
 		<dependency>
@@ -365,27 +911,20 @@ Adicionar, junto das dependências de teste:
 		</dependency>
 ```
 
-Nenhuma dependência leva `<version>`: o Spring Boot 4.0.7 gerencia todas (`flyway-database-oracle` 11.14.1, `ojdbc11` 23.9.0.25.07, `testcontainers-oracle-free` 2.0.5).
+Nenhuma leva `<version>`: o Spring Boot 4.0.7 gerencia `flyway-database-oracle` 11.14.1, `ojdbc11` 23.9.0.25.07 e `testcontainers-oracle-free` 2.0.5.
 
-Em `<build><plugins>`, depois do `maven-compiler-plugin`, incluir os `*IT` no Surefire:
+Em `<build><plugins>`, depois do `maven-compiler-plugin`, declarar o failsafe. O parent do Spring Boot já configura as execuções `integration-test` e `verify`, e por padrão o failsafe executa `**/*IT.java`, que o surefire ignora:
 
 ```xml
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-surefire-plugin</artifactId>
-				<configuration>
-					<includes>
-						<include>**/*Test.java</include>
-						<include>**/*Tests.java</include>
-						<include>**/*IT.java</include>
-					</includes>
-				</configuration>
+				<artifactId>maven-failsafe-plugin</artifactId>
 			</plugin>
 ```
 
-- [ ] **Step 3: Configuração Spring**
+- [ ] **Step 4: Configuração Spring**
 
-Substituir o conteúdo de `api/src/main/resources/application.yml` por:
+Substituir `api/src/main/resources/application.yml` por:
 
 ```yaml
 spring:
@@ -427,22 +966,42 @@ app:
     jwt-expiration-minutes: ${JWT_EXPIRATION_MINUTES:120}
 ```
 
-Apagar `api/src/main/resources/application-postgres.yml` e `api/src/test/resources/application.yml`.
-
-Substituir o conteúdo de `api/src/test/resources/application-test.yml` por:
+Substituir `api/src/test/resources/application-test.yml` por:
 
 ```yaml
+# Perfil de teste: nunca aplica o seed de demonstração (db/seed).
+spring:
+  flyway:
+    locations:
+      - classpath:db/migration
+      - classpath:db/plsql
+
 app:
   security:
     jwt-secret: test-secret-key-for-jwt-tests-edu-admin
     jwt-expiration-minutes: 60
 ```
 
-Criar `api/src/main/resources/db/plsql/.gitkeep` vazio.
+Apagar os arquivos e criar a pasta do PL/SQL:
 
-- [ ] **Step 4: DDL Oracle**
+```bash
+git rm api/src/main/resources/application-postgres.yml api/src/test/resources/application.yml
+mkdir -p api/src/main/resources/db/plsql && touch api/src/main/resources/db/plsql/.gitkeep
+```
 
-Apagar `V1__create_initial_schema.sql`, `V2__add_product_price.sql` e `V3__create_admin_users.sql`. Criar `api/src/main/resources/db/migration/V1__baseline_oracle.sql`:
+O `src/test/resources/application.yml` sai porque, no classpath de teste, ele toma o lugar do `application.yml` principal (mesmo nome, e o de teste vem primeiro). Sem esse arquivo, os testes usam a configuração da aplicação mais o perfil `test`.
+
+- [ ] **Step 5: DDL Oracle**
+
+Apagar as migrations PostgreSQL:
+
+```bash
+git rm api/src/main/resources/db/migration/V1__create_initial_schema.sql \
+       api/src/main/resources/db/migration/V2__add_product_price.sql \
+       api/src/main/resources/db/migration/V3__create_admin_users.sql
+```
+
+Criar `api/src/main/resources/db/migration/V1__baseline_oracle.sql`:
 
 ```sql
 -- Baseline Oracle do Edu Admin. Consolida as migrations PostgreSQL V1-V3.
@@ -539,13 +1098,33 @@ CREATE INDEX IX_CARRIERS_STATUS ON carriers (status);
 CREATE INDEX IX_CARRIER_OCC_STATUS ON carrier_occurrences (status);
 ```
 
-Observações:
-- `admin_users.email` já é indexado pela `UQ_ADMIN_USERS_EMAIL`. O antigo `idx_admin_users_email` seria redundante, e o Oracle recusa criar índice sobre uma coluna que já tem índice (ORA-01408).
-- O mesmo vale para `UQ_INVENTORIES_PRODUCT`, por isso `inventories.product_id` não ganha índice separado.
+Dois índices antigos não são recriados, porque as constraints `UNIQUE` já criam índice nessas colunas e o Oracle recusa um índice duplicado (ORA-01408):
+- `admin_users.email`, coberto por `UQ_ADMIN_USERS_EMAIL`;
+- `inventories.product_id`, coberto por `UQ_INVENTORIES_PRODUCT`.
 
-- [ ] **Step 5: Docker Compose e `.env.example`**
+- [ ] **Step 6: Tirar o seed Java e o perfil da segurança**
 
-Substituir `api/docker-compose.yml` por:
+```bash
+git rm api/src/main/java/com/edu/api/shared/DataSeeder.java \
+       api/src/main/java/com/edu/api/security/AdminUserInitializer.java
+```
+
+Motivo da remoção: esses `CommandLineRunner` inseririam dados em qualquer contexto completo, inclusive no `ApplicationContextIT`. O seed volta como SQL fora dos testes na Task 5.
+
+Em `api/src/main/java/com/edu/api/security/SecurityConfig.java`:
+- remover a linha `@Profile("!test")`;
+- remover o import `org.springframework.context.annotation.Profile`.
+
+Nada mais precisa trocar a segurança real em teste: os slices não carregam `@Configuration` da aplicação.
+
+- [ ] **Step 7: Compose com Oracle no lugar do PostgreSQL**
+
+Em `api/docker-compose.yml`:
+- substituir o serviço `postgres` por `oracle`;
+- trocar o volume `edu_admin_postgres_data` por `edu_admin_oracle_data`;
+- manter o serviço `maven` como está.
+
+O arquivo fica:
 
 ```yaml
 services:
@@ -568,299 +1147,177 @@ services:
       retries: 30
       start_period: 30s
 
+  # Build e testes Java sem JDK no host: docker compose run --rm maven test|verify
+  # O código entra read-only e é copiado para /build, então nada é escrito no host.
+  # O socket do Docker permite ao Testcontainers criar o Oracle efêmero dos *IT
+  # e dá a este container acesso equivalente a root no Docker do host.
+  maven:
+    image: maven:3.9-eclipse-temurin-21
+    profiles: ["tools"]
+    working_dir: /build
+    entrypoint:
+      - sh
+      - -c
+      - 'tar -C /src --exclude=./target --exclude=./data -cf - . | tar -xf - && exec mvn -B "$$@"'
+      - mvn
+    volumes:
+      - ./:/src:ro
+      - maven-repo:/root/.m2
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      TESTCONTAINERS_HOST_OVERRIDE: host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 volumes:
   edu_admin_oracle_data:
+  maven-repo:
 ```
 
-Substituir `api/.env.example` por:
+- [ ] **Step 8: Rodar unit + slice**
 
-```dotenv
-# Lidas pelo docker compose (arquivo .env nesta pasta) e, se exportadas no
-# shell, também pela API. Sem elas, a API usa os mesmos valores padrão.
-DB_URL=jdbc:oracle:thin:@localhost:1521/FREEPDB1
-DB_USERNAME=edu_admin
-DB_PASSWORD=edu_admin
-ORACLE_PASSWORD=edu_admin_sys
-ORACLE_PORT=1521
-SERVER_PORT=8080
-CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:3000
-JWT_SECRET=chave-secreta-jwt
-JWT_EXPIRATION_MINUTES=120
-```
+Run: `cd api && docker compose run --rm maven test 2>&1 | grep -E "Tests run:|ERROR\]" | tail -3`
+Expected: `Tests run: 34, Failures: 0, Errors: 0`. Os slices não tocam no banco, então a troca não os afeta.
 
-- [ ] **Step 6: Ligar os testes existentes ao container**
+- [ ] **Step 9: Rodar a integração**
 
-Em cada uma das 7 classes listadas em **Files**, adicionar `extends OracleIntegrationTest` à declaração da classe e o import `com.edu.api.support.OracleIntegrationTest`. Exemplo em `ApiApplicationTests.java`:
+Run: `cd api && docker compose run --rm maven verify 2>&1 | grep -E "Tests run:|ERROR\]|Schema-validation|BUILD" | tail -8`
+Expected:
+- a linha do surefire com `Tests run: 34, Failures: 0, Errors: 0`;
+- a linha do failsafe com `Tests run: 11, Failures: 0, Errors: 0`;
+- `BUILD SUCCESS`.
 
-```java
-package com.edu.api;
+A primeira execução baixa a imagem `23-slim-faststart`.
 
-import com.edu.api.support.OracleIntegrationTest;
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
+Diagnóstico, se falhar:
+- `Schema-validation: wrong column type encountered in column [X] in table [Y]; found [A], but expecting [B]`: corrigir o tipo da coluna `X` no `V1__baseline_oracle.sql` para `B` e rodar de novo. Não mexer em `ddl-auto`. Como não existe banco anterior, editar a V1 é permitido.
+- `Could not find a valid Docker environment` ou timeout ao conectar no container: conferir se `/var/run/docker.sock` existe no host e se `docker compose run --rm maven help:system` enxerga `TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal`.
 
-@SpringBootTest
-@ActiveProfiles("test")
-class ApiApplicationTests extends OracleIntegrationTest {
-
-    @Test
-    void contextLoads() {
-    }
-}
-```
-
-Nas demais, só a linha da classe muda. Por exemplo `class ProductControllerTest {` passa a ser `class ProductControllerTest extends OracleIntegrationTest {`, com o import adicionado.
-
-- [ ] **Step 7: Rodar a suíte (Docker precisa estar ativo)**
-
-Run: `cd api && ./mvnw test 2>&1 | grep -E "Tests run:|ERROR|Schema-validation" | tail -5`
-Expected: `Tests run: 34, Failures: 0, Errors: 0` (31 existentes + 3 do `SchemaIT`). A primeira execução baixa a imagem, uns 600 MB.
-
-Se aparecer `Schema-validation: wrong column type encountered in column [X] in table [Y]; found [A], but expecting [B]`, corrigir o tipo da coluna `X` no `V1__baseline_oracle.sql` para o tipo `B` que o Hibernate espera, e rodar de novo. Não mexer em `ddl-auto`. Por não haver banco anterior, editar a V1 é permitido neste momento.
-
-- [ ] **Step 8: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
-git add -A api/pom.xml api/docker-compose.yml api/.env.example \
-  api/src/main/resources api/src/test
-git commit -m "feat(api): run on Oracle Free with a Flyway baseline and Testcontainers
+git add -A api/pom.xml api/docker-compose.yml api/src
+git commit -m "feat(api): run on Oracle Free with a Flyway baseline and isolated integration tests
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
 
-### Task 3: Seed em SQL e login com as contas do seed
+### Task 5: API em container e seed de demonstração
 
 **Files:**
-- Create: `api/src/main/resources/db/migration/V2__seed_demo_data.sql`
-- Delete: `api/src/main/java/com/edu/api/shared/DataSeeder.java`
-- Delete: `api/src/main/java/com/edu/api/security/AdminUserInitializer.java`
-- Modify: `api/src/main/java/com/edu/api/auth/service/AuthService.java` (e-mail desconhecido)
-- Modify: `api/src/main/java/com/edu/api/shared/exception/GlobalExceptionHandler.java` (handler 401)
-- Create: `api/src/test/java/com/edu/api/db/SchemaSeedIT.java`
-- Create: `api/src/test/java/com/edu/api/product/ProductPersistenceIT.java`
-- Create: `api/src/test/java/com/edu/api/auth/AuthLoginIT.java`
+- Create: `api/Dockerfile`
+- Create: `api/.dockerignore`
+- Modify: `api/docker-compose.yml` (serviço `api`)
+- Modify: `api/.env.example`
+- Modify: `api/src/main/resources/application.yml` (adiciona `db/seed`)
+- Create: `api/src/main/resources/db/seed/V2__seed_demo_data.sql`
 
 **Interfaces:**
-- Consumes: `OracleIntegrationTest` e as tabelas da Task 2. `ProductRepository` (`JpaRepository<Product, Long>`, já existente). `Product(String name, String description, BigDecimal price, int minimumStock)` e `Product.update(String, String, BigDecimal, int, boolean)`.
-- Produces: contas `admin@edu.com`/`admin123` (ADMIN) e `usuario@edu.com`/`usuario123` (USER). `POST /auth/login` responde 401 com `{"error":"UNAUTHORIZED"}` para credencial inválida.
+- Consumes: serviço `oracle` e schema V1 (Task 4).
+- Produces:
+  - `docker compose up -d --build` sobe `oracle` e `api`, com a API em `http://localhost:8080/api/v1`;
+  - contas `admin@edu.com`/`admin123` (ADMIN) e `usuario@edu.com`/`usuario123` (USER);
+  - 4 transportadoras com 3 ocorrências e 5 produtos com estoque.
 
-- [ ] **Step 1: Escrever os testes (falham: sem seed e com 500)**
+- [ ] **Step 1: Dockerfile e `.dockerignore`**
 
-Criar `api/src/test/java/com/edu/api/db/SchemaSeedIT.java`:
+Criar `api/Dockerfile`:
 
-```java
-package com.edu.api.db;
+```dockerfile
+# Build: dependências numa camada própria, para reaproveitar o cache entre builds.
+FROM maven:3.9-eclipse-temurin-21 AS build
+WORKDIR /build
+COPY pom.xml .
+RUN mvn -B -q dependency:go-offline
+COPY src ./src
+RUN mvn -B -q package -DskipTests
 
-import com.edu.api.support.OracleIntegrationTest;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
-@SpringBootTest
-@ActiveProfiles("test")
-class SchemaSeedIT extends OracleIntegrationTest {
-
-    @Autowired
-    private JdbcTemplate jdbc;
-
-    private int count(String sql) {
-        return jdbc.queryForObject(sql, Integer.class);
-    }
-
-    @Test
-    void flywayAppliedEachMigrationOnce() {
-        List<String> versions = jdbc.queryForList(
-                "SELECT version FROM \"flyway_schema_history\" WHERE success = 1 AND version IS NOT NULL ORDER BY installed_rank",
-                String.class);
-        assertThat(versions).containsExactly("1", "2");
-    }
-
-    @Test
-    void seedsCarriersAndOccurrences() {
-        assertThat(count("SELECT COUNT(*) FROM carriers WHERE email LIKE '%.com.br' AND name IN "
-                + "('Rapidex Logística','TotalFrete Express','Nordeste Cargas','Sul Expresso')")).isEqualTo(4);
-        assertThat(count("SELECT COUNT(*) FROM carriers WHERE status = 'INACTIVE' AND name = 'Sul Expresso'")).isEqualTo(1);
-        assertThat(count("SELECT COUNT(*) FROM carrier_occurrences WHERE description LIKE 'Pedido #4521%' "
-                + "OR description LIKE 'Caixa do pedido #3870%' OR description LIKE 'Tentativa de entrega%'")).isEqualTo(3);
-    }
-
-    @Test
-    void seedsProductsWithStock() {
-        assertThat(count("SELECT COUNT(*) FROM products p JOIN inventories i ON i.product_id = p.id "
-                + "WHERE p.sku LIKE 'EDU-SEED000_'")).isEqualTo(5);
-        assertThat(count("SELECT COUNT(*) FROM products p JOIN inventories i ON i.product_id = p.id "
-                + "WHERE p.sku LIKE 'EDU-SEED000_' AND i.quantity < p.minimum_stock")).isEqualTo(4);
-    }
-
-    @Test
-    void seedsBothUserAccounts() {
-        List<String> roles = jdbc.queryForList(
-                "SELECT email || ':' || role FROM admin_users WHERE email IN ('admin@edu.com','usuario@edu.com') ORDER BY email",
-                String.class);
-        assertThat(roles).containsExactly("admin@edu.com:ADMIN", "usuario@edu.com:USER");
-    }
-
-    @Test
-    void seedPreservesAccents() {
-        assertThat(jdbc.queryForObject(
-                "SELECT name FROM products WHERE sku = 'EDU-SEED0002'", String.class))
-                .isEqualTo("Caderno Universitário 200fls");
-        assertThat(jdbc.queryForObject(
-                "SELECT location FROM carriers WHERE name = 'Rapidex Logística'", String.class))
-                .isEqualTo("São Paulo, SP");
-    }
-}
+# Runtime: só a JRE e o jar, com usuário sem privilégios.
+FROM eclipse-temurin:21-jre
+RUN useradd --system --uid 10001 app
+WORKDIR /app
+COPY --from=build /build/target/*.jar app.jar
+USER app
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
 ```
 
-Observação: o Flyway cria a tabela de histórico com o nome entre aspas, em minúsculas (`"flyway_schema_history"`). Por isso a query usa aspas.
+O `package` gera `api-0.0.1-SNAPSHOT.jar` e `api-0.0.1-SNAPSHOT.jar.original`. Só o primeiro casa com `*.jar`.
 
-Criar `api/src/test/java/com/edu/api/product/ProductPersistenceIT.java`:
+Criar `api/.dockerignore`:
 
-```java
-package com.edu.api.product;
-
-import com.edu.api.product.entity.Product;
-import com.edu.api.product.repository.ProductRepository;
-import com.edu.api.support.OracleIntegrationTest;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
-@SpringBootTest
-@ActiveProfiles("test")
-@Transactional
-class ProductPersistenceIT extends OracleIntegrationTest {
-
-    @Autowired
-    private ProductRepository products;
-
-    @Test
-    void createsProductAfterSeed() {
-        Product saved = products.saveAndFlush(
-                new Product("Mochila Escolar", "Mochila reforçada", new BigDecimal("129.90"), 3));
-
-        assertThat(saved.getId()).isNotNull();
-        assertThat(products.findById(saved.getId())).isPresent();
-    }
-
-    @Test
-    void persistsInactiveFlag() {
-        Product saved = products.saveAndFlush(
-                new Product("Régua 30cm", "Régua acrílica", new BigDecimal("4.90"), 2));
-        saved.update(saved.getName(), saved.getDescription(), saved.getPrice(),
-                saved.getMinimumStock(), false);
-        products.saveAndFlush(saved);
-
-        Boolean active = products.findById(saved.getId()).map(Product::isActive).orElseThrow();
-        assertThat(active).isFalse();
-    }
-}
+```text
+target/
+data/
+.env
+.idea/
+*.iml
 ```
 
-`Product` usa `@Getter` do Lombok, e para campo `boolean` o getter gerado é `isActive()`.
+- [ ] **Step 2: Serviço `api` no Compose e `.env.example`**
 
-Criar `api/src/test/java/com/edu/api/auth/AuthLoginIT.java`:
+Em `api/docker-compose.yml`, adicionar o serviço entre `oracle` e `maven`:
 
-```java
-package com.edu.api.auth;
-
-import com.edu.api.security.TestSecurityConfig;
-import com.edu.api.support.OracleIntegrationTest;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
-import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.web.servlet.MockMvc;
-
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-@SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
-@ActiveProfiles("test")
-@Import(TestSecurityConfig.class)
-class AuthLoginIT extends OracleIntegrationTest {
-
-    @Autowired
-    private MockMvc mockMvc;
-
-    private static String body(String email, String password) {
-        return "{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}";
-    }
-
-    @Test
-    void adminLogsInWithSeededPassword() throws Exception {
-        mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body("admin@edu.com", "admin123")))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accessToken").isNotEmpty())
-                .andExpect(jsonPath("$.user.role").value("ADMIN"));
-    }
-
-    @Test
-    void regularUserLogsInWithSeededPassword() throws Exception {
-        mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body("usuario@edu.com", "usuario123")))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.user.role").value("USER"));
-    }
-
-    @Test
-    void wrongPasswordIsUnauthorized() throws Exception {
-        mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body("admin@edu.com", "senha-errada")))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
-    }
-
-    @Test
-    void unknownEmailIsUnauthorized() throws Exception {
-        mockMvc.perform(post("/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body("ninguem@edu.com", "qualquer")))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error").value("UNAUTHORIZED"));
-    }
-}
+```yaml
+  api:
+    build: .
+    container_name: edu-admin-api
+    restart: unless-stopped
+    depends_on:
+      oracle:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:oracle:thin:@oracle:1521/FREEPDB1
+      DB_USERNAME: ${DB_USERNAME:-edu_admin}
+      DB_PASSWORD: ${DB_PASSWORD:-edu_admin}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:4200,http://localhost:3000}
+      JWT_SECRET: ${JWT_SECRET:-troque-esta-chave-em-ambiente-real}
+      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-120}
+    ports:
+      - "${API_PORT:-8080}:8080"
 ```
 
-Antes de rodar, conferir o nome do campo do usuário em `AuthResponse` (`api/src/main/java/com/edu/api/auth/dto/AuthResponse.java`). O terceiro componente do record é o `AdminUserResponse`. Se ele não se chamar `user`, ajustar `$.user.role` para o nome real.
+O `restart: unless-stopped` cobre um caso da primeira inicialização: o healthcheck pode ficar verde um pouco antes de o usuário `edu_admin` existir. Se a API cair, o Docker a reinicia.
 
-- [ ] **Step 2: Ver os testes falharem**
+Substituir `api/.env.example` por:
 
-Run: `cd api && ./mvnw test -Dtest='SchemaSeedIT,ProductPersistenceIT,AuthLoginIT' 2>&1 | grep -E "Tests run:|FAIL" | tail -8`
-Expected: falhas em `flywayAppliedEachMigrationOnce` (só a versão 1), `seedsProductsWithStock`, `seedsBothUserAccounts`, `seedPreservesAccents`, `regularUserLogsInWithSeededPassword`, `wrongPasswordIsUnauthorized` (500) e `unknownEmailIsUnauthorized` (500). Os testes de `ProductPersistenceIT` já podem passar: eles cobrem regressão do mapeamento, e não o seed.
+```dotenv
+# Lido pelo docker compose nesta pasta. Todos os valores têm padrão no
+# docker-compose.yml; copie para .env só se quiser mudar algum.
+DB_USERNAME=edu_admin
+DB_PASSWORD=edu_admin
+ORACLE_PASSWORD=edu_admin_sys
+ORACLE_PORT=1521
+API_PORT=8080
+CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:3000
+JWT_SECRET=troque-esta-chave-em-ambiente-real
+JWT_EXPIRATION_MINUTES=120
+```
 
-- [ ] **Step 3: Seed SQL**
+- [ ] **Step 3: Seed SQL fora do caminho dos testes**
 
-Criar `api/src/main/resources/db/migration/V2__seed_demo_data.sql`:
+Em `api/src/main/resources/application.yml`, acrescentar `db/seed` às locations do Flyway:
+
+```yaml
+  flyway:
+    enabled: true
+    locations:
+      - classpath:db/migration
+      - classpath:db/plsql
+      - classpath:db/seed
+```
+
+O `application-test.yml` da Task 4 continua sem `db/seed`, então os testes não mudam.
+
+Criar `api/src/main/resources/db/seed/V2__seed_demo_data.sql`:
 
 ```sql
--- Massa de dados de demonstração. Os ids vêm da identity, e as FKs são
--- resolvidas por chaves naturais (e-mail da transportadora, SKU do produto),
--- para não dessincronizar a identity com ids explícitos.
+-- Massa de dados de demonstração (não roda no perfil de teste).
+-- Os ids vêm da identity, e as FKs são resolvidas por chave natural
+-- (e-mail da transportadora, SKU do produto), para não dessincronizar a
+-- identity com ids explícitos.
 
 INSERT INTO carriers (name, location, email, average_delivery_days, rating, sla_percentage, status)
 VALUES ('Rapidex Logística', 'São Paulo, SP', 'contato@rapidex.com.br', 2, 4.7, 96.50, 'ACTIVE');
@@ -908,70 +1365,52 @@ VALUES ('Usuário Demo', 'usuario@edu.com',
         '$2a$10$qHbwNXNi4A7vDJ/ttRw4JO2iv9k1JrqHhzH0NkRbqjkSvHuJu/QlC', 'USER');
 ```
 
-- [ ] **Step 4: Remover os seeders Java**
+- [ ] **Step 4: Testes continuam isolados**
+
+Run: `cd api && docker compose run --rm maven verify 2>&1 | grep -E "Tests run:|BUILD" | tail -4`
+Expected:
+- surefire com 34 testes e failsafe com 11, todos verdes;
+- `BUILD SUCCESS`.
+
+O `FlywayMigrationIT.migrationsSucceedWithoutSeed` confirma que o seed não entrou no perfil `test`.
+
+- [ ] **Step 5: Subir a stack e conferir o seed**
+
+Run:
 
 ```bash
-git rm api/src/main/java/com/edu/api/shared/DataSeeder.java \
-       api/src/main/java/com/edu/api/security/AdminUserInitializer.java
+cd api && docker compose up -d --build
+until docker compose logs api 2>&1 | grep -qE "Started ApiApplication|APPLICATION FAILED"; do sleep 5; done
+docker compose logs api 2>&1 | grep -E "Started ApiApplication|APPLICATION FAILED"
 ```
 
-- [ ] **Step 5: Login inválido responde 401**
+Expected: `Started ApiApplication`. O Oracle precisa ficar healthy antes; na primeira vez, isso leva de 1 a 2 min.
 
-Em `AuthService.login`, trocar:
+Run: `docker compose logs api 2>&1 | grep -E "Successfully applied|Schema-validation"`
+Expected: `Successfully applied 2 migrations to schema "EDU_ADMIN"` e nenhuma linha com `Schema-validation`.
 
-```java
-                .orElseThrow(() ->
-                        new RuntimeException("Email ou senha inválidos")
-                );
-```
-
-por:
-
-```java
-                .orElseThrow(() ->
-                        new UnauthorizedException("Email ou senha inválidos")
-                );
-```
-
-`UnauthorizedException` já é usada mais abaixo no mesmo método. Conferir se o import `com.edu.api.shared.exception.UnauthorizedException` existe.
-
-Em `GlobalExceptionHandler`, logo depois do handler de `NotFoundException`, adicionar:
-
-```java
-    @ExceptionHandler(UnauthorizedException.class)
-    public ResponseEntity<ApiErrorResponse> handleUnauthorized(
-            UnauthorizedException exception,
-            HttpServletRequest request
-    ) {
-
-        return buildResponse(
-                HttpStatus.UNAUTHORIZED,
-                "UNAUTHORIZED",
-                exception.getMessage(),
-                request
-        );
-    }
-```
-
-`UnauthorizedException` está no mesmo pacote (`com.edu.api.shared.exception`), então não precisa de import.
-
-- [ ] **Step 6: Rodar a suíte inteira**
-
-Run: `cd api && ./mvnw test 2>&1 | grep -E "Tests run:|ERROR" | tail -3`
-Expected: `Tests run: 45, Failures: 0, Errors: 0` (34 da Task 2 + 5 de `SchemaSeedIT` + 2 de `ProductPersistenceIT` + 4 de `AuthLoginIT`).
-
-- [ ] **Step 7: Commit**
+Run:
 
 ```bash
-git add -A api/src
-git commit -m "feat(api): seed demo data through Flyway and answer 401 on bad credentials
+curl -s -X POST localhost:8080/api/v1/auth/login -H 'Content-Type: application/json' \
+  -d '{"email":"admin@edu.com","password":"admin123"}' | head -c 120; echo
+```
+
+Expected: JSON com `"accessToken":"…"` e `"role":"ADMIN"`.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add api/Dockerfile api/.dockerignore api/docker-compose.yml api/.env.example \
+  api/src/main/resources/application.yml api/src/main/resources/db/seed
+git commit -m "feat(api): run the API in a container and load demo data from a Flyway seed
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
 
-### Task 4: Desarquivar README e limpar o repositório
+### Task 6: Desarquivar README e limpar o repositório
 
 **Files:**
 - Modify: `README.md`
@@ -980,7 +1419,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - Delete (git rm): `api/data/edu-admin.mv.db`, `api/data/edu-admin.trace.db`, `api/data/edu-admin.lock.db`
 
 **Interfaces:**
-- Consumes: o comportamento das Tasks 2 e 3 (compose com serviço `oracle`, contas do seed).
+- Consumes: os comandos das Tasks 1, 4 e 5 e as contas do seed.
 - Produces: nada consumido por código.
 
 - [ ] **Step 1: Remover os arquivos H2 e ignorar `data/`**
@@ -988,12 +1427,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```bash
 git rm --cached api/data/edu-admin.mv.db api/data/edu-admin.trace.db api/data/edu-admin.lock.db
 rm -rf api/data
-```
-
-Acrescentar a `api/.gitignore`:
-
-```text
-data/
+printf 'data/\n' >> api/.gitignore
 ```
 
 - [ ] **Step 2: Restaurar o README**
@@ -1002,45 +1436,69 @@ data/
 git show 4324cff:README.md > README.md
 ```
 
-Depois, aplicar as edições abaixo no `README.md` restaurado.
+Depois, aplicar as três edições abaixo no `README.md` restaurado.
 
-Na seção **🛠️ Tecnologias → Backend**, trocar a linha `* H2 (desenvolvimento) / PostgreSQL (produção)` por:
+**Edição 1.** Na seção **🛠️ Tecnologias → Backend**, trocar a linha `* H2 (desenvolvimento) / PostgreSQL (produção)` por:
 
 ```markdown
-* Oracle Database Free 23ai (Docker) com PL/SQL
-* Testcontainers (testes de integração contra Oracle real)
+* Oracle Database Free 23ai com PL/SQL
+* Testcontainers (testes de integração contra um Oracle efêmero)
 ```
 
-Na seção **### 1. Backend (`api/`)**, substituir tudo, desde o bloco `cp .env.example .env` até o bloco "Ou com PostgreSQL" inclusive, por:
+e trocar `* Docker / Docker Compose` por:
+
+```markdown
+* Docker / Docker Compose (Java roda só em container; o host precisa apenas de Docker)
+```
+
+**Edição 2.** Na seção **### 1. Backend (`api/`)**, substituir tudo, desde o bloco `cp .env.example .env` até o bloco "Ou com PostgreSQL" inclusive, por:
 
 ````markdown
-Pré-requisitos: Java 21 e Docker. Com asdf, o `.tool-versions` na raiz já
-seleciona o Java certo.
+Pré-requisito: Docker (com Docker Compose). Não é preciso ter Java nem Maven
+instalados: build, testes e execução acontecem em containers.
 
 ```bash
 cd api
-cp .env.example .env   # Windows: copy .env.example .env
-docker compose up -d   # sobe o Oracle Free; a primeira vez baixa ~600 MB
-docker compose ps      # aguarde o serviço oracle ficar "healthy" (1-2 min)
-./mvnw spring-boot:run # Windows: .\mvnw.cmd spring-boot:run
+docker compose up -d --build   # sobe Oracle Free + API; a primeira vez baixa as imagens
+docker compose logs -f api     # aguarde "Started ApiApplication" (1-2 min na primeira vez)
 ```
 
-Na subida, o Flyway cria o schema e carrega a massa de dados
-(`src/main/resources/db/migration`). Contas de demonstração:
+Na subida, o Flyway cria o schema (`db/migration`) e carrega a massa de dados
+de demonstração (`db/seed`). Contas de demonstração:
 
 | E-mail            | Senha        | Papel |
 | ----------------- | ------------ | ----- |
 | `admin@edu.com`   | `admin123`   | ADMIN |
 | `usuario@edu.com` | `usuario123` | USER  |
 
-Testes (Docker precisa estar rodando; o Testcontainers sobe um Oracle próprio):
+Os valores padrão (portas, senhas, JWT) estão em `docker-compose.yml`. Para
+mudar algum, copie `.env.example` para `.env` e edite.
+
+#### Testes
 
 ```bash
-./mvnw test
+docker compose run --rm maven test     # unit + controller (sem banco)
+docker compose run --rm maven verify   # + integração contra um Oracle efêmero
 ```
+
+Os testes não usam a massa de dados de demonstração: cada teste de
+integração cria os próprios dados. O serviço `maven` monta o socket do Docker
+para o Testcontainers criar o Oracle de teste.
 ````
 
-Mantenha o parágrafo seguinte ("A API sobe em `http://localhost:8080/api/v1`…") como está.
+Manter o parágrafo seguinte ("A API sobe em `http://localhost:8080/api/v1`…") como está.
+
+**Edição 3.** Na seção **📁 Estrutura do repositório**, o README antigo aponta para um `api/README.md` que não existe. Trocar a linha
+
+```markdown
+* [`api/README.md`](./api/README.md) e [`api/ARCHITECTURE.md`](./api/ARCHITECTURE.md)
+```
+
+por:
+
+```markdown
+* [`api/ARCHITECTURE.md`](./api/ARCHITECTURE.md)
+```
 
 - [ ] **Step 3: Atualizar `api/ARCHITECTURE.md`**
 
@@ -1057,23 +1515,30 @@ src/main/java/com/edu/api/
 ├── inventory/            # Consulta e ajuste de estoque
 ├── carrier/              # Cadastro, edição e status de transportadoras
 ├── occurrence/           # Ocorrências de transportadoras
-├── security/             # Filtro JWT, CORS e configuração de segurança
+├── security/             # Filtro JWT e configuração de segurança
 ├── user/                 # Usuários (admin_users)
 └── shared/               # Erros e tipos compartilhados
 ```
 
-## Banco de dados
+## Execução
 
-A API usa Oracle Database Free 23ai como banco único. Em desenvolvimento, ele
-roda via `docker compose up -d` nesta pasta (serviço `oracle`, PDB
-`FREEPDB1`, schema `EDU_ADMIN`).
+Java roda só em container. `docker compose up -d --build` nesta pasta sobe:
+
+- `oracle`: Oracle Database Free 23ai (PDB `FREEPDB1`, schema `EDU_ADMIN`);
+- `api`: a API, construída pelo `Dockerfile` (build Maven + runtime JRE).
+
+O serviço `maven` (profile `tools`) roda build e testes:
+`docker compose run --rm maven test|verify`.
+
+## Banco de dados
 
 O Flyway é dono do schema, e o Hibernate apenas valida (`ddl-auto: validate`):
 
 ```text
 src/main/resources/db/
-├── migration/   # V__: DDL e massa de dados, versionados
-└── plsql/       # R__: functions e procedures PL/SQL (repeatable)
+├── migration/   # V__: DDL versionado
+├── plsql/       # R__: functions e procedures PL/SQL (repeatable)
+└── seed/        # V__: massa de dados de demonstração (fora do perfil de teste)
 ```
 
 ## Domínios persistidos
@@ -1084,9 +1549,14 @@ src/main/resources/db/
 
 ## Testes
 
-Os testes que sobem o contexto Spring estendem `support/OracleIntegrationTest`,
-que inicia um único container `gvenzl/oracle-free` por execução. O Flyway roda
-nele, então as migrations também são testadas.
+| Camada | Sufixo | Comando | Banco |
+|---|---|---|---|
+| Unit | `*Test` | `maven test` | não; colaboradores mockados |
+| Controller (slice) | `*Test` | `maven test` | não; `@ControllerSliceTest` = `@WebMvcTest` com services mockados |
+| Integração | `*IT` | `maven verify` | Oracle efêmero (Testcontainers), via `support/OracleIntegrationTest` |
+
+Regras: nenhum teste depende do seed. Cada teste de integração cria os
+próprios dados e termina em rollback. O perfil `test` não aplica `db/seed`.
 
 ## Swagger
 
@@ -1096,61 +1566,77 @@ O contrato está em `src/main/resources/static/openapi.yaml`.
 
 - [ ] **Step 4: Conferir que não sobrou referência antiga**
 
-Run: `grep -rniE "arquivad|h2|postgres" README.md api/ARCHITECTURE.md api/.env.example api/docker-compose.yml api/src/main/resources/application.yml`
+Run: `grep -rniE "arquivad|\bh2\b|postgres|mvnw" README.md api/ARCHITECTURE.md api/.env.example api/docker-compose.yml api/src/main/resources/application.yml`
 Expected: nenhuma saída.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add -A README.md api/ARCHITECTURE.md api/.gitignore api/data
-git commit -m "docs: unarchive the README and document the Oracle setup
+git commit -m "docs: unarchive the README and document the containerized Oracle setup
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
 
-### Task 5: Verificação ponta a ponta
+### Task 7: Verificação ponta a ponta
 
-Sem alteração de código. Verifica os critérios de pronto da spec com a aplicação real.
+Sem alteração de código. Verifica, com a aplicação real, os critérios de pronto que os testes automatizados não cobrem por não usarem o seed.
 
-- [ ] **Step 1: Subir o Oracle do compose**
+- [ ] **Step 1: Stack de pé**
 
-Run: `cd api && docker compose up -d && until [ "$(docker inspect -f '{{.State.Health.Status}}' edu-admin-oracle)" = healthy ]; do sleep 5; done; echo healthy`
-Expected: `healthy`
+Run: `cd api && docker compose up -d --build && docker compose ps`
+Expected: `edu-admin-oracle` healthy e `edu-admin-api` running.
 
-- [ ] **Step 2: Subir a API**
-
-Run, em segundo plano: `cd api && ./mvnw spring-boot:run > ../target-run.log 2>&1`
-Esperar até `grep -q "Started ApiApplication" ../target-run.log`.
-Expected: o log contém `Successfully applied 2 migrations` e nenhum `Schema-validation`.
-
-- [ ] **Step 3: Checar login e dados via HTTP**
+- [ ] **Step 2: Login e dados do seed**
 
 ```bash
 TOKEN=$(curl -s -X POST localhost:8080/api/v1/auth/login -H 'Content-Type: application/json' \
   -d '{"email":"admin@edu.com","password":"admin123"}' | python3 -c 'import sys,json;print(json.load(sys.stdin)["accessToken"])')
-curl -s -o /dev/null -w "%{http_code}\n" -X POST localhost:8080/api/v1/auth/login \
+curl -s -o /dev/null -w "senha errada: %{http_code}\n" -X POST localhost:8080/api/v1/auth/login \
   -H 'Content-Type: application/json' -d '{"email":"admin@edu.com","password":"x"}'
 curl -s localhost:8080/api/v1/carriers -H "Authorization: Bearer $TOKEN" | head -c 300; echo
 curl -s localhost:8080/api/v1/dashboard -H "Authorization: Bearer $TOKEN" | head -c 300; echo
 ```
 
-Expected: o segundo comando imprime `401`. As listas de transportadoras e o dashboard trazem os dados do seed ("Rapidex Logística"…). Se `/carriers` ou `/dashboard` responder 404, conferir o path real em `CarrierController` e `DashboardController` (`@RequestMapping`) e repetir.
+Expected:
+- `senha errada: 401`;
+- a lista de transportadoras traz "Rapidex Logística" e as outras 3;
+- o dashboard responde JSON sem erro.
+
+- [ ] **Step 3: Criar produto depois do seed**
+
+```bash
+curl -s -w "\nstatus: %{http_code}\n" -X POST localhost:8080/api/v1/products \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"name":"Mochila Escolar","description":"Reforçada","minimumStock":3,"price":129.90}'
+```
+
+Expected: `status: 201` ou `200`, com um `id` novo. Sem erro de chave duplicada, o que confirma que o seed não dessincronizou a identity.
 
 - [ ] **Step 4: Reinício não duplica o seed**
 
-Parar a API (Ctrl+C ou `kill` do processo) e subir de novo, como no Step 2.
-Expected: o log mostra `Schema "EDU_ADMIN" is up to date. No migration necessary.`, e `/carriers` continua com 4 transportadoras.
+Run:
+
+```bash
+cd api && SINCE=$(date -u +%Y-%m-%dT%H:%M:%SZ) && docker compose restart api
+until docker compose logs --since "$SINCE" api 2>&1 | grep -q "Started ApiApplication"; do sleep 5; done
+docker compose logs --since "$SINCE" api 2>&1 | grep -E "up to date|Successfully applied"
+```
+
+Expected:
+- `Schema "EDU_ADMIN" is up to date. No migration necessary.`;
+- `/carriers` continua com 4 transportadoras (repetir o curl do Step 2).
 
 - [ ] **Step 5: Smoke dos clientes (manual, pelo usuário)**
 
-Pedir ao usuário para rodar:
-- `cd web-angular && npm start`, abrir `http://localhost:4200`, logar com `admin@edu.com`/`admin123` e abrir Dashboard, Produtos/Estoque, Transportadoras e Ocorrências.
+Pedir ao usuário para rodar, com a stack de pé:
+- `cd web-angular && npm start`, abrir `http://localhost:4200`, logar com `admin@edu.com`/`admin123` e abrir Dashboard, Produtos/Estoque, Transportadoras e Ocorrências;
 - `cd mobile-flutter && flutter run`, logar com a mesma conta e abrir o dashboard.
 
 Expected: todas as telas mostram os dados do seed, sem erro.
 
-- [ ] **Step 6: Limpeza**
+- [ ] **Step 6: Encerrar**
 
-Parar a API e apagar `target-run.log`. O container Oracle pode continuar rodando.
+Run: `cd api && docker compose down`. O volume do Oracle é preservado. Para zerar o banco, usar `docker compose down -v`.
