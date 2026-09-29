@@ -18,6 +18,23 @@ services:
       retries: 30
       start_period: 30s
 
+  api:
+    build: .
+    container_name: edu-admin-api
+    restart: unless-stopped
+    depends_on:
+      oracle:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:oracle:thin:@oracle:1521/FREEPDB1
+      DB_USERNAME: ${DB_USERNAME:-edu_admin}
+      DB_PASSWORD: ${DB_PASSWORD:-edu_admin}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:4200,http://localhost:3000}
+      JWT_SECRET: ${JWT_SECRET:-troque-esta-chave-em-ambiente-real}
+      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-120}
+    ports:
+      - "${API_PORT:-8080}:8080"
+
   # Build e testes Java sem JDK no host: docker compose run --rm maven test|verify
   # O código entra read-only e é copiado para /build, então nada é escrito no host.
   # O socket do Docker permite ao Testcontainers criar o Oracle efêmero dos *IT
