@@ -45,14 +45,25 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
     List<Long> findUnassignedIds(@Param("statuses") Collection<TicketStatus> statuses,
                                  @Param("segments") Collection<Segment> segments);
 
-    @Query("select t.id from Ticket t where t.assignedEmployee is null and t.status in :statuses"
-            + " order by t.createdAt, t.id")
-    List<Long> findAllUnassignedIds(@Param("statuses") Collection<TicketStatus> statuses);
+    /**
+     * Tickets EM_FILA/ESCALADO sem dono cujo segmento tem alguém ONLINE com a
+     * skill. Sem ninguém online, rotear só gravaria mais um evento ROTEADO.
+     */
+    @Query(value = "SELECT t.id FROM tickets t"
+            + " WHERE t.assigned_employee_id IS NULL AND t.status IN ('EM_FILA', 'ESCALADO')"
+            + " AND EXISTS (SELECT 1 FROM ticket_tipo_config c"
+            + "              JOIN employee_skills es ON es.skill_id = c.skill_id"
+            + "              JOIN employees e ON e.id = es.employee_id"
+            + "             WHERE c.segment = t.segment AND c.active = TRUE AND e.presence = 'ONLINE')"
+            + " ORDER BY t.created_at, t.id", nativeQuery = true)
+    List<Long> findRoutableUnassignedIds();
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select t from Ticket t where t.status = :status and t.assignedEmployee.id = :employeeId")
     List<Ticket> findByStatusAndAssignee(@Param("status") TicketStatus status,
                                          @Param("employeeId") Long employeeId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select t from Ticket t where t.status = :status and t.resolvedAt < :before")
     List<Ticket> findByStatusResolvedBefore(@Param("status") TicketStatus status,
                                             @Param("before") Instant before);

@@ -7,6 +7,7 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -15,6 +16,9 @@ import java.time.Instant;
 @Entity
 @Table(name = "tickets")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+// Só as colunas alteradas vão no UPDATE: uma escrita não reverte campos que o
+// PL/SQL ou outra transação mudou (as ações que mudam estado também travam a linha).
+@DynamicUpdate
 public class Ticket {
 
     @Id

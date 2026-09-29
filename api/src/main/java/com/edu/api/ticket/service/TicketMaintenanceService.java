@@ -22,7 +22,6 @@ import java.util.List;
 public class TicketMaintenanceService {
 
     static final Duration CONFIRMATION_WINDOW = Duration.ofHours(72);
-    private static final List<TicketStatus> WAITING = List.of(TicketStatus.EM_FILA, TicketStatus.ESCALADO);
 
     private final TicketRepository tickets;
     private final TicketProcedures procedures;
@@ -49,7 +48,7 @@ public class TicketMaintenanceService {
     public int routeUnassigned() {
         entityManager.flush();
         int assigned = 0;
-        for (Long ticketId : tickets.findAllUnassignedIds(WAITING)) {
+        for (Long ticketId : tickets.findRoutableUnassignedIds()) {
             try {
                 if (procedures.route(ticketId).isPresent()) {
                     assigned++;

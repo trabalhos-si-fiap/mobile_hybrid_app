@@ -32,12 +32,12 @@ public class TicketAccessResolver {
     }
 
     public Ticket visibleTicket(AuthenticatedUser user, long ticketId) {
-        Ticket ticket = tickets.findDetailedById(ticketId).orElseThrow(() -> notFound(ticketId));
-        Employee employee = user.isStaff() ? employees.findByUserId(user.id()).orElse(null) : null;
-        if (!TicketAccess.canView(user, employee, ticket, segmentsOf(employee))) {
-            throw notFound(ticketId);
-        }
-        return ticket;
+        return requireVisible(user, tickets.findDetailedById(ticketId).orElseThrow(() -> notFound(ticketId)));
+    }
+
+    /** Como {@link #visibleTicket}, mas trava a linha: para quem vai alterar o ticket. */
+    public Ticket visibleTicketForUpdate(AuthenticatedUser user, long ticketId) {
+        return requireVisible(user, tickets.findForUpdate(ticketId).orElseThrow(() -> notFound(ticketId)));
     }
 
     public Ticket ownTicketForUpdate(AuthenticatedUser user, long ticketId) {
@@ -69,6 +69,14 @@ public class TicketAccessResolver {
         return configs.findSegmentCodesBySkillIds(skillIds).stream()
                 .map(Segment::valueOf)
                 .collect(Collectors.toSet());
+    }
+
+    private Ticket requireVisible(AuthenticatedUser user, Ticket ticket) {
+        Employee employee = user.isStaff() ? employees.findByUserId(user.id()).orElse(null) : null;
+        if (!TicketAccess.canView(user, employee, ticket, segmentsOf(employee))) {
+            throw notFound(ticket.getId());
+        }
+        return ticket;
     }
 
     private static NotFoundException notFound(long ticketId) {

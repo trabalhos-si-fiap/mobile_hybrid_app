@@ -97,7 +97,7 @@ public class TicketService {
                                        List<MultipartFile> files) {
         String text = TicketTexts.require(body, "body");
         List<MultipartFile> valid = attachments.validate(files);
-        Ticket ticket = access.visibleTicket(user, ticketId);
+        Ticket ticket = access.visibleTicketForUpdate(user, ticketId);
         AdminUser sender = users.getReferenceById(user.id());
         Instant now = clock.instant();
 
