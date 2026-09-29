@@ -4,9 +4,13 @@ import com.edu.api.shared.response.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.Instant;
 
@@ -39,6 +43,66 @@ public class GlobalExceptionHandler {
                 exception.getMessage(),
                 request
         );
+    }
+
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ApiErrorResponse> handleForbidden(
+            ForbiddenException exception,
+            HttpServletRequest request
+    ) {
+
+        return buildResponse(HttpStatus.FORBIDDEN, "FORBIDDEN", exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ApiErrorResponse> handleConflict(
+            ConflictException exception,
+            HttpServletRequest request
+    ) {
+
+        return buildResponse(HttpStatus.CONFLICT, "CONFLICT", exception.getMessage(), request);
+    }
+
+    @ExceptionHandler(UnprocessableException.class)
+    public ResponseEntity<ApiErrorResponse> handleUnprocessable(
+            UnprocessableException exception,
+            HttpServletRequest request
+    ) {
+
+        return buildResponse(HttpStatus.valueOf(422), "UNPROCESSABLE", exception.getMessage(), request);
+    }
+
+    @ExceptionHandler({
+            MethodArgumentTypeMismatchException.class,
+            MissingServletRequestParameterException.class,
+            HttpMessageNotReadableException.class
+    })
+    public ResponseEntity<ApiErrorResponse> handleBadRequest(
+            Exception exception,
+            HttpServletRequest request
+    ) {
+
+        return buildResponse(HttpStatus.BAD_REQUEST, "BAD_REQUEST", badRequestMessage(exception), request);
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiErrorResponse> handleUploadTooLarge(
+            MaxUploadSizeExceededException exception,
+            HttpServletRequest request
+    ) {
+
+        return buildResponse(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
+                "Arquivo maior que o permitido (5 MB por arquivo)", request);
+    }
+
+    private static String badRequestMessage(Exception exception) {
+        if (exception instanceof MethodArgumentTypeMismatchException mismatch) {
+            return mismatch.getName() + ": valor inválido '" + mismatch.getValue() + "'";
+        }
+        if (exception instanceof MissingServletRequestParameterException missing) {
+            return missing.getParameterName() + ": obrigatório";
+        }
+        return "Corpo da requisição inválido";
     }
 
     @ExceptionHandler(BusinessException.class)
