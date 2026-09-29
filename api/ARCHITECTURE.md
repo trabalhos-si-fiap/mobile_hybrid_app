@@ -8,6 +8,10 @@ src/main/java/com/edu/api/
 ├── inventory/            # Consulta e ajuste de estoque
 ├── carrier/              # Cadastro, edição e status de transportadoras
 ├── occurrence/           # Ocorrências de transportadoras
+├── employee/             # Atendentes: presença e skills
+├── ticket/               # Tickets omnichannel: roteamento, SLA, mensagens, anexos
+├── notification/         # Notificações (polling pelo app e pelo console)
+├── storage/              # Anexos no MinIO
 ├── security/             # Filtro JWT e configuração de segurança
 ├── user/                 # Usuários (admin_users)
 └── shared/               # Erros e tipos compartilhados
@@ -45,6 +49,35 @@ Regras de versionamento:
 - Scripts `R__` ficam só em `plsql/`. O Flyway os aplica depois de todos os
   `V__` pendentes, inclusive o seed; por isso o seed não pode depender de
   objetos PL/SQL.
+
+## Tickets omnichannel
+
+```text
+app abre ticket ──► POST /tickets ──► PR_ROTEAR_TICKET ──► TICKET_TIPO_CONFIG
+                                          │                  (segmento → skill → fila → SLA)
+                                          ▼
+                              FN_PROXIMO_ATENDENTE (ONLINE, menos carga)
+                                          │
+console assume ◄── notificação ◄──────────┘
+      │
+      ├─ mensagens assíncronas (app ⇄ console, com anexos no MinIO)
+      ├─ encerrar → RESOLVIDO → usuário confirma (FECHADO) ou reabre
+      └─ job a cada 60 s: PR_ESCALAR_TICKET_CRITICO, reroteia a fila, fecha resolvidos há 72 h
+```
+
+| Objeto PL/SQL | Papel |
+|---|---|
+| `FN_PROXIMO_ATENDENTE` | Escolhe o atendente ONLINE da skill com menos tickets ativos |
+| `FN_STATUS_SLA_TICKET` | `NO_PRAZO`, `EM_RISCO`, `ESTOURADO`, `CUMPRIDO` ou `VIOLADO` |
+| `PR_ROTEAR_TICKET` | Aplica a matriz de triagem e atribui o ticket |
+| `PR_ESCALAR_TICKET_CRITICO` | Sobe a prioridade e reatribui tickets com SLA estourado |
+
+Estados: `ABERTO → EM_FILA → EM_ATENDIMENTO → RESOLVIDO → FECHADO`, com
+`ESCALADO` quando o SLA estoura. Papéis: `USER` (app), `EMPLOYEE`
+(atendente), `ADMIN` (atendente com visão total).
+
+Numeração Flyway: a próxima versão é o maior `V` entre `migration/` e
+`seed/` + 1 (hoje: `V3` migration, `V4` seed).
 
 ## Domínios persistidos
 

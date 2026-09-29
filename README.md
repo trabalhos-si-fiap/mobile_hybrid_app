@@ -20,6 +20,7 @@ quanto pelo app mobile via HTTP/JSON.
 * 🚚 Transportadoras
 * ⚠️ Ocorrências
 * 📈 Dashboard (métricas agregadas)
+* 🎫 Tickets omnichannel (roteamento por skill, SLA e escalonamento em PL/SQL)
 
 ## 📁 Estrutura do repositório
 
@@ -73,7 +74,7 @@ instalados: build, testes e execução acontecem em containers.
 
 ```bash
 cd api
-docker compose up -d --build   # sobe Oracle Free + API; a primeira vez baixa as imagens
+docker compose up -d --build   # sobe Oracle Free, MinIO e API; a primeira vez baixa as imagens
 docker compose logs -f api     # aguarde "Started ApiApplication" (1-2 min na primeira vez)
 ```
 
@@ -84,6 +85,13 @@ de demonstração (`db/seed`). Contas de demonstração:
 | ----------------- | ------------ | ----- |
 | `admin@edu.com`   | `admin123`   | ADMIN |
 | `usuario@edu.com` | `usuario123` | USER  |
+| `dev@edu.com`       | `atendente123` | EMPLOYEE (Desenvolvedor)     |
+| `logistica@edu.com` | `atendente123` | EMPLOYEE (Gestão de Entregas) |
+| `produto@edu.com`   | `atendente123` | EMPLOYEE (Produto/Melhorias) |
+
+Os atendentes começam OFFLINE; ao ficar ONLINE (`PUT /employees/me/presence`)
+eles recebem os tickets da fila das suas skills. O console do MinIO (anexos)
+fica em `http://localhost:9001` (usuário `edu_admin`, senha `edu_admin_minio`).
 
 Os valores padrão (portas, senhas, JWT) estão em `docker-compose.yml`. Para
 mudar algum, copie `.env.example` para `.env` e edite.
