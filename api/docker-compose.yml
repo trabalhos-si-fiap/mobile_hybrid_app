@@ -1,21 +1,22 @@
 services:
-  postgres:
-    image: postgres:17-alpine
-    container_name: edu-admin-postgres
+  oracle:
+    image: gvenzl/oracle-free:23-slim
+    container_name: edu-admin-oracle
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-edu_admin}
-      POSTGRES_USER: ${POSTGRES_USER:-edu_admin}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-edu_admin}
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:-edu_admin_sys}
+      APP_USER: ${DB_USERNAME:-edu_admin}
+      APP_USER_PASSWORD: ${DB_PASSWORD:-edu_admin}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${ORACLE_PORT:-1521}:1521"
     volumes:
-      - edu_admin_postgres_data:/var/lib/postgresql/data
+      - edu_admin_oracle_data:/opt/oracle/oradata
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD", "healthcheck.sh"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 30
+      start_period: 30s
 
   # Build e testes Java sem JDK no host: docker compose run --rm maven test|verify
   # O código entra read-only e é copiado para /build, então nada é escrito no host.
@@ -40,5 +41,5 @@ services:
       - "host.docker.internal:host-gateway"
 
 volumes:
-  edu_admin_postgres_data:
+  edu_admin_oracle_data:
   maven-repo:

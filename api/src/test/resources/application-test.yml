@@ -1,6 +1,9 @@
+# Perfil de teste: nunca aplica o seed de demonstração (db/seed).
 spring:
-  session:
-    store-type: none
+  flyway:
+    locations:
+      - classpath:db/migration
+      - classpath:db/plsql
 
 app:
   security:
