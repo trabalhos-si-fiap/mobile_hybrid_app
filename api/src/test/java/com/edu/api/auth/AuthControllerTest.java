@@ -5,6 +5,7 @@ import com.edu.api.support.ControllerSliceTest;
 import com.edu.api.auth.dto.AuthResponse;
 import com.edu.api.auth.dto.LoginRequest;
 import com.edu.api.auth.service.AuthService;
+import com.edu.api.shared.exception.UnauthorizedException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.Test;
@@ -17,6 +18,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ControllerSliceTest(AuthController.class)
@@ -85,5 +87,26 @@ class AuthControllerTest {
                                 .content(objectMapper.writeValueAsString(request))
                 )
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturnUnauthorizedWhenCredentialsAreInvalid() throws Exception {
+
+        LoginRequest request = new LoginRequest(
+                "admin@edu.com",
+                "senha-errada"
+        );
+
+        when(authService.login(any(LoginRequest.class)))
+                .thenThrow(new UnauthorizedException("Email ou senha inválidos"));
+
+        mockMvc.perform(
+                        post("/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request))
+                )
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("UNAUTHORIZED"))
+                .andExpect(jsonPath("$.message").value("Email ou senha inválidos"));
     }
 }

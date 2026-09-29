@@ -32,7 +32,7 @@ public class AuthService {
         AdminUser user = adminUserRepository
                 .findByEmail(request.email())
                 .orElseThrow(() ->
-                        new RuntimeException("Email ou senha inválidos")
+                        new UnauthorizedException("Email ou senha inválidos")
                 );
 
         if (!passwordEncoder.matches(
