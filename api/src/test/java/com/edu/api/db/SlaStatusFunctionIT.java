@@ -76,6 +76,14 @@ class SlaStatusFunctionIT extends OracleIntegrationTest {
     }
 
     @Test
+    void handlesWindowsLongerThanNinetyNineDays() {
+        long ticket = fx.ticketFor(requester, "DEFEITO_APP").status("EM_FILA")
+                .slaStartedAt(T0).slaDueAt(T0.plusDays(200)).insert();
+
+        assertThat(plsql.slaStatus(ticket, T0.plusDays(100))).isEqualTo("NO_PRAZO");
+    }
+
+    @Test
     void rejectsAnUnknownTicket() {
         assertThatThrownBy(() -> plsql.slaStatus(-1, T0)).hasMessageContaining("ORA-20001");
     }

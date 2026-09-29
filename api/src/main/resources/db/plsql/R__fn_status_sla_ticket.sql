@@ -12,7 +12,9 @@ IS
     v_janela         NUMBER;
     v_consumido      NUMBER;
 
-    FUNCTION segundos (p_intervalo IN INTERVAL DAY TO SECOND) RETURN NUMBER
+    -- DSINTERVAL_UNCONSTRAINED: um INTERVAL DAY TO SECOND comum tem precisão
+    -- de 2 dígitos no dia e estoura (ORA-01873) acima de 99 dias.
+    FUNCTION segundos (p_intervalo IN DSINTERVAL_UNCONSTRAINED) RETURN NUMBER
     IS
     BEGIN
         RETURN EXTRACT(DAY FROM p_intervalo) * 86400
