@@ -36,3 +36,10 @@ app:
   security:
     jwt-secret: ${JWT_SECRET:troque-esta-chave-em-ambiente-real}
     jwt-expiration-minutes: ${JWT_EXPIRATION_MINUTES:120}
+
+  storage:
+    minio:
+      url: ${MINIO_URL:http://localhost:9000}
+      access-key: ${MINIO_ACCESS_KEY:edu_admin}
+      secret-key: ${MINIO_SECRET_KEY:edu_admin_minio}
+      bucket: ${MINIO_BUCKET:ticket-attachments}
