@@ -85,7 +85,7 @@ os objetos PL/SQL usam os nomes da FIAP. Mesmas convenções do sub-projeto 1:
 | `employees` | `id`, `user_id` (FK único → `admin_users`), `presence` (`ONLINE`/`AUSENTE`/`OFFLINE`, padrão `OFFLINE`), `presence_changed_at`, `last_assigned_at` |
 | `employee_skills` | `employee_id`, `skill_id` (PK composta, FKs) |
 | `TICKET_TIPO_CONFIG` | `segment` (PK: `DEFEITO_APP`, `PROBLEMA_PEDIDO`, `FEEDBACK_SUGESTAO`), `label`, `skill_id` (FK), `queue` (`TECNOLOGIA`/`MARKETPLACE`/`PRODUTO`), `default_priority`, `sla_minutes`, `escalation_minutes`, `active` |
-| `tickets` | `id`, `user_id` (FK), `segment` (FK → config), `description` (até 2000), `channel` (`APP`/`CHATBOT_IA`, padrão `APP`), `status`, `priority` (`NORMAL`/`ALTA`/`CRITICA`), `assigned_employee_id` (FK, nulo), `sla_due_at`, `engineering_alert` (boolean), `engineering_alert_reason`, `created_at`, `updated_at`, `assumed_at`, `resolved_at`, `closed_at` |
+| `tickets` | `id`, `user_id` (FK), `segment` (FK → config), `description` (até 2000), `channel` (`APP`/`CHATBOT_IA`, padrão `APP`), `status`, `priority` (`NORMAL`/`ALTA`/`CRITICA`), `assigned_employee_id` (FK, nulo), `sla_started_at` (início do prazo atual), `sla_due_at`, `engineering_alert` (boolean), `engineering_alert_reason`, `created_at`, `updated_at`, `assumed_at`, `resolved_at`, `closed_at` |
 | `ticket_messages` | `id`, `ticket_id` (FK), `sender_type` (`USER`/`EMPLOYEE`/`SYSTEM`), `sender_user_id` (FK, nulo para `SYSTEM`), `body` (até 2000), `created_at` |
 | `ticket_attachments` | `id`, `ticket_id` (FK), `message_id` (FK, nulo = anexo da abertura), `object_key` (único), `file_name`, `content_type`, `size_bytes`, `uploaded_by` (FK), `created_at` |
 | `ticket_events` | `id`, `ticket_id` (FK), `type`, `from_status`, `to_status`, `employee_id` (FK, nulo), `detail` (até 500), `created_at` |
@@ -152,22 +152,29 @@ Java. Erros de regra usam `RAISE_APPLICATION_ERROR` com códigos fixos:
   senão `VIOLADO`.
 - Ticket em aberto sem prazo (`sla_due_at` nulo): `NO_PRAZO`.
 - Ticket em aberto: `ESTOURADO` se `p_referencia > sla_due_at`; `EM_RISCO` se
-  já consumiu 80% ou mais do intervalo `created_at → sla_due_at`; senão
-  `NO_PRAZO`.
+  já consumiu 80% ou mais do intervalo `sla_started_at → sla_due_at` (o prazo
+  atual, que recomeça ao reabrir ou escalar); senão `NO_PRAZO`.
 - Ticket inexistente: `-20001`.
+
+### `FN_PROXIMO_ATENDENTE(p_skill_id, p_excluir_id DEFAULT NULL) RETURN employees.id%TYPE`
+
+Função auxiliar usada pelas duas procedures, para a regra de escolha existir
+num lugar só. Cursor explícito com os funcionários `ONLINE` da skill (menos
+`p_excluir_id`), ordenados por quantidade de tickets ativos atribuídos
+(`EM_FILA`, `EM_ATENDIMENTO`, `ESCALADO`) crescente, `last_assigned_at` mais
+antigo (nulo primeiro) e `id`. Devolve o primeiro, ou nulo.
 
 ### `PR_ROTEAR_TICKET(p_ticket_id IN, p_employee_id OUT)`
 
-1. Trava o ticket (`SELECT … FOR UPDATE`). Aceita só `ABERTO`, ou `EM_FILA`
-   sem dono; qualquer outro caso é `-20002`.
+1. Trava o ticket (`SELECT … FOR UPDATE`). Aceita `ABERTO`, ou `EM_FILA` /
+   `ESCALADO` sem dono; qualquer outro caso é `-20002`.
 2. Lê a configuração ativa do segmento (`-20003` se não houver).
-3. Cursor de candidatos: funcionários `ONLINE` com a skill do segmento,
-   ordenados por quantidade de tickets ativos atribuídos (`EM_FILA`,
-   `EM_ATENDIMENTO`, `ESCALADO`) crescente e, no empate, por
-   `last_assigned_at` mais antigo (nulo primeiro).
-4. Atualiza o ticket: `status = EM_FILA`, `assigned_employee_id` (pode ficar
-   nulo), `priority` = padrão do segmento se o ticket estava `ABERTO`,
-   `sla_due_at = NVL(sla_due_at, SYSTIMESTAMP + sla_minutes)`.
+3. Escolhe o atendente com `FN_PROXIMO_ATENDENTE(skill do segmento)`.
+4. Atualiza o ticket: `status = EM_FILA` (um `ESCALADO` continua
+   `ESCALADO`), `assigned_employee_id` (pode ficar nulo), `priority` = padrão
+   do segmento se o ticket estava `ABERTO`, `sla_started_at =
+   NVL(sla_started_at, SYSTIMESTAMP)` e `sla_due_at = NVL(sla_due_at,
+   SYSTIMESTAMP + sla_minutes)`.
 5. Se houve dono: atualiza `employees.last_assigned_at` e grava notificação
    `TICKET_ATRIBUIDO` para o usuário do funcionário.
 6. Grava evento `ROTEADO` (com o funcionário, se houver).
@@ -180,9 +187,10 @@ Java. Erros de regra usam `RAISE_APPLICATION_ERROR` com códigos fixos:
 2. Para cada ticket, num bloco com `SAVEPOINT`:
    - prioridade sobe um nível (`NORMAL` → `ALTA` → `CRITICA`; `CRITICA`
      permanece);
-   - escolhe outro funcionário `ONLINE` da skill (mesma ordenação do
-     roteamento, excluindo o dono atual); sem outro, mantém o dono atual;
-   - `status = ESCALADO`, `sla_due_at = p_referencia + escalation_minutes`;
+   - escolhe outro funcionário com `FN_PROXIMO_ATENDENTE(skill, dono atual)`;
+     sem outro, mantém o dono atual (que pode ser nulo);
+   - `status = ESCALADO`, `sla_started_at = p_referencia`,
+     `sla_due_at = p_referencia + escalation_minutes`;
    - evento `ESCALADO` (detalhe com prioridade anterior e nova) e
      notificação `TICKET_ESCALADO` para o dono resultante, se houver;
    - em erro: `ROLLBACK TO SAVEPOINT`, evento `ERRO_ESCALONAMENTO` com a
@@ -209,10 +217,10 @@ listener grava as notificações na mesma transação.
 | Mensagem do atendente | Atendente dono | Só em `EM_ATENDIMENTO`; não muda estado | Usuário: `NOVA_MENSAGEM` |
 | Encerrar | Atendente dono | `EM_ATENDIMENTO` → `RESOLVIDO`; `resolved_at` | Usuário: `TICKET_RESOLVIDO` |
 | Confirmar | Dono do ticket | `RESOLVIDO` → `FECHADO`; `closed_at` | Atendente: `TICKET_FECHADO` |
-| Reabrir | Dono do ticket | `RESOLVIDO` → `EM_ATENDIMENTO`, mesmo atendente; `resolved_at` nulo; `sla_due_at = agora + sla_minutes` | Atendente: `NOVA_MENSAGEM` (mensagem `SYSTEM` "Ticket reaberto pelo usuário") |
-| Transferir | Atendente dono | `EM_FILA`/`EM_ATENDIMENTO`/`ESCALADO` → troca `segment`, tira o dono, `sla_due_at` nulo, `EM_FILA`, chama `PR_ROTEAR_TICKET` | (procedure notifica o novo dono) |
+| Reabrir | Dono do ticket | `RESOLVIDO` → `EM_ATENDIMENTO`, mesmo atendente; `resolved_at` nulo; `sla_started_at = agora`, `sla_due_at = agora + sla_minutes` | Atendente: `NOVA_MENSAGEM` (mensagem `SYSTEM` "Ticket reaberto pelo usuário") |
+| Transferir | Atendente dono | `EM_FILA`/`EM_ATENDIMENTO`/`ESCALADO` → troca `segment`, tira o dono, zera `sla_started_at`/`sla_due_at`, `EM_FILA`, chama `PR_ROTEAR_TICKET` | (procedure notifica o novo dono) |
 | Alerta de engenharia | Atendente dono | Qualquer estado exceto `FECHADO`; marca `engineering_alert` e motivo | Cada funcionário com skill `DESENVOLVEDOR`: `ALERTA_ENGENHARIA` |
-| Presença `ONLINE` | Atendente | Roteia os tickets `EM_FILA` sem dono das suas skills | — |
+| Presença `ONLINE` | Atendente | Roteia os tickets `EM_FILA`/`ESCALADO` sem dono das suas skills | — |
 | Presença `AUSENTE`/`OFFLINE` | Atendente | Tickets `EM_FILA` atribuídos a ele (não assumidos) voltam sem dono e são reroteados; `EM_ATENDIMENTO`/`ESCALADO` continuam com ele | — |
 
 "Atendente dono" = funcionário em `assigned_employee_id`. `ADMIN` pode agir
@@ -225,7 +233,7 @@ habilitado por `app.tickets.jobs-enabled` (padrão `true`; `false` no perfil
 `test`). A cada execução, em transações separadas:
 
 1. `PR_ESCALAR_TICKET_CRITICO`;
-2. reroteia os tickets `EM_FILA` sem dono (`PR_ROTEAR_TICKET` em cada um);
+2. reroteia os tickets `EM_FILA`/`ESCALADO` sem dono (`PR_ROTEAR_TICKET` em cada um);
 3. fecha os `RESOLVIDO` com `resolved_at` há mais de 72 h (evento
    `FECHADO`, notificação ao atendente).
 
