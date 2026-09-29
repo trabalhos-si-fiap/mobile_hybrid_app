@@ -111,8 +111,8 @@ Consolida as antigas V1–V3 em sintaxe Oracle.
 | `VARCHAR(n)` | `VARCHAR2(n CHAR)` |
 | `INTEGER` | `NUMBER(10)` |
 | `NUMERIC(p,s)` | `NUMBER(p,s)` |
-| `BOOLEAN DEFAULT TRUE` | `NUMBER(1) DEFAULT 1` + `CHECK (col IN (0,1))` |
-| `TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP` | `TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP` |
+| `BOOLEAN DEFAULT TRUE` | `BOOLEAN DEFAULT TRUE` (tipo nativo do Oracle 23ai, que o Hibernate 7 usa para `boolean` nesse dialeto) |
+| `TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP` | `TIMESTAMP(6) WITH TIME ZONE DEFAULT SYSTIMESTAMP` |
 
 Tabelas: `products` (incluindo `price`), `inventories`,
 `inventory_adjustments`, `carriers`, `carrier_occurrences`, `admin_users`.
@@ -123,8 +123,7 @@ migrations atuais são mantidos.
 vem de dados fixos em `EducationalMetricsProvider`. O modelo de dados do
 dashboard é decidido no sub-projeto 4.
 
-Se `ddl-auto: validate` rejeitar um mapeamento (por exemplo `Boolean` ↔
-`NUMBER(1)`), o ajuste é feito na entidade (`@JdbcTypeCode`, converter ou
+Se `ddl-auto: validate` rejeitar um mapeamento, o ajuste é feito na entidade (`@JdbcTypeCode`, converter ou
 `columnDefinition`), nunca afrouxando a validação.
 
 ## Seed (`V2__seed_demo_data.sql`)
@@ -160,6 +159,20 @@ Consequências no código Java:
   transportadoras e os dois usuários).
 - Pré-requisitos para `./mvnw test`: Docker em execução e Java 21.
 
+## Correções necessárias para a suíte passar
+
+Estado de partida (`main`, H2): 31 testes, 4 erros. `ApiApplicationTests` e
+`AuthControllerTest` não sobem o contexto porque o único `PasswordEncoder` fica
+em `SecurityConfig`, que tem `@Profile("!test")`.
+
+- O bean `PasswordEncoder` sai de `SecurityConfig` e de `TestSecurityConfig`
+  para uma `PasswordEncoderConfig` sem perfil.
+- Login com credencial errada hoje responde 500: `UnauthorizedException` não
+  tem handler, e e-mail desconhecido lança `RuntimeException`. O app Flutter
+  espera 401. `GlobalExceptionHandler` passa a mapear `UnauthorizedException`
+  para 401 (`UNAUTHORIZED`), e `AuthService` lança `UnauthorizedException`
+  também para e-mail desconhecido, com a mesma mensagem.
+
 ## Repositório e documentação
 
 - `README.md` da raiz: restaurado a partir do commit `4324cff`, removendo o
@@ -187,7 +200,7 @@ Consequências no código Java:
 - **Imagem Oracle pesada**: cerca de 2 GB e subida lenta na primeira vez. Isso
   vai documentado no README; os testes usam a variante `faststart`.
 - **Java não configurado na máquina**: `java` hoje responde "No version is set
-  for command java". É preciso definir Java 21 no gerenciador de versões antes
-  da implementação.
+  for command java". O Temurin 21 já está instalado via asdf; o repositório
+  ganha um `.tool-versions` com `java temurin-21.0.9+10.0.LTS`.
 - **Diferenças de tipo no `validate`**: mitigadas pelo ajuste de mapeamento
   descrito na seção Schema.
