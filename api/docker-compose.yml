@@ -17,5 +17,28 @@ services:
       timeout: 5s
       retries: 5
 
+  # Build e testes Java sem JDK no host: docker compose run --rm maven test|verify
+  # O código entra read-only e é copiado para /build, então nada é escrito no host.
+  # O socket do Docker permite ao Testcontainers criar o Oracle efêmero dos *IT
+  # e dá a este container acesso equivalente a root no Docker do host.
+  maven:
+    image: maven:3.9-eclipse-temurin-21
+    profiles: ["tools"]
+    working_dir: /build
+    entrypoint:
+      - sh
+      - -c
+      - 'tar -C /src --exclude=./target --exclude=./data -cf - . | tar -xf - && exec mvn -B "$$@"'
+      - mvn
+    volumes:
+      - ./:/src:ro
+      - maven-repo:/root/.m2
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      TESTCONTAINERS_HOST_OVERRIDE: host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 volumes:
   edu_admin_postgres_data:
+  maven-repo:
