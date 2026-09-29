@@ -1,19 +1,16 @@
 package com.edu.api.inventory;
 
+import com.edu.api.inventory.controller.InventoryController;
+import com.edu.api.support.ControllerSliceTest;
 import com.edu.api.inventory.dto.AdjustInventoryRequest;
 import com.edu.api.inventory.dto.InventoryResponse;
 import com.edu.api.inventory.service.InventoryService;
-import com.edu.api.security.TestSecurityConfig;
 
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -33,10 +30,7 @@ import org.springframework.http.MediaType;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-@SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
-@ActiveProfiles("test")
-@Import(TestSecurityConfig.class)
+@ControllerSliceTest(InventoryController.class)
 class InventoryControllerTest {
 
     @Autowired

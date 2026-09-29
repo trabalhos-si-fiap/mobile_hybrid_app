@@ -1,5 +1,7 @@
 package com.edu.api.dashboard;
 
+import com.edu.api.dashboard.controller.DashboardController;
+import com.edu.api.support.ControllerSliceTest;
 import com.edu.api.dashboard.dto.CarrierDashboardResponse;
 import com.edu.api.dashboard.dto.DashboardResponse;
 import com.edu.api.dashboard.dto.EducationalDashboardResponse;
@@ -10,15 +12,10 @@ import com.edu.api.dashboard.dto.StudyActivityResponse;
 import com.edu.api.dashboard.service.DashboardService;
 import com.edu.api.occurrence.entity.OccurrenceStatus;
 import com.edu.api.occurrence.entity.OccurrenceType;
-import com.edu.api.security.TestSecurityConfig;
 
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -35,10 +32,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
-@SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
-@ActiveProfiles("test")
-@Import(TestSecurityConfig.class)
+@ControllerSliceTest(DashboardController.class)
 class DashboardControllerTest {
 
     @Autowired

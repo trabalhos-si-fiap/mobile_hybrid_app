@@ -1,21 +1,18 @@
 package com.edu.api.carrier;
 
+import com.edu.api.carrier.controller.CarrierController;
+import com.edu.api.support.ControllerSliceTest;
 import com.edu.api.carrier.dto.CarrierRequest;
 import com.edu.api.carrier.dto.CarrierResponse;
 import com.edu.api.carrier.dto.UpdateCarrierStatusRequest;
 import com.edu.api.carrier.entity.CarrierStatus;
 import com.edu.api.carrier.service.CarrierService;
-import com.edu.api.security.TestSecurityConfig;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -37,10 +34,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
-@ActiveProfiles("test")
-@Import(TestSecurityConfig.class)
+@ControllerSliceTest(CarrierController.class)
 class CarrierControllerTest {
 
     @Autowired
