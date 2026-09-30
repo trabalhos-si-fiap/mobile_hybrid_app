@@ -1,0 +1,14 @@
+@if (image() && previewUrl(); as url) {
+  <button class="thumb" type="button" [attr.aria-label]="'Abrir ' + attachment().fileName" (click)="open()">
+    <img [src]="url" [alt]="attachment().fileName" />
+  </button>
+} @else {
+  <button class="file" type="button" (click)="open()">
+    <span class="file-name">{{ attachment().fileName }}</span>
+    <span class="file-size">{{ size() }}</span>
+  </button>
+}
+
+@if (failed()) {
+  <span class="file-error">Não foi possível abrir o anexo.</span>
+}

@@ -1,0 +1,22 @@
+.error-banner {
+  margin: 0 0 16px;
+  padding: 10px 12px 10px 16px;
+  border: 1px solid #ffc9c9;
+  border-radius: 8px;
+  background: #fff4f4;
+  color: #b42318;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+
+  button {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+  }
+}

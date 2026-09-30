@@ -1,0 +1,44 @@
+.btn {
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1px solid #b9c4d1;
+  border-radius: 7px;
+  background: #fff;
+  color: #00699f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    filter: brightness(0.96);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+.btn-primary {
+  border-color: #00699f;
+  background: #00699f;
+  color: #fff;
+}
+
+.btn-danger {
+  border-color: #fecdca;
+  color: #b42318;
+}
+
+.btn-link {
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}

@@ -1,0 +1,19 @@
+<div class="dialog-backdrop" (mousedown)="onBackdropMouseDown($event)">
+  <section class="dialog-card" role="dialog" aria-modal="true" [attr.aria-label]="heading()">
+    <header class="dialog-header">
+      <h2>{{ heading() }}</h2>
+      <button class="dialog-close" type="button" aria-label="Fechar" (click)="cancelled.emit()">×</button>
+    </header>
+
+    <div class="dialog-body">
+      <p>{{ message() }}</p>
+    </div>
+
+    <footer class="dialog-footer">
+      <button class="btn btn-link" type="button" (click)="cancelled.emit()">Cancelar</button>
+      <button class="btn btn-primary" type="button" (click)="confirmed.emit()">
+        {{ confirmLabel() }}
+      </button>
+    </footer>
+  </section>
+</div>

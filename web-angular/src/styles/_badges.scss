@@ -1,0 +1,48 @@
+// Selos de status, prioridade, SLA e alerta: sempre com texto, não só cor.
+.badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: #eef1f4;
+  color: #414650;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.badge-status-em-fila { background: #e6f4fb; color: #035b88; }
+.badge-status-em-atendimento { background: #e8efff; color: #1d4ed8; }
+.badge-status-escalado { background: #fff4e5; color: #b54708; }
+.badge-status-resolvido { background: #ecfdf3; color: #067647; }
+.badge-status-fechado { background: #f2f4f7; color: #667085; }
+
+.badge-priority-alta { background: #fff4e5; color: #b54708; }
+.badge-priority-critica { background: #fef3f2; color: #b42318; }
+
+.badge-sla-no-prazo,
+.badge-sla-cumprido { background: #ecfdf3; color: #067647; }
+.badge-sla-em-risco { background: #fff4e5; color: #b54708; }
+.badge-sla-estourado,
+.badge-sla-violado { background: #fef3f2; color: #b42318; }
+
+.badge-alert {
+  border-color: #fecdca;
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.presence-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+  border-radius: 50%;
+  background: #98a2b3;
+
+  &[data-presence='ONLINE'] { background: #12b76a; }
+  &[data-presence='AUSENTE'] { background: #f79009; }
+}
