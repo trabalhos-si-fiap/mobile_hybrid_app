@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, Mock, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 
 import { Attachment } from '../../core/models/ticket.model';
 import { TicketService } from '../../core/services/ticket.service';
@@ -84,5 +84,23 @@ describe('AttachmentViewComponent', () => {
     fixture.destroy();
 
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:preview');
+  });
+
+  it('shares the in-flight download so only one request and one createObjectURL happen', async () => {
+    const subject = new Subject<Blob>();
+    download.mockReturnValue(subject);
+    const tab = { location: { href: '' }, opener: {}, close: vi.fn() };
+    vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window);
+    const fixture = await render(pdf());
+
+    fixture.nativeElement.querySelector('button').click();
+    fixture.nativeElement.querySelector('button').click();
+
+    expect(download).toHaveBeenCalledTimes(1);
+
+    subject.next(new Blob(['x']));
+    await fixture.whenStable();
+
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
   });
 });

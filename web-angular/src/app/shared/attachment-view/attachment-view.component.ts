@@ -1,6 +1,6 @@
 import { Component, computed, DestroyRef, inject, input, OnInit, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { map, Observable, of } from 'rxjs';
+import { catchError, map, Observable, of, shareReplay } from 'rxjs';
 
 import { Attachment } from '../../core/models/ticket.model';
 import { TicketService } from '../../core/services/ticket.service';
@@ -24,6 +24,7 @@ export class AttachmentViewComponent implements OnInit {
   readonly size = computed(() => formatBytes(this.attachment().sizeBytes));
 
   private objectUrl: string | null = null;
+  private cachedDownload: Observable<string> | null = null;
 
   constructor() {
     this.destroyRef.onDestroy(() => {
@@ -74,12 +75,21 @@ export class AttachmentViewComponent implements OnInit {
       return of(this.objectUrl);
     }
 
-    return this.tickets.downloadAttachment(this.attachment()).pipe(
-      map(blob => {
-        this.objectUrl = URL.createObjectURL(blob);
-        return this.objectUrl;
-      })
-    );
+    if (!this.cachedDownload) {
+      this.cachedDownload = this.tickets.downloadAttachment(this.attachment()).pipe(
+        map(blob => {
+          this.objectUrl = URL.createObjectURL(blob);
+          return this.objectUrl;
+        }),
+        catchError(error => {
+          this.cachedDownload = null;
+          throw error;
+        }),
+        shareReplay({ bufferSize: 1, refCount: false })
+      );
+    }
+
+    return this.cachedDownload;
   }
 
   /** Pop-up bloqueado mesmo assim: baixa o arquivo. */
