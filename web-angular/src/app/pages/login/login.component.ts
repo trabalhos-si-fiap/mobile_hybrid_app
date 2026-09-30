@@ -5,9 +5,9 @@ import {
   ReactiveFormsModule,
   Validators
 } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
-import { AuthService } from '../../core/services/auth.service';
+import { AuthService, isStaffRole } from '../../core/services/auth.service';
 
 @Component({
   selector: 'app-login',
@@ -21,10 +21,14 @@ export class LoginComponent {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly route = inject(ActivatedRoute);
 
   passwordVisible = false;
   loading = false;
   errorMessage = '';
+
+  readonly sessionExpired =
+    this.route.snapshot.queryParamMap.get('sessao') === 'expirada';
 
   readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
@@ -44,9 +48,16 @@ export class LoginComponent {
     const { email, password, remember } = this.form.getRawValue();
 
     this.auth.login(email, password, remember).subscribe({
-      next: () => {
+      next: user => {
         this.loading = false;
         this.cdr.markForCheck();
+
+        if (!isStaffRole(user.role)) {
+          this.errorMessage =
+            'Esta conta é de cliente. Use o app Edu para abrir e acompanhar chamados.';
+          return;
+        }
+
         this.router.navigateByUrl('/dashboard');
       },
       error: error => {

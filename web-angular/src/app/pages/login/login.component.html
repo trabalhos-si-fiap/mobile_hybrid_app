@@ -74,6 +74,10 @@
         <span>Lembrar acesso</span>
       </label>
 
+      @if (sessionExpired && !errorMessage) {
+        <div class="info-message">Sua sessão expirou. Entre novamente.</div>
+      }
+
       @if (errorMessage) {
         <div class="error-message">{{ errorMessage }}</div>
       }
