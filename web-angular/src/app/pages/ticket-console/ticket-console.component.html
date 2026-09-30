@@ -1,0 +1,60 @@
+<section class="console-page">
+  @if (notFound()) {
+    <div class="not-found">
+      <h1>Ticket não encontrado ou sem acesso</h1>
+      <a routerLink="/atendimento">← Voltar para a fila</a>
+    </div>
+  } @else if (ticket(); as ticket) {
+    <header class="console-header">
+      <a class="back" routerLink="/atendimento">← Fila</a>
+      <h1>#{{ ticket.id }} · {{ ticket.segmentLabel }}</h1>
+      <div class="badges">
+        <span [class]="badgeClass('status', ticket.status)">{{ statusLabels[ticket.status] }}</span>
+        <span [class]="badgeClass('priority', ticket.priority)">{{ priorityLabels[ticket.priority] }}</span>
+        <span [class]="badgeClass('sla', ticket.slaStatus)">SLA {{ slaLabels[ticket.slaStatus] }}</span>
+        @if (ticket.engineeringAlert) {
+          <span class="badge badge-alert">Alerta de engenharia</span>
+        }
+      </div>
+      @if (offline()) {
+        <span class="offline">Sem conexão — tentando de novo</span>
+      }
+    </header>
+
+    @if (errorMessage()) {
+      <app-error-banner [message]="errorMessage()" (dismissed)="errorMessage.set('')" />
+    }
+
+    <div class="console-grid">
+      <app-ticket-info-panel [ticket]="ticket" [events]="events()" [now]="now()" />
+      <app-ticket-chat
+        [ticketId]="ticket.id"
+        [messages]="messages()"
+        [blockReason]="blockReason()"
+        (sent)="messageSent()"
+        (failed)="actionFailed($event)"
+      />
+    </div>
+
+    @if (actions().length) {
+      <app-ticket-actions-bar
+        [ticket]="ticket"
+        [actions]="actions()"
+        [busy]="busy()"
+        (assume)="assume()"
+        (resolve)="resolve()"
+        (transferred)="transferred($event)"
+        (alertRaised)="alertRaised($event)"
+        (failed)="actionFailed($event)"
+      />
+    }
+  } @else {
+    <p class="loading">
+      {{ offline() ? 'Sem conexão — tentando de novo' : 'Carregando ticket...' }}
+    </p>
+  }
+</section>
+
+@if (toast.text()) {
+  <app-success-toast [message]="toast.text()" />
+}

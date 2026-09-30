@@ -30,6 +30,13 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'atendimento/:id',
+        loadComponent: () =>
+          import('./pages/ticket-console/ticket-console.component').then(
+            m => m.TicketConsoleComponent
+          )
+      },
+      {
         path: 'produtos-estoque',
         loadComponent: () =>
           import('./pages/products-stock/products-stock.component').then(
