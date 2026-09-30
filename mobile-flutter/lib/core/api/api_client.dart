@@ -97,9 +97,14 @@ class ApiClient {
 
   // Decodifica os bytes como UTF-8: sem charset no Content-Type, o pacote
   // http usaria latin1 em response.body.
-  static Object? _decode(http.Response response) => response.bodyBytes.isEmpty
-      ? null
-      : jsonDecode(utf8.decode(response.bodyBytes));
+  static Object? _decode(http.Response response) {
+    if (response.bodyBytes.isEmpty) return null;
+    try {
+      return jsonDecode(utf8.decode(response.bodyBytes));
+    } on FormatException {
+      throw const ApiException(ApiErrorKind.server);
+    }
+  }
 
   static String? _serverMessage(http.Response response) {
     try {
@@ -115,12 +120,33 @@ class ApiClient {
   }
 }
 
+/// Repositories throw only [ApiException], even for a malformed success body.
 List<T> decodeList<T>(
   Object? json,
   T Function(Map<String, dynamic> json) fromJson,
-) => [
-  for (final item in json as List<dynamic>)
-    fromJson(item as Map<String, dynamic>),
-];
+) {
+  try {
+    return [
+      for (final item in json as List<dynamic>)
+        fromJson(item as Map<String, dynamic>),
+    ];
+  } on FormatException {
+    throw const ApiException(ApiErrorKind.server);
+  } on TypeError {
+    throw const ApiException(ApiErrorKind.server);
+  }
+}
 
-Map<String, dynamic> decodeMap(Object? json) => json as Map<String, dynamic>;
+/// Repositories throw only [ApiException], even for a malformed success body.
+T decodeObject<T>(
+  Object? json,
+  T Function(Map<String, dynamic> json) fromJson,
+) {
+  try {
+    return fromJson(json as Map<String, dynamic>);
+  } on FormatException {
+    throw const ApiException(ApiErrorKind.server);
+  } on TypeError {
+    throw const ApiException(ApiErrorKind.server);
+  }
+}

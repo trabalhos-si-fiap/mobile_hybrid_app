@@ -48,7 +48,7 @@ class HttpTicketRepository implements TicketRepository {
 
   @override
   Future<TicketDetail> detail(int id) async =>
-      TicketDetail.fromJson(decodeMap(await _api.getJson('/tickets/$id')));
+      decodeObject(await _api.getJson('/tickets/$id'), TicketDetail.fromJson);
 
   @override
   Future<List<TicketMessage>> messages(int id) async => decodeList(
@@ -61,14 +61,13 @@ class HttpTicketRepository implements TicketRepository {
     required String segment,
     required String description,
     required List<PickedAttachment> files,
-  }) async => TicketDetail.fromJson(
-    decodeMap(
-      await _api.postMultipart(
-        '/tickets',
-        fields: {'segment': segment, 'description': description},
-        files: files,
-      ),
+  }) async => decodeObject(
+    await _api.postMultipart(
+      '/tickets',
+      fields: {'segment': segment, 'description': description},
+      files: files,
     ),
+    TicketDetail.fromJson,
   );
 
   @override
@@ -76,24 +75,25 @@ class HttpTicketRepository implements TicketRepository {
     int id, {
     required String body,
     required List<PickedAttachment> files,
-  }) async => TicketMessage.fromJson(
-    decodeMap(
-      await _api.postMultipart(
-        '/tickets/$id/messages',
-        fields: {'body': body},
-        files: files,
-      ),
+  }) async => decodeObject(
+    await _api.postMultipart(
+      '/tickets/$id/messages',
+      fields: {'body': body},
+      files: files,
     ),
+    TicketMessage.fromJson,
   );
 
   @override
-  Future<TicketDetail> confirm(int id) async => TicketDetail.fromJson(
-    decodeMap(await _api.postJson('/tickets/$id/confirm')),
+  Future<TicketDetail> confirm(int id) async => decodeObject(
+    await _api.postJson('/tickets/$id/confirm'),
+    TicketDetail.fromJson,
   );
 
   @override
-  Future<TicketDetail> reopen(int id) async => TicketDetail.fromJson(
-    decodeMap(await _api.postJson('/tickets/$id/reopen')),
+  Future<TicketDetail> reopen(int id) async => decodeObject(
+    await _api.postJson('/tickets/$id/reopen'),
+    TicketDetail.fromJson,
   );
 
   @override

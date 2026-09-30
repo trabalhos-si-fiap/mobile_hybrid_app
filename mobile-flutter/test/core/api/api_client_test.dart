@@ -8,6 +8,7 @@ import 'package:http/testing.dart';
 import 'package:mobile_flutter/core/api/api_client.dart';
 import 'package:mobile_flutter/core/api/api_exception.dart';
 import 'package:mobile_flutter/core/attachments/picked_attachment.dart';
+import 'package:mobile_flutter/features/tickets/domain/ticket_models.dart';
 
 const _base = 'http://api.test/api/v1';
 
@@ -189,6 +190,53 @@ void main() {
       ),
     );
   });
+
+  test('a 200 with a body that is not JSON is a server error', () async {
+    final api = _client((_) async => http.Response('<html>', 200));
+
+    await expectLater(
+      api.getJson('/x'),
+      throwsA(
+        isA<ApiException>().having((e) => e.kind, 'kind', ApiErrorKind.server),
+      ),
+    );
+  });
+
+  test(
+    'decodeList and decodeObject turn a wrong shape into a server error',
+    () async {
+      await expectLater(
+        () => decodeList({}, SegmentOption.fromJson),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.kind,
+            'kind',
+            ApiErrorKind.server,
+          ),
+        ),
+      );
+      await expectLater(
+        () => decodeObject([1], TicketDetail.fromJson),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.kind,
+            'kind',
+            ApiErrorKind.server,
+          ),
+        ),
+      );
+      await expectLater(
+        () => decodeObject({'id': 'x'}, SegmentOption.fromJson),
+        throwsA(
+          isA<ApiException>().having(
+            (e) => e.kind,
+            'kind',
+            ApiErrorKind.server,
+          ),
+        ),
+      );
+    },
+  );
 
   group('ApiException.message', () {
     test('fixed texts', () {
