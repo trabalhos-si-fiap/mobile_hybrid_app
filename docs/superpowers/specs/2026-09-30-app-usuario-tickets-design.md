@@ -218,7 +218,8 @@ palavra "escalado" não aparecem.
 - **Escolha** (`AttachmentPicker`, interface com implementação real):
   - Câmera e Galeria pelo `image_picker`, com `maxWidth: 1920` e
     `imageQuality: 85`, o que devolve JPEG num tamanho razoável;
-  - PDF pelo `file_picker`, filtrado por extensão `pdf`;
+  - PDF pelo `file_selector` (plugin oficial do Flutter), filtrado por
+    extensão `pdf`. O `file_picker` 11 não compila com o AGP 9 do projeto;
   - o resultado é um `PickedAttachment` com nome, bytes e `contentType`.
 - **Tipo:** vem do `mimeType` do picker ou, na falta dele, da extensão (`jpg`,
   `jpeg`, `png`, `webp`, `pdf`). Qualquer outro tipo é recusado antes do envio.
@@ -303,7 +304,7 @@ lib/
 
 ### Dependências novas (versões fixadas no `pubspec.yaml`)
 
-- App: `image_picker`, `file_picker`, `flutter_local_notifications`,
+- App: `image_picker`, `file_selector`, `flutter_local_notifications`,
   `path_provider`, `open_filex`, `http_parser`.
 - Desenvolvimento: `integration_test` (do SDK) e `fake_async`.
 - Sem mocktail: os falsos são escritos à mão, e o `MockClient` do pacote
