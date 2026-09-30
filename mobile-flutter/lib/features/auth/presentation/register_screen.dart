@@ -20,7 +20,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _selectedEducation;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
-  bool _submitting = false;
+  final bool _submitting = false;
 
   // Must match the backend `EducationLevel` enum values exactly.
   static const _educationLevels = [

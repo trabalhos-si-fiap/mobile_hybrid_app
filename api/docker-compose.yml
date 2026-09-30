@@ -124,8 +124,40 @@ services:
       - ../web-angular:/src:ro
       - npm-cache:/root/.npm
 
+  # App Flutter sem Flutter no host, no mesmo esquema dos serviços maven e node:
+  #   docker compose run --rm flutter analyze
+  #   docker compose run --rm flutter test [caminhos]
+  #   docker compose run --rm flutter apk              (mobile-flutter/dist/app-debug.apk)
+  #   docker compose run --rm flutter lock             (atualiza o pubspec.lock)
+  #   docker compose run --rm flutter format <arquivos>
+  # O código entra read-only em /src; só apk, lock e format escrevem em /host.
+  flutter:
+    image: ghcr.io/cirruslabs/flutter:3.44.0
+    profiles: ["tools"]
+    entrypoint: ["bash", "/src/tool/container.sh"]
+    volumes:
+      - ../mobile-flutter:/src:ro
+      - ../mobile-flutter:/host
+      - edu-flutter-pub-cache:/root/.pub-cache
+      - edu-flutter-gradle:/root/.gradle
+      # Guarda a chave de debug do Android: sem ela, cada APK sai com outra
+      # assinatura e o "adb install -r" recusa a atualização.
+      - edu-flutter-android:/root/.android
+      # O Gradle baixa NDK, plataformas e CMake no primeiro build; o volume
+      # (iniciado com o SDK da imagem) evita baixar tudo de novo a cada APK.
+      - edu-flutter-android-sdk:/opt/android-sdk-linux
+
 volumes:
   edu_admin_oracle_data:
   edu_admin_minio_data:
   maven-repo:
   npm-cache:
+  # Nomes fixos: o e2e do app (mobile-flutter/e2e) usa os mesmos caches.
+  edu-flutter-pub-cache:
+    name: edu-flutter-pub-cache
+  edu-flutter-gradle:
+    name: edu-flutter-gradle
+  edu-flutter-android:
+    name: edu-flutter-android
+  edu-flutter-android-sdk:
+    name: edu-flutter-android-sdk

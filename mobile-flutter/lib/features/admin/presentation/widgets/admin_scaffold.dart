@@ -38,7 +38,7 @@ class AdminScaffold extends StatelessWidget {
       PageRouteBuilder(
         transitionDuration: Duration.zero,
         reverseTransitionDuration: Duration.zero,
-        pageBuilder: (_, __, ___) => destino == AdminTab.dashboard
+        pageBuilder: (_, _, _) => destino == AdminTab.dashboard
             ? const AdminDashboardScreen()
             : const AdminAnalyticsScreen(),
       ),

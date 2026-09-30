@@ -43,3 +43,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# APK de debug gerado pelo container (docker compose run --rm flutter apk)
+/dist/

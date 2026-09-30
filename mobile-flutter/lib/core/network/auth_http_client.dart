@@ -16,14 +16,11 @@ import 'token_store.dart';
 /// no token yet and a `401` there means bad credentials, not expiry.
 class AuthHttpClient extends http.BaseClient {
   AuthHttpClient({
-    required http.Client inner,
-    required TokenStore tokenStore,
-    required TokenRefresher refresher,
-    required void Function() onSessionExpired,
-  }) : _inner = inner,
-       _tokenStore = tokenStore,
-       _refresher = refresher,
-       _onSessionExpired = onSessionExpired;
+    required this._inner,
+    required this._tokenStore,
+    required this._refresher,
+    required this._onSessionExpired,
+  });
 
   final http.Client _inner;
   final TokenStore _tokenStore;
