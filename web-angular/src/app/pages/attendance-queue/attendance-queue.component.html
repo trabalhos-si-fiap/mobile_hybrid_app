@@ -73,7 +73,7 @@
           <tbody>
             @if (rows(); as rows) {
               @for (row of rows; track row.id) {
-                <tr [attr.data-ticket-id]="row.id" tabindex="0" (click)="open(row)" (keydown.enter)="open(row)">
+                <tr [attr.data-ticket-id]="row.id" tabindex="0" (click)="open(row)" (keydown.enter)="$event.target === $event.currentTarget && open(row)">
                   <td>
                     <div class="ticket-cell">
                       <strong>

@@ -221,6 +221,18 @@ describe('AttendanceQueueComponent', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/atendimento', 12]);
   });
 
+  it('opens from the keyboard only when the row itself has focus', async () => {
+    const fixture = await render();
+    const enter = () => new KeyboardEvent('keydown', { key: 'Enter', bubbles: true });
+
+    button(row(fixture, 12), 'Atender')!.dispatchEvent(enter());
+    expect(router.navigate).not.toHaveBeenCalledWith(['/atendimento', 12]);
+    expect(assume).not.toHaveBeenCalled();
+
+    row(fixture, 12).dispatchEvent(enter());
+    expect(router.navigate).toHaveBeenCalledWith(['/atendimento', 12]);
+  });
+
   it('warns an agent who is not Online and goes Online on click', async () => {
     me.set(anEmployee({ presence: 'OFFLINE' }));
     const fixture = await render();
