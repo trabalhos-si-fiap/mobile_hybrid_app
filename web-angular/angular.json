@@ -104,6 +104,10 @@
             },
             "development": {
               "buildTarget": "web-angular:build:development"
+            },
+            "e2e": {
+              "buildTarget": "web-angular:build:development",
+              "allowedHosts": ["web"]
             }
           },
           "defaultConfiguration": "development"
