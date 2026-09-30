@@ -1,0 +1,35 @@
+<div class="dialog-backdrop" (mousedown)="onBackdropMouseDown($event)">
+  <section class="dialog-card" role="dialog" aria-modal="true" aria-label="Transferir ticket">
+    <header class="dialog-header">
+      <h2>Transferir ticket #{{ ticket().id }}</h2>
+      <button class="dialog-close" type="button" aria-label="Fechar" (click)="close()">×</button>
+    </header>
+
+    <form (submit)="$event.preventDefault(); submit()">
+      <div class="dialog-body">
+        <p>Segmento atual: {{ ticket().segmentLabel }}</p>
+
+        <label class="dialog-field">
+          <span>Segmento de destino</span>
+          <select #segmentSelect [disabled]="segments() === null" (change)="selected.set(segmentSelect.value)">
+            <option value="">{{ segments() === null ? 'Carregando...' : 'Escolha o segmento' }}</option>
+            @for (option of options(); track option.segment) {
+              <option [value]="option.segment">{{ option.label }}</option>
+            }
+          </select>
+        </label>
+
+        @if (error()) {
+          <p class="dialog-error" role="alert">{{ error() }}</p>
+        }
+      </div>
+
+      <footer class="dialog-footer">
+        <button class="btn btn-link" type="button" [disabled]="saving()" (click)="close()">Cancelar</button>
+        <button class="btn btn-primary" type="submit" [disabled]="saving()">
+          {{ saving() ? 'Transferindo...' : 'Transferir' }}
+        </button>
+      </footer>
+    </form>
+  </section>
+</div>
