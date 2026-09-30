@@ -33,3 +33,9 @@ Como usar:
 | P2A-06 | O caminho de erro do escalonamento (`ROLLBACK TO SAVEPOINT` + evento `ERRO_ESCALONAMENTO`) não tem teste. Um ticket que falhe sempre também grava um evento de erro por minuto. | `src/main/resources/db/plsql/R__pr_escalar_ticket_critico.sql:63` | Criar um IT que force a falha de um ticket e confira o rollback parcial. Limitar a repetição do evento de erro. |
 | P2A-07 | No contrato OpenAPI, `TicketEventResponse.fromStatus` e `toStatus` podem vir nulos (eventos `ABERTO` e `ERRO_ESCALONAMENTO`), mas não estão marcados como `nullable`. `POST /tickets/{id}/messages` pode responder 403 (staff sem cadastro de atendente), e isso não está documentado. | `src/main/resources/static/openapi.yaml:1845` | Marcar `nullable: true` e acrescentar a resposta 403. |
 | P2A-08 | `TicketHttpFlowIT` roda todas as requisições numa só transação e num só contexto de persistência. Por isso não detecta estado desatualizado entre requisições nem problemas de concorrência (os casos corrigidos estão em `ConcurrentTicketUpdatesIT`). | `src/test/java/com/edu/api/ticket/TicketHttpFlowIT.java:18` | Ter um teste de fluxo sem transação de teste, com limpeza dos dados ao final. |
+
+## Sub-projeto 2B — Console de atendimento (web)
+
+| ID | Situação | Onde | Correção sugerida |
+|---|---|---|---|
+| P2B-01 | Presença presa em Online: sem heartbeat na API, quem fecha o navegador sem clicar em "Sair" continua recebendo tickets até o SLA escalar. Limitação aceita nesta fase. | `web-angular/src/app/layout/sidebar/sidebar.component.ts` (só o "Sair" põe OFFLINE) | Heartbeat do painel e um job na API que ponha OFFLINE quem parou de responder. |

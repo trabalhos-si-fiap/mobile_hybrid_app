@@ -49,8 +49,9 @@ Cada pasta tem seu próprio README com instruções específicas:
 * Swagger / OpenAPI
 
 **Web (`web-angular/`)**
-* Angular 22 (standalone), TypeScript, RxJS
-* Vitest (testes unitários)
+* Angular 22 (standalone, signals), TypeScript, RxJS
+* Vitest (testes unitários) e Playwright (ponta a ponta)
+* Node só em container, como o Java
 
 **Mobile (`mobile-flutter/`)**
 * Flutter / Dart
@@ -113,14 +114,46 @@ A API sobe em `http://localhost:8080/api/v1`, com Swagger em
 
 ### 2. Painel web (`web-angular/`)
 
+O painel sobe junto com a stack do passo 1 (`docker compose up -d --build` em
+`api/`), no serviço `web`. Acesse `http://localhost:4200`. Assim como o Java,
+o Node roda só em container: o host precisa apenas de Docker.
+
+O container copia o código na subida. Depois de mudar algo em `web-angular/`:
+
 ```bash
-cd web-angular
-npm install
-npm start
+docker compose restart web   # em api/
 ```
 
-Acesse `http://localhost:4200`. O proxy em `proxy.conf.json` já aponta as
-chamadas de API para o backend local.
+O console de atendimento fica em **Atendimento**, no menu lateral, para contas
+EMPLOYEE e ADMIN. Nele o atendente:
+
+* fica Online, Ausente ou Offline pelo cartão no rodapé do menu;
+* vê a fila;
+* assume tickets;
+* conversa com anexos;
+* encerra, transfere e alerta a engenharia.
+
+As notificações ficam no sino do mesmo cartão. Contas USER são barradas no
+login: elas usam o app.
+
+#### Testes
+
+```bash
+# em api/
+docker compose run --rm node test        # unitários (Vitest), uma vez
+docker compose run --rm node run build   # build de produção, com os limites de tamanho
+```
+
+O e2e (Playwright) roda numa stack efêmera e isolada, sem o seed de
+demonstração e sem portas publicadas. Ele sobe Oracle, MinIO, API e painel,
+roda os cenários e derruba tudo. A primeira execução compila a API e sobe o
+Oracle, então leva alguns minutos.
+
+```bash
+web-angular/e2e/run.sh
+```
+
+O relatório HTML fica em `web-angular/e2e/report/`.
 
 ### 3. App mobile (`mobile-flutter/`)
 
