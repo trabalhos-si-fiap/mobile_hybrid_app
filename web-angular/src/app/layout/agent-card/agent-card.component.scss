@@ -1,0 +1,73 @@
+.agent-card {
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid #dfe4ea;
+  border-radius: 10px;
+  background: #fff;
+  display: grid;
+  gap: 8px;
+}
+
+.agent-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.agent-id {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+
+  strong {
+    overflow: hidden;
+    color: #20242a;
+    font-size: 14px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  span {
+    color: #667085;
+    font-size: 11px;
+  }
+}
+
+.presence {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  select {
+    flex: 1;
+    min-width: 0;
+    height: 32px;
+    padding: 0 8px;
+    border: 1px solid #b9c4d1;
+    border-radius: 7px;
+    background: #f7f9fc;
+    color: #20242a;
+    font: inherit;
+    font-size: 13px;
+  }
+}
+
+.since {
+  color: #667085;
+  font-size: 11px;
+}
+
+.card-error {
+  margin: 0;
+  color: #b42318;
+  font-size: 11px;
+}
+
+@media (max-width: 900px) {
+  .agent-id,
+  .since {
+    display: none;
+  }
+}

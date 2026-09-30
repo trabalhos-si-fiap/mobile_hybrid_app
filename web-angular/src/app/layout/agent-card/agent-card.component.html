@@ -1,0 +1,38 @@
+<section class="agent-card" aria-label="Atendente">
+  @if (me(); as me) {
+    <div class="agent-top">
+      <div class="agent-id">
+        <strong>{{ me.name }}</strong>
+        <span>{{ me.skills.join(', ') || 'Sem skills' }}</span>
+      </div>
+    </div>
+
+    <div class="presence">
+      <span class="presence-dot" [attr.data-presence]="me.presence"></span>
+      <select
+        #presenceSelect
+        aria-label="Presença"
+        [value]="me.presence"
+        [disabled]="saving()"
+        (change)="changePresence(presenceSelect)"
+      >
+        <option value="ONLINE">Online</option>
+        <option value="AUSENTE">Ausente</option>
+        <option value="OFFLINE">Offline</option>
+      </select>
+    </div>
+
+    <span class="since">desde {{ since() }}</span>
+
+    @if (error()) {
+      <p class="card-error" role="alert">{{ error() }}</p>
+    }
+  } @else if (me() === null) {
+    <div class="agent-id">
+      <strong>{{ userName }}</strong>
+      <span>Sem cadastro de atendente</span>
+    </div>
+  } @else {
+    <span class="since">Carregando atendente...</span>
+  }
+</section>
