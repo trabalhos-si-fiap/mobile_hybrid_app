@@ -3,7 +3,7 @@ import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter, Router } from '@angular/router';
-import { BehaviorSubject, NEVER, of, throwError } from 'rxjs';
+import { BehaviorSubject, NEVER, of, Subject, throwError } from 'rxjs';
 
 import { EmployeeMe, TicketDetail } from '../../core/models/ticket.model';
 import { AuthService } from '../../core/services/auth.service';
@@ -161,13 +161,39 @@ describe('TicketConsoleComponent', () => {
 
   it('switching to another ticket drops the old one and loads the new', async () => {
     const fixture = await render();
+    tickets['get'].mockImplementation((id: number) => (id === 13 ? NEVER : of(aTicket({ id }))));
 
     params.next(convertToParamMap({ id: '13' }));
     await fixture.whenStable();
 
     expect(tickets['get']).toHaveBeenLastCalledWith(13);
+    expect(header(fixture)).toBeNull();
+    expect(text(fixture)).toContain('Carregando ticket...');
+
+    tickets['get'].mockClear();
+    fixture.componentInstance.reloadAll();
+    expect(tickets['get']).not.toHaveBeenCalledWith(12);
+  });
+
+  it('ignores a late action response from the previous ticket', async () => {
+    const late = new Subject<TicketDetail>();
+    tickets['assume'].mockReturnValue(late);
+    const fixture = await render();
+
+    fixture.componentInstance.assume();
+    params.next(convertToParamMap({ id: '13' }));
+    await fixture.whenStable();
+    late.next(aTicket({ id: 12 }));
+    await fixture.whenStable();
+
     expect(header(fixture).textContent).toContain('#13');
     expect(header(fixture).textContent).not.toContain('#12');
+    expect(text(fixture)).not.toContain('Ticket assumido.');
+
+    tickets['resolve'].mockReturnValue(of(aTicket({ id: 13, status: 'RESOLVIDO' })));
+    fixture.componentInstance.resolve();
+    await fixture.whenStable();
+    expect(tickets['resolve']).toHaveBeenCalledWith(13);
   });
 
   it('keeps the data and shows the offline marker when polling fails', async () => {

@@ -64,6 +64,7 @@ export class TicketConsoleComponent {
   private readonly flash = inject(FlashMessageService);
   private readonly detailReload = new Subject<void>();
   private readonly messagesReload = new Subject<void>();
+  private readonly idChange = new Subject<void>();
 
   readonly ticket = signal<TicketDetail | null>(null);
   readonly events = signal<TicketEvent[]>([]);
@@ -154,6 +155,9 @@ export class TicketConsoleComponent {
   }
 
   alertRaised(ticket: TicketDetail): void {
+    if (ticket.id !== this.ticket()?.id) {
+      return;
+    }
     this.ticket.set(ticket);
     this.errorMessage.set('');
     this.toast.show('Alerta enviado à engenharia.');
@@ -175,7 +179,8 @@ export class TicketConsoleComponent {
     }
     this.busy.set(true);
 
-    action$.subscribe({
+    // Uma ação iniciada no ticket anterior não pode responder depois da troca de :id.
+    action$.pipe(takeUntil(this.idChange)).subscribe({
       next: ticket => {
         this.busy.set(false);
         this.ticket.set(ticket);
@@ -252,6 +257,8 @@ export class TicketConsoleComponent {
   }
 
   private reset(): void {
+    this.idChange.next();
+    this.busy.set(false);
     this.ticket.set(null);
     this.events.set([]);
     this.messages.set([]);
