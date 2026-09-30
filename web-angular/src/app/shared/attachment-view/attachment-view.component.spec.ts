@@ -103,4 +103,15 @@ describe('AttachmentViewComponent', () => {
 
     expect(createObjectURL).toHaveBeenCalledTimes(1);
   });
+
+  it('does not create an object URL when destroyed before the download ends', async () => {
+    const subject = new Subject<Blob>();
+    download.mockReturnValue(subject);
+    const fixture = await render(anAttachment());
+
+    fixture.destroy();
+    subject.next(new Blob(['x']));
+
+    expect(createObjectURL).not.toHaveBeenCalled();
+  });
 });

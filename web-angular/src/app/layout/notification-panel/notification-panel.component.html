@@ -26,7 +26,9 @@
           </button>
         </li>
       } @empty {
-        <li class="empty">Nenhuma notificação</li>
+        @if (!error()) {
+          <li class="empty">Nenhuma notificação</li>
+        }
       }
     </ul>
   } @else {

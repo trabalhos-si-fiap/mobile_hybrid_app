@@ -107,14 +107,19 @@ export class TicketChatComponent {
       return;
     }
 
+    const sentBody = this.body();
+    const sentFiles = this.files();
     this.sending.set(true);
     this.error.set('');
 
-    this.tickets.sendMessage(this.ticketId(), this.body().trim(), this.files()).subscribe({
+    this.tickets.sendMessage(this.ticketId(), sentBody.trim(), sentFiles).subscribe({
       next: message => {
         this.sending.set(false);
-        this.body.set('');
-        this.files.set([]);
+        // Preserva o que foi digitado ou anexado durante o envio.
+        if (this.body() === sentBody) {
+          this.body.set('');
+        }
+        this.files.update(files => files.filter(file => !sentFiles.includes(file)));
         this.stickToBottom = true;
         this.sent.emit(message);
       },

@@ -4,6 +4,7 @@ import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter, Router } from '@angular/router';
 
+import { NotificationService } from '../services/notification.service';
 import { authInterceptor } from './auth.interceptor';
 
 describe('authInterceptor', () => {
@@ -54,6 +55,22 @@ describe('authInterceptor', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/login'], {
       queryParams: { sessao: 'expirada' }
     });
+  });
+
+  it('clears the previous account state on a 401', () => {
+    const notifications = TestBed.inject(NotificationService);
+    notifications.refreshUnread().subscribe();
+    controller
+      .expectOne(req => req.url.endsWith('/notifications'))
+      .flush([{ id: 1 }, { id: 2 }]);
+    expect(notifications.unreadCount()).toBe(2);
+
+    http.get('/api/v1/tickets/queue').subscribe({ error: () => undefined });
+    controller
+      .expectOne('/api/v1/tickets/queue')
+      .flush({}, { status: 401, statusText: 'Unauthorized' });
+
+    expect(notifications.unreadCount()).toBe(0);
   });
 
   it('leaves a 401 from the login itself alone', () => {

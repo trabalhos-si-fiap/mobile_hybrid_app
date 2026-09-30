@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, Mock, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 
 import { AppNotification } from '../../core/models/ticket.model';
 import { NotificationService } from '../../core/services/notification.service';
@@ -95,5 +95,14 @@ describe('NotificationPanelComponent', () => {
     const { fixture } = await render();
 
     expect(fixture.nativeElement.textContent).toContain('Nenhuma notificação');
+  });
+
+  it('shows only the error, not the empty message, when loading fails', async () => {
+    list.mockReturnValue(throwError(() => new Error('falha')));
+    const { fixture } = await render();
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Não foi possível carregar as notificações.');
+    expect(text).not.toContain('Nenhuma notificação');
   });
 });

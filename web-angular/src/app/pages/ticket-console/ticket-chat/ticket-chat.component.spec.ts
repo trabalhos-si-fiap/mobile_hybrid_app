@@ -193,4 +193,20 @@ describe('TicketChatComponent', () => {
 
     expect(fixture.nativeElement.querySelector('.counter').textContent.trim()).toBe('3/2000');
   });
+
+  it('keeps what was typed while a send was in flight', async () => {
+    const pending = new Subject<TicketMessage>();
+    sendMessage.mockReturnValue(pending);
+    const { fixture } = await render();
+
+    await type(fixture, 'Primeira');
+    await send(fixture);
+    await type(fixture, 'Segunda');
+
+    pending.next(aMessage({ id: 102, senderType: 'EMPLOYEE' }));
+    pending.complete();
+    await fixture.whenStable();
+
+    expect(textarea(fixture).value).toBe('Segunda');
+  });
 });

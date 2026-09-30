@@ -85,7 +85,7 @@ export class AttachmentViewComponent implements OnInit {
           this.cachedDownload = null;
           throw error;
         }),
-        shareReplay({ bufferSize: 1, refCount: false })
+        shareReplay({ bufferSize: 1, refCount: true })
       );
     }
 
