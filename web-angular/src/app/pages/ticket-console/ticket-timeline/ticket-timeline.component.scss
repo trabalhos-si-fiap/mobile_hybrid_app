@@ -1,0 +1,45 @@
+.timeline-toggle {
+  width: 100%;
+  padding: 10px 0;
+  border: 0;
+  background: transparent;
+  color: #00699f;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+ol {
+  margin: 0;
+  padding: 0 0 0 14px;
+  border-left: 2px solid #dfe4ea;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+
+li {
+  display: grid;
+  gap: 2px;
+  color: #535961;
+  font-size: 12px;
+
+  p {
+    margin: 2px 0 0;
+    color: #20242a;
+    overflow-wrap: anywhere;
+  }
+}
+
+.event-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+
+  strong {
+    color: #20242a;
+    font-size: 13px;
+  }
+}

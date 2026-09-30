@@ -1,0 +1,34 @@
+<section class="timeline">
+  <button
+    class="timeline-toggle"
+    type="button"
+    [attr.aria-expanded]="expanded()"
+    (click)="expanded.set(!expanded())"
+  >
+    Linha do tempo ({{ events().length }})
+  </button>
+
+  @if (expanded()) {
+    <ol aria-label="Linha do tempo">
+      @for (event of events(); track event.id) {
+        <li>
+          <div class="event-head">
+            <strong>{{ eventLabels[event.type] }}</strong>
+            <time>{{ date(event.createdAt) }}</time>
+          </div>
+          @if (transition(event); as transition) {
+            <span>{{ transition }}</span>
+          }
+          @if (event.employeeName) {
+            <span>por {{ event.employeeName }}</span>
+          }
+          @if (event.detail) {
+            <p>{{ event.detail }}</p>
+          }
+        </li>
+      } @empty {
+        <li class="empty">Nenhum evento.</li>
+      }
+    </ol>
+  }
+</section>

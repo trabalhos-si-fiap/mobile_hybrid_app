@@ -1,0 +1,63 @@
+<aside class="info-panel">
+  <section class="block">
+    <h2>Solicitante</h2>
+    <strong>{{ ticket().requester.name }}</strong>
+    <span class="muted">{{ ticket().requester.email }}</span>
+  </section>
+
+  <section class="block">
+    <h2>Atendimento</h2>
+    <dl>
+      <dt>Segmento</dt>
+      <dd>{{ ticket().segmentLabel }}</dd>
+      <dt>Fila</dt>
+      <dd>{{ queueLabels[ticket().queue] }}</dd>
+      <dt>Canal</dt>
+      <dd>{{ channelLabels[ticket().channel] }}</dd>
+      <dt>Atendente</dt>
+      <dd data-field="assignee">{{ ticket().assignee?.name ?? '—' }}</dd>
+      @for (date of dates(); track date.label) {
+        <dt>{{ date.label }}</dt>
+        <dd>{{ date.value }}</dd>
+      }
+    </dl>
+  </section>
+
+  <section class="block">
+    <h2>Prazo</h2>
+    <div class="sla">
+      <span [class]="badgeClass('sla', ticket().slaStatus)">{{ slaLabels[ticket().slaStatus] }}</span>
+      <span>{{ slaDue() }}</span>
+      @if (slaRelative()) {
+        <span class="muted">{{ slaRelative() }}</span>
+      }
+    </div>
+  </section>
+
+  @if (ticket().engineeringAlert) {
+    <section class="block block-alert">
+      <h2>Alerta de engenharia</h2>
+      <p>{{ ticket().engineeringAlertReason }}</p>
+    </section>
+  }
+
+  <section class="block">
+    <h2>Descrição</h2>
+    <p class="description">{{ ticket().description }}</p>
+  </section>
+
+  @if (ticket().attachments.length) {
+    <section class="block">
+      <h2>Anexos da abertura</h2>
+      <div class="attachments">
+        @for (attachment of ticket().attachments; track attachment.id) {
+          <app-attachment-view [attachment]="attachment" />
+        }
+      </div>
+    </section>
+  }
+
+  <section class="block">
+    <app-ticket-timeline [events]="events()" />
+  </section>
+</aside>
