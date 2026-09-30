@@ -84,7 +84,48 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  # Painel web (ng serve) sem Node no host. O código entra read-only e é copiado
+  # na subida (sem node_modules, .angular, dist e e2e): depois de mudar algo em
+  # web-angular/, rode "docker compose restart web".
+  web:
+    image: node:24.21.0
+    container_name: edu-admin-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    working_dir: /app
+    entrypoint:
+      - bash
+      - -c
+      - 'set -euo pipefail; find . -mindepth 1 -maxdepth 1 -exec rm -rf {} +; tar -C /src --exclude=node_modules --exclude=.angular --exclude=dist --exclude=e2e -cf - . | tar -xf -; npm ci --no-audit --no-fund; exec npx ng serve --host 0.0.0.0 --port 4200 "$$@"'
+      - ng
+    environment:
+      API_URL: http://api:8080
+    volumes:
+      - ../web-angular:/src:ro
+      - npm-cache:/root/.npm
+    ports:
+      # Só no localhost, como o Oracle e o MinIO.
+      - "127.0.0.1:${WEB_PORT:-4200}:4200"
+
+  # Testes e build do painel sem Node no host, no mesmo esquema do serviço maven:
+  #   docker compose run --rm node test        (Vitest, uma vez)
+  #   docker compose run --rm node run build   (build de produção, com os limites de tamanho)
+  node:
+    image: node:24.21.0
+    profiles: ["tools"]
+    working_dir: /build
+    entrypoint:
+      - bash
+      - -c
+      - 'set -euo pipefail; tar -C /src --exclude=node_modules --exclude=.angular --exclude=dist --exclude=e2e -cf - . | tar -xf -; npm ci --no-audit --no-fund; exec npm "$$@"'
+      - npm
+    volumes:
+      - ../web-angular:/src:ro
+      - npm-cache:/root/.npm
+
 volumes:
   edu_admin_oracle_data:
   edu_admin_minio_data:
   maven-repo:
+  npm-cache:

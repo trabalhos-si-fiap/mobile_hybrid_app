@@ -96,7 +96,7 @@
         "serve": {
           "builder": "@angular/build:dev-server",
           "options": {                          
-            "proxyConfig": "proxy.conf.json"  
+            "proxyConfig": "proxy.conf.mjs"  
           },
           "configurations": {
             "production": {
@@ -107,6 +107,14 @@
             }
           },
           "defaultConfiguration": "development"
+        },
+        "test": {
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "runner": "vitest",
+            "tsConfig": "tsconfig.spec.json",
+            "include": ["src/**/*.spec.ts"]
+          }
         }
       }
     }
