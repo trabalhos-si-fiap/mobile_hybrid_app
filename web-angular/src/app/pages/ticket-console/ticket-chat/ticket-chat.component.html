@@ -1,0 +1,65 @@
+<section class="chat" aria-label="Conversa">
+  <div class="messages" #list (scroll)="onScroll(list)">
+    @for (message of messages(); track message.id) {
+      <article class="message" [attr.data-sender]="message.senderType">
+        <header>
+          <strong>{{ message.senderName }}</strong>
+          <time>{{ time(message.createdAt) }}</time>
+        </header>
+        <p>{{ message.body }}</p>
+        @if (message.attachments.length) {
+          <div class="attachments">
+            @for (attachment of message.attachments; track attachment.id) {
+              <app-attachment-view [attachment]="attachment" />
+            }
+          </div>
+        }
+      </article>
+    } @empty {
+      <p class="empty">Nenhuma mensagem ainda.</p>
+    }
+  </div>
+
+  @if (blockReason(); as reason) {
+    <p class="blocked" role="status">{{ reason }}</p>
+  } @else {
+    <form class="composer" (submit)="$event.preventDefault(); send()">
+      <textarea
+        #text
+        aria-label="Mensagem"
+        rows="3"
+        placeholder="Escreva uma mensagem. Enter envia; Shift+Enter quebra a linha."
+        [value]="body()"
+        (input)="body.set(text.value)"
+        (keydown)="onKeydown($event)"
+      ></textarea>
+
+      @if (files().length) {
+        <ul class="picked" aria-label="Anexos escolhidos">
+          @for (file of files(); track $index) {
+            <li>
+              <span>{{ file.name }}</span>
+              <small>{{ size(file.size) }}</small>
+              <button type="button" [attr.aria-label]="'Remover ' + file.name" (click)="removeFile($index)">
+                ×
+              </button>
+            </li>
+          }
+        </ul>
+      }
+
+      @if (error()) {
+        <p class="composer-error" role="alert">{{ error() }}</p>
+      }
+
+      <div class="composer-bar">
+        <input #picker type="file" multiple hidden [accept]="accept" (change)="pickFiles(picker)" />
+        <button class="btn" type="button" (click)="picker.click()">Anexar</button>
+        <span class="counter" [class.over]="tooLong()">{{ body().length }}/{{ maxLength }}</span>
+        <button class="btn btn-primary" type="submit" [disabled]="sending()">
+          {{ sending() ? 'Enviando...' : 'Enviar' }}
+        </button>
+      </div>
+    </form>
+  }
+</section>

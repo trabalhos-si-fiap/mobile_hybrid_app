@@ -1,0 +1,144 @@
+.chat {
+  height: 100%;
+  min-height: 560px;
+  border-radius: 10px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.messages {
+  flex: 1;
+  min-height: 0;
+  max-height: 62vh;
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.message {
+  max-width: 78%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f2f4f7;
+  align-self: flex-start;
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+
+  header {
+    display: flex;
+    gap: 8px;
+    color: #535961;
+    font-size: 12px;
+  }
+
+  p {
+    margin: 0;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+  }
+
+  &[data-sender='EMPLOYEE'] {
+    background: #e6f4fb;
+    align-self: flex-end;
+  }
+
+  &[data-sender='SYSTEM'] {
+    max-width: 90%;
+    background: transparent;
+    color: #667085;
+    align-self: center;
+    font-size: 12px;
+    text-align: center;
+  }
+}
+
+.attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.empty,
+.blocked {
+  margin: 0;
+  padding: 16px;
+  color: #535961;
+  font-size: 14px;
+  text-align: center;
+}
+
+.blocked {
+  border-top: 1px solid #e2e5e9;
+  background: #f7f9fc;
+}
+
+.composer {
+  padding: 12px 16px;
+  border-top: 1px solid #e2e5e9;
+  display: grid;
+  gap: 8px;
+
+  textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #b9c4d1;
+    border-radius: 8px;
+    font: inherit;
+    font-size: 14px;
+    resize: vertical;
+  }
+}
+
+.picked {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+
+  li {
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: #f2f4f7;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+  }
+
+  button {
+    border: 0;
+    background: transparent;
+    color: #b42318;
+    cursor: pointer;
+  }
+}
+
+.composer-error {
+  margin: 0;
+  color: #b42318;
+  font-size: 12px;
+}
+
+.composer-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.counter {
+  margin-left: auto;
+  color: #667085;
+  font-size: 12px;
+
+  &.over {
+    color: #b42318;
+    font-weight: 600;
+  }
+}
