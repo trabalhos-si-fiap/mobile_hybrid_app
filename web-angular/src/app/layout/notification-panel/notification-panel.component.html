@@ -1,0 +1,35 @@
+<section class="notification-panel" aria-label="Painel de notificações">
+  <header>
+    <h2>Notificações</h2>
+    <div class="header-actions">
+      <button class="btn btn-link" type="button" [disabled]="!hasUnread()" (click)="markAll()">
+        Marcar todas como lidas
+      </button>
+      <button class="panel-close" type="button" aria-label="Fechar notificações" (click)="closed.emit()">
+        ×
+      </button>
+    </div>
+  </header>
+
+  @if (error()) {
+    <p class="panel-error" role="alert">{{ error() }}</p>
+  }
+
+  @if (items(); as items) {
+    <ul>
+      @for (item of items; track item.id) {
+        <li>
+          <button class="item" type="button" [class.unread]="!item.read" (click)="open(item)">
+            <strong>{{ item.title }}</strong>
+            <span>{{ item.body }}</span>
+            <time>{{ relative(item.createdAt) }}</time>
+          </button>
+        </li>
+      } @empty {
+        <li class="empty">Nenhuma notificação</li>
+      }
+    </ul>
+  } @else {
+    <p class="empty">Carregando...</p>
+  }
+</section>
