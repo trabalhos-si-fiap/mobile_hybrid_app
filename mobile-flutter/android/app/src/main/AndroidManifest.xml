@@ -1,6 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Notificação local de resposta nos tickets (Android 13+ pede ao usuário). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application
-        android:label="mobile_flutter"
+        android:label="Edu Admin"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

@@ -44,6 +44,21 @@ dependencies:
   # Abre URLs no browser nativo (link para o dashboard web administrativo).
   url_launcher: ^6.3.1
 
+  # Tickets (sub-projeto 2C). Versões fixas; o pubspec.lock sai do container
+  # (docker compose run --rm flutter lock).
+  # Foto da câmera e da galeria para os anexos.
+  image_picker: 1.2.3
+  # PDF para os anexos (plugin oficial; o file_picker 11 não compila com o AGP 9).
+  file_selector: 1.1.0
+  # Notificação local quando chega resposta (polling com o app aberto).
+  flutter_local_notifications: 22.3.1
+  # Diretório temporário para abrir PDFs baixados.
+  path_provider: 2.1.6
+  # Abre o PDF no app padrão do aparelho.
+  open_filex: 4.7.0
+  # MediaType dos arquivos no multipart (a API recusa application/octet-stream).
+  http_parser: 4.1.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -54,6 +69,12 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+
+  # E2E no aparelho (mobile-flutter/e2e/run.sh).
+  integration_test:
+    sdk: flutter
+  # Timers falsos nos testes do Poller e do NotificationCenter.
+  fake_async: 1.3.3
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
