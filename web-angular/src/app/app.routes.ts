@@ -23,6 +23,13 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'atendimento',
+        loadComponent: () =>
+          import('./pages/attendance-queue/attendance-queue.component').then(
+            m => m.AttendanceQueueComponent
+          )
+      },
+      {
         path: 'produtos-estoque',
         loadComponent: () =>
           import('./pages/products-stock/products-stock.component').then(

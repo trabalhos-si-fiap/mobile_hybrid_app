@@ -1,0 +1,141 @@
+<section class="queue-page">
+  <header class="page-header">
+    <h1>Atendimento</h1>
+    <p>Tickets do atendimento omnichannel, por prioridade e prazo.</p>
+  </header>
+
+  @if (me() === null) {
+    <p class="notice">Sua conta não está cadastrada como atendente.</p>
+  } @else if (me(); as me) {
+    @if (me.presence !== 'ONLINE') {
+      <div class="notice">
+        <span>
+          <span class="presence-dot" [attr.data-presence]="me.presence"></span>
+          Você está {{ presenceLabels[me.presence] }} e não recebe tickets novos.
+        </span>
+        <button class="btn btn-primary" type="button" (click)="goOnline()">Ficar Online</button>
+      </div>
+    }
+  } @else {
+    <p class="state">Carregando...</p>
+  }
+
+  @if (errorMessage()) {
+    <app-error-banner [message]="errorMessage()" (dismissed)="errorMessage.set('')" />
+  }
+
+  @if (view(); as view) {
+    <div class="toolbar">
+      <div class="tabs" role="tablist" aria-label="Filas">
+        @for (tab of tabs(); track tab) {
+          <button
+            type="button"
+            role="tab"
+            [attr.aria-selected]="tab === view.tab"
+            [class.active]="tab === view.tab"
+            (click)="selectTab(tab)"
+          >
+            {{ tabConfig[tab].label }}
+          </button>
+        }
+      </div>
+
+      <select #statusSelect aria-label="Filtrar por status" (change)="selectStatus(statusSelect.value)">
+        <option value="" [selected]="!view.status">Todos os status</option>
+        @for (status of tabConfig[view.tab].statuses; track status) {
+          <option [value]="status" [selected]="status === view.status">
+            {{ statusLabels[status] }}
+          </option>
+        }
+      </select>
+
+      @if (offline()) {
+        <span class="offline">Sem conexão — tentando de novo</span>
+      }
+    </div>
+
+    <article class="queue-card">
+      <div class="table-scroll">
+        <table [attr.aria-busy]="rows() === null">
+          <thead>
+            <tr>
+              <th>TICKET</th>
+              <th>PRIORIDADE</th>
+              <th>STATUS</th>
+              <th>SLA</th>
+              <th>SOLICITANTE</th>
+              <th>ATENDENTE</th>
+              <th>ATUALIZADO</th>
+              <th>AÇÕES</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            @if (rows(); as rows) {
+              @for (row of rows; track row.id) {
+                <tr [attr.data-ticket-id]="row.id" tabindex="0" (click)="open(row)" (keydown.enter)="open(row)">
+                  <td>
+                    <div class="ticket-cell">
+                      <strong>
+                        #{{ row.id }}
+                        @if (row.engineeringAlert) {
+                          <span class="alert-icon" aria-label="Alerta de engenharia" title="Alerta de engenharia">!</span>
+                        }
+                      </strong>
+                      <span>{{ row.segmentLabel }}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span [class]="badgeClass('priority', row.priority)">{{ priorityLabels[row.priority] }}</span>
+                  </td>
+                  <td>
+                    <span [class]="badgeClass('status', row.status)">{{ statusLabels[row.status] }}</span>
+                  </td>
+                  <td>
+                    <div class="sla-cell">
+                      <span [class]="badgeClass('sla', row.slaStatus)">{{ slaLabels[row.slaStatus] }}</span>
+                      @if (isSlaRunning(row.slaStatus)) {
+                        <small>{{ slaDue(row.slaDueAt) }}</small>
+                      }
+                    </div>
+                  </td>
+                  <td>{{ row.requesterName }}</td>
+                  <td>{{ row.assigneeName ?? '—' }}</td>
+                  <td>{{ relative(row.updatedAt) }}</td>
+                  <td>
+                    @if (canAssume(row)) {
+                      <button
+                        class="btn btn-primary"
+                        type="button"
+                        [disabled]="busyId() !== null"
+                        (click)="assume(row, $event)"
+                      >
+                        Atender
+                      </button>
+                    } @else {
+                      <button class="btn" type="button" (click)="open(row); $event.stopPropagation()">
+                        Abrir
+                      </button>
+                    }
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="8" class="state">{{ tabConfig[view.tab].emptyMessage }}</td>
+                </tr>
+              }
+            } @else {
+              <tr>
+                <td colspan="8" class="state">Carregando...</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </article>
+  }
+</section>
+
+@if (toast.text()) {
+  <app-success-toast [message]="toast.text()" />
+}
