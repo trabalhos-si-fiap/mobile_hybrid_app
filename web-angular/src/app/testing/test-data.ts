@@ -9,6 +9,7 @@ import {
   TicketMessage,
   TicketSummary
 } from '../core/models/ticket.model';
+import { Viewer } from '../core/utils/ticket-permissions';
 
 /** Relógio fixo dos testes: 29/09/2026 12:00 UTC. */
 export const NOW = Date.parse('2026-09-29T12:00:00Z');
@@ -145,3 +146,18 @@ export function fakeFile(name: string, type: string, size: number): File {
   Object.defineProperty(file, 'size', { value: size });
   return file;
 }
+
+/** Diego Dev: usuário 20, atendente 7, dono do aTicket(). */
+export const OWNER: Viewer = { userId: 20, isAdmin: false, employeeId: 7 };
+
+/** Rita: usuário 21, atendente 8, mesma skill, não é dona. */
+export const OTHER_AGENT: Viewer = { userId: 21, isAdmin: false, employeeId: 8 };
+
+/** ADMIN com cadastro de atendente (9). */
+export const ADMIN: Viewer = { userId: 1, isAdmin: true, employeeId: 9 };
+
+/** Staff que abriu o próprio ticket: é o usuário 50, solicitante do aTicket(). */
+export const REQUESTER_STAFF: Viewer = { userId: 50, isAdmin: false, employeeId: 10 };
+
+/** Staff sem cadastro de atendente (GET /employees/me respondeu 403). */
+export const NO_EMPLOYEE: Viewer = { userId: 30, isAdmin: false, employeeId: null };
