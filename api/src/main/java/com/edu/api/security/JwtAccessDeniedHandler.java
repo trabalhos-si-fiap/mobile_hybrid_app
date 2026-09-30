@@ -11,6 +11,7 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 
 @Component
@@ -27,6 +28,8 @@ public class JwtAccessDeniedHandler implements AccessDeniedHandler {
 
         response.setStatus(HttpStatus.FORBIDDEN.value());
         response.setContentType("application/json");
+        // JSON é UTF-8; sem isto o container usa ISO-8859-1 e os acentos quebram.
+        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
 
         ApiErrorResponse error = new ApiErrorResponse(
                 Instant.now(),
