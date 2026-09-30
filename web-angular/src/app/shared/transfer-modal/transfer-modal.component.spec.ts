@@ -10,11 +10,11 @@ describe('TransferModalComponent', () => {
   let transfer: Mock;
 
   beforeEach(() => {
-    transfer = vi.fn(() => of(aTicket({ segment: 'FEEDBACK_SUGESTAO', status: 'EM_FILA', assignee: null })));
+    transfer = vi.fn(() =>
+      of(aTicket({ segment: 'FEEDBACK_SUGESTAO', status: 'EM_FILA', assignee: null })),
+    );
     TestBed.configureTestingModule({
-      providers: [
-        { provide: TicketService, useValue: { segments: () => of(SEGMENTS), transfer } }
-      ]
+      providers: [{ provide: TicketService, useValue: { segments: () => of(SEGMENTS), transfer } }],
     });
   });
 
@@ -37,7 +37,10 @@ describe('TransferModalComponent', () => {
     return fixture.nativeElement.querySelector('select');
   }
 
-  async function choose(fixture: ComponentFixture<TransferModalComponent>, value: string): Promise<void> {
+  async function choose(
+    fixture: ComponentFixture<TransferModalComponent>,
+    value: string,
+  ): Promise<void> {
     select(fixture).value = value;
     select(fixture).dispatchEvent(new Event('change'));
     await fixture.whenStable();
@@ -51,7 +54,9 @@ describe('TransferModalComponent', () => {
   it('offers every segment but the current one', async () => {
     const { fixture } = await render();
 
-    const options = Array.from<HTMLOptionElement>(select(fixture).options).map(option => option.value);
+    const options = Array.from<HTMLOptionElement>(select(fixture).options).map(
+      (option) => option.value,
+    );
     expect(options).toEqual(['', 'PROBLEMA_PEDIDO', 'FEEDBACK_SUGESTAO']);
     expect(fixture.nativeElement.querySelector('[role="dialog"]')).not.toBeNull();
   });
@@ -74,7 +79,7 @@ describe('TransferModalComponent', () => {
     expect(transfer).toHaveBeenCalledWith(12, 'FEEDBACK_SUGESTAO');
     expect(transferred).toHaveBeenCalledWith({
       ticket: expect.objectContaining({ segment: 'FEEDBACK_SUGESTAO' }),
-      label: 'Feedback / Sugestões'
+      label: 'Feedback / Sugestões',
     });
   });
 

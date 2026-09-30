@@ -78,7 +78,11 @@ export function chatBlockReason(ticket: TicketDetail, viewer: Viewer): string | 
  * Regra aproximada do botão Atender na fila: o resumo não traz o id do atendente.
  * O console decide com o detalhe completo, e a API recusa com 409 qualquer caso errado.
  */
-export function canAssumeFromQueue(row: TicketSummary, inMyQueue: boolean, viewer: Viewer): boolean {
+export function canAssumeFromQueue(
+  row: TicketSummary,
+  inMyQueue: boolean,
+  viewer: Viewer,
+): boolean {
   if (viewer.employeeId === null) {
     return false;
   }

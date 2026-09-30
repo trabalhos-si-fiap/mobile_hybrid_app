@@ -8,14 +8,13 @@ test.beforeEach(async () => {
 });
 
 test('atendimento completo: fila, console, chat com anexos, notificação e encerramento', async ({
-  page
+  page,
 }) => {
   const user = await apiAs(ACCOUNTS.user);
   const description = `O app fecha ao abrir o carrinho (${Date.now()})`;
 
   const ticketId = await test.step('o USER abre um ticket DEFEITO_APP com um PNG', () =>
-    openTicket(user, description)
-  );
+    openTicket(user, description));
   const row = page.locator(`tr[data-ticket-id="${ticketId}"]`);
 
   await test.step('o atendente fica Online e o ticket aparece em Minha fila', async () => {
@@ -63,7 +62,7 @@ test('atendimento completo: fila, console, chat com anexos, notificação e ence
     await page.getByRole('dialog').getByRole('button', { name: 'Encerrar' }).click();
     await expect(page.locator('.console-header').getByText('Resolvido')).toBeVisible();
     await expect(
-      page.getByText('Ticket resolvido. Aguardando a confirmação do usuário.')
+      page.getByText('Ticket resolvido. Aguardando a confirmação do usuário.'),
     ).toBeVisible();
   });
 

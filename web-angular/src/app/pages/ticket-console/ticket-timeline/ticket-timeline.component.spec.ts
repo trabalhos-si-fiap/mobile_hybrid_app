@@ -12,7 +12,7 @@ const EVENTS: TicketEvent[] = [
     toStatus: 'ABERTO',
     employeeName: null,
     detail: null,
-    createdAt: '2026-09-29T10:00:00Z'
+    createdAt: '2026-09-29T10:00:00Z',
   },
   {
     id: 2,
@@ -21,8 +21,8 @@ const EVENTS: TicketEvent[] = [
     toStatus: 'EM_ATENDIMENTO',
     employeeName: 'Diego Dev',
     detail: 'Crash no checkout',
-    createdAt: '2026-09-29T11:00:00Z'
-  }
+    createdAt: '2026-09-29T11:00:00Z',
+  },
 ];
 
 describe('TicketTimelineComponent', () => {
@@ -51,7 +51,9 @@ describe('TicketTimelineComponent', () => {
     toggle(fixture).click();
     await fixture.whenStable();
 
-    const list: HTMLElement = fixture.nativeElement.querySelector('ol[aria-label="Linha do tempo"]');
+    const list: HTMLElement = fixture.nativeElement.querySelector(
+      'ol[aria-label="Linha do tempo"]',
+    );
     const items = list.querySelectorAll('li');
     expect(items[0].textContent).toContain('Aberto');
     expect(items[0].textContent).not.toContain('→');

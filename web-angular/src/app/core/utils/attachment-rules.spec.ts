@@ -7,19 +7,19 @@ import {
   formatBytes,
   isImage,
   MAX_FILE_BYTES,
-  messageProblem
+  messageProblem,
 } from './attachment-rules';
 
 const png = (name = 'print.png', size = 1024) => fakeFile(name, 'image/png', size);
 
 describe('fileProblem', () => {
-  it.each(['image/png', 'image/jpeg', 'image/webp', 'application/pdf'])('accepts %s', type => {
+  it.each(['image/png', 'image/jpeg', 'image/webp', 'application/pdf'])('accepts %s', (type) => {
     expect(fileProblem(fakeFile('arquivo', type, 10))).toBeNull();
   });
 
   it('refuses other types', () => {
     expect(fileProblem(fakeFile('anim.gif', 'image/gif', 10))).toBe(
-      'anim.gif: tipo não aceito. Use PNG, JPEG, WEBP ou PDF.'
+      'anim.gif: tipo não aceito. Use PNG, JPEG, WEBP ou PDF.',
     );
   });
 
@@ -36,13 +36,13 @@ describe('fileProblem', () => {
 
 describe('addFiles', () => {
   it('keeps up to 5 files', () => {
-    const five = [1, 2, 3, 4, 5].map(i => png(`${i}.png`));
+    const five = [1, 2, 3, 4, 5].map((i) => png(`${i}.png`));
 
     expect(addFiles([], five)).toEqual({ files: five, problems: [] });
   });
 
   it('refuses the sixth file', () => {
-    const five = [1, 2, 3, 4, 5].map(i => png(`${i}.png`));
+    const five = [1, 2, 3, 4, 5].map((i) => png(`${i}.png`));
 
     const result = addFiles(five, [png('6.png')]);
 
@@ -53,7 +53,7 @@ describe('addFiles', () => {
   it('skips invalid files and reports each one', () => {
     const result = addFiles([], [fakeFile('a.gif', 'image/gif', 10), png('b.png')]);
 
-    expect(result.files.map(file => file.name)).toEqual(['b.png']);
+    expect(result.files.map((file) => file.name)).toEqual(['b.png']);
     expect(result.problems).toEqual(['a.gif: tipo não aceito. Use PNG, JPEG, WEBP ou PDF.']);
   });
 });
@@ -71,11 +71,11 @@ describe('messageProblem', () => {
   });
 
   it('checks the files too', () => {
-    const six = [1, 2, 3, 4, 5, 6].map(i => png(`${i}.png`));
+    const six = [1, 2, 3, 4, 5, 6].map((i) => png(`${i}.png`));
 
     expect(messageProblem('oi', six)).toBe('Anexe no máximo 5 arquivos por mensagem.');
     expect(messageProblem('oi', [fakeFile('a.gif', 'image/gif', 1)])).toBe(
-      'a.gif: tipo não aceito. Use PNG, JPEG, WEBP ou PDF.'
+      'a.gif: tipo não aceito. Use PNG, JPEG, WEBP ou PDF.',
     );
     expect(messageProblem('oi', [png()])).toBeNull();
   });

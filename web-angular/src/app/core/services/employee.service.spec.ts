@@ -16,7 +16,7 @@ describe('EmployeeService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()]
+      providers: [provideHttpClient(), provideHttpClientTesting()],
     });
     service = TestBed.inject(EmployeeService);
     http = TestBed.inject(HttpTestingController);
@@ -40,7 +40,9 @@ describe('EmployeeService', () => {
 
   it('treats a 403 as staff without an agent record', () => {
     service.load().subscribe();
-    http.expectOne(ME_URL).flush({ message: 'não é atendente' }, { status: 403, statusText: 'Forbidden' });
+    http
+      .expectOne(ME_URL)
+      .flush({ message: 'não é atendente' }, { status: 403, statusText: 'Forbidden' });
 
     expect(service.me()).toBeNull();
   });
@@ -70,7 +72,7 @@ describe('EmployeeService', () => {
 
   it('changes the presence, keeps the answer and announces it', () => {
     const changes: Presence[] = [];
-    service.presenceChanged$.subscribe(presence => changes.push(presence));
+    service.presenceChanged$.subscribe((presence) => changes.push(presence));
 
     service.changePresence('AUSENTE').subscribe();
     const request = http.expectOne(PRESENCE_URL);
@@ -84,7 +86,7 @@ describe('EmployeeService', () => {
 
   it('does not announce a failed presence change', () => {
     const changes: Presence[] = [];
-    service.presenceChanged$.subscribe(presence => changes.push(presence));
+    service.presenceChanged$.subscribe((presence) => changes.push(presence));
 
     service.changePresence('ONLINE').subscribe({ error: () => undefined });
     http.expectOne(PRESENCE_URL).flush({}, { status: 500, statusText: 'Error' });

@@ -10,10 +10,10 @@ describe('AdminLayoutComponent', () => {
   it('loads the agent when the layout opens', async () => {
     const load = vi.fn(() => of(null));
     TestBed.configureTestingModule({
-      providers: [provideRouter([]), { provide: EmployeeService, useValue: { load } }]
+      providers: [provideRouter([]), { provide: EmployeeService, useValue: { load } }],
     });
     TestBed.overrideComponent(AdminLayoutComponent, {
-      set: { imports: [RouterOutlet], template: '<router-outlet />' }
+      set: { imports: [RouterOutlet], template: '<router-outlet />' },
     });
 
     const fixture = TestBed.createComponent(AdminLayoutComponent);

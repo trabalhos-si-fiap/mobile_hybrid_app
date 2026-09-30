@@ -11,7 +11,7 @@ import {
   TicketEvent,
   TicketMessage,
   TicketStatus,
-  TicketSummary
+  TicketSummary,
 } from '../models/ticket.model';
 
 @Injectable({ providedIn: 'root' })
@@ -44,7 +44,7 @@ export class TicketService {
   sendMessage(id: number, body: string, files: File[]): Observable<TicketMessage> {
     const form = new FormData();
     form.append('body', body);
-    files.forEach(file => form.append('files', file, file.name));
+    files.forEach((file) => form.append('files', file, file.name));
 
     return this.http.post<TicketMessage>(`${this.apiUrl}/tickets/${id}/messages`, form);
   }
@@ -63,7 +63,7 @@ export class TicketService {
 
   raiseEngineeringAlert(id: number, reason: string): Observable<TicketDetail> {
     return this.http.post<TicketDetail>(`${this.apiUrl}/tickets/${id}/engineering-alert`, {
-      reason
+      reason,
     });
   }
 

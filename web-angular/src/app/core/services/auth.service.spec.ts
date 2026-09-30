@@ -17,7 +17,7 @@ describe('AuthService', () => {
     localStorage.clear();
     sessionStorage.clear();
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()]
+      providers: [provideHttpClient(), provideHttpClientTesting()],
     });
     auth = TestBed.inject(AuthService);
     http = TestBed.inject(HttpTestingController);
@@ -27,10 +27,8 @@ describe('AuthService', () => {
 
   function login(user: AuthUser, remember: boolean): AuthUser | undefined {
     let result: AuthUser | undefined;
-    auth.login(user.email, 'secret', remember).subscribe(value => (result = value));
-    http
-      .expectOne('/api/v1/auth/login')
-      .flush({ accessToken: 'jwt', tokenType: 'Bearer', user });
+    auth.login(user.email, 'secret', remember).subscribe((value) => (result = value));
+    http.expectOne('/api/v1/auth/login').flush({ accessToken: 'jwt', tokenType: 'Bearer', user });
     return result;
   }
 

@@ -1,5 +1,10 @@
 @if (image() && previewUrl(); as url) {
-  <button class="thumb" type="button" [attr.aria-label]="'Abrir ' + attachment().fileName" (click)="open()">
+  <button
+    class="thumb"
+    type="button"
+    [attr.aria-label]="'Abrir ' + attachment().fileName"
+    (click)="open()"
+  >
     <img [src]="url" [alt]="attachment().fileName" />
   </button>
 } @else {

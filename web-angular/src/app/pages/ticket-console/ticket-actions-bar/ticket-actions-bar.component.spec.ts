@@ -13,16 +13,24 @@ describe('TicketActionsBarComponent', () => {
       providers: [
         {
           provide: TicketService,
-          useValue: { segments: () => of(SEGMENTS), transfer: vi.fn(), raiseEngineeringAlert: vi.fn() }
-        }
-      ]
+          useValue: {
+            segments: () => of(SEGMENTS),
+            transfer: vi.fn(),
+            raiseEngineeringAlert: vi.fn(),
+          },
+        },
+      ],
     });
   });
 
   async function render(
     actions: TicketAction[],
-    busy = false
-  ): Promise<{ fixture: ComponentFixture<TicketActionsBarComponent>; assume: Mock; resolve: Mock }> {
+    busy = false,
+  ): Promise<{
+    fixture: ComponentFixture<TicketActionsBarComponent>;
+    assume: Mock;
+    resolve: Mock;
+  }> {
     const fixture = TestBed.createComponent(TicketActionsBarComponent);
     fixture.componentRef.setInput('ticket', aTicket());
     fixture.componentRef.setInput('actions', actions);
@@ -37,13 +45,13 @@ describe('TicketActionsBarComponent', () => {
 
   function labels(fixture: ComponentFixture<TicketActionsBarComponent>): string[] {
     return Array.from<HTMLButtonElement>(
-      fixture.nativeElement.querySelectorAll('[role="toolbar"] button')
-    ).map(button => button.textContent!.trim());
+      fixture.nativeElement.querySelectorAll('[role="toolbar"] button'),
+    ).map((button) => button.textContent!.trim());
   }
 
   function button(root: HTMLElement, label: string): HTMLButtonElement {
     return Array.from(root.querySelectorAll('button')).find(
-      item => item.textContent?.trim() === label
+      (item) => item.textContent?.trim() === label,
     )!;
   }
 

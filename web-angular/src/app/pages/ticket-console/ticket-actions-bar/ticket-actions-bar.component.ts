@@ -6,7 +6,7 @@ import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-d
 import { EngineeringAlertModalComponent } from '../../../shared/engineering-alert-modal/engineering-alert-modal.component';
 import {
   TransferModalComponent,
-  TransferResult
+  TransferResult,
 } from '../../../shared/transfer-modal/transfer-modal.component';
 
 type OpenDialog = 'resolve' | 'transfer' | 'alert' | null;
@@ -16,7 +16,7 @@ type OpenDialog = 'resolve' | 'transfer' | 'alert' | null;
   standalone: true,
   imports: [ConfirmDialogComponent, TransferModalComponent, EngineeringAlertModalComponent],
   templateUrl: './ticket-actions-bar.component.html',
-  styleUrl: './ticket-actions-bar.component.scss'
+  styleUrl: './ticket-actions-bar.component.scss',
 })
 export class TicketActionsBarComponent {
   readonly ticket = input.required<TicketDetail>();

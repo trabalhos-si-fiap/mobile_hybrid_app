@@ -14,11 +14,11 @@ test('a conta USER é barrada no login', async ({ page }) => {
   await page.getByRole('button', { name: 'Entrar' }).click();
 
   await expect(
-    page.getByText('Esta conta é de cliente. Use o app Edu para abrir e acompanhar chamados.')
+    page.getByText('Esta conta é de cliente. Use o app Edu para abrir e acompanhar chamados.'),
   ).toBeVisible();
   await expect(page).toHaveURL(/\/login/);
   const token = await page.evaluate(
-    () => localStorage.getItem('edu_admin_token') ?? sessionStorage.getItem('edu_admin_token')
+    () => localStorage.getItem('edu_admin_token') ?? sessionStorage.getItem('edu_admin_token'),
   );
   expect(token).toBeNull();
 });
@@ -37,7 +37,7 @@ test('um token inválido leva ao login com o aviso de sessão expirada', async (
     localStorage.setItem('edu_admin_token', 'token-invalido');
     localStorage.setItem(
       'edu_admin_user',
-      JSON.stringify({ id: 1, name: 'Alguém', email: 'x@edu.com', role: 'EMPLOYEE' })
+      JSON.stringify({ id: 1, name: 'Alguém', email: 'x@edu.com', role: 'EMPLOYEE' }),
     );
   });
 

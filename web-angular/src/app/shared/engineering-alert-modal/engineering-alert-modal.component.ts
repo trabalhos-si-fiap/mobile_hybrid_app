@@ -6,7 +6,7 @@ import {
   apiErrorMessage,
   GENERIC_ACTION_ERROR,
   httpStatus,
-  isTransientError
+  isTransientError,
 } from '../../core/utils/api-error';
 
 /** Mesmo limite do EngineeringAlertRequest da API. */
@@ -15,7 +15,7 @@ export const ALERT_REASON_MAX = 500;
 @Component({
   selector: 'app-engineering-alert-modal',
   standalone: true,
-  templateUrl: './engineering-alert-modal.component.html'
+  templateUrl: './engineering-alert-modal.component.html',
 })
 export class EngineeringAlertModalComponent {
   private readonly tickets = inject(TicketService);
@@ -63,11 +63,11 @@ export class EngineeringAlertModalComponent {
     this.error.set('');
 
     this.tickets.raiseEngineeringAlert(this.ticket().id, text).subscribe({
-      next: ticket => {
+      next: (ticket) => {
         this.saving.set(false);
         this.raised.emit(ticket);
       },
-      error: error => {
+      error: (error) => {
         this.saving.set(false);
         if (httpStatus(error) === 400) {
           this.error.set(apiErrorMessage(error, 'Confira o motivo do alerta.'));
@@ -76,7 +76,7 @@ export class EngineeringAlertModalComponent {
         } else {
           this.failed.emit(error);
         }
-      }
+      },
     });
   }
 }

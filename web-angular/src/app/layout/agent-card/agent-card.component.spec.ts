@@ -36,16 +36,21 @@ describe('AgentCardComponent', () => {
             refreshUnread,
             list: () => of([]),
             markRead: () => of(undefined),
-            markAllRead: () => of(undefined)
-          }
+            markAllRead: () => of(undefined),
+          },
         },
         {
           provide: AuthService,
           useValue: {
-            currentUser: () => ({ id: 20, name: 'Diego Dev', email: 'dev@edu.com', role: 'EMPLOYEE' })
-          }
-        }
-      ]
+            currentUser: () => ({
+              id: 20,
+              name: 'Diego Dev',
+              email: 'dev@edu.com',
+              role: 'EMPLOYEE',
+            }),
+          },
+        },
+      ],
     });
   });
 
@@ -67,7 +72,10 @@ describe('AgentCardComponent', () => {
     return fixture.nativeElement.querySelector('[data-testid="unread-count"]');
   }
 
-  async function choose(fixture: ComponentFixture<AgentCardComponent>, value: string): Promise<void> {
+  async function choose(
+    fixture: ComponentFixture<AgentCardComponent>,
+    value: string,
+  ): Promise<void> {
     select(fixture).value = value;
     select(fixture).dispatchEvent(new Event('change'));
     await fixture.whenStable();
@@ -76,7 +84,9 @@ describe('AgentCardComponent', () => {
   it('shows the agent with skills and the current presence', async () => {
     const fixture = await render();
 
-    const card: HTMLElement = fixture.nativeElement.querySelector('section[aria-label="Atendente"]');
+    const card: HTMLElement = fixture.nativeElement.querySelector(
+      'section[aria-label="Atendente"]',
+    );
     expect(card.textContent).toContain('Diego Dev');
     expect(card.textContent).toContain('DESENVOLVEDOR');
     expect(select(fixture).value).toBe('OFFLINE');

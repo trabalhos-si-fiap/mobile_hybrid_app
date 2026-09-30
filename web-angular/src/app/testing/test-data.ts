@@ -7,7 +7,7 @@ import {
   SegmentOption,
   TicketDetail,
   TicketMessage,
-  TicketSummary
+  TicketSummary,
 } from '../core/models/ticket.model';
 import { Viewer } from '../core/utils/ticket-permissions';
 
@@ -37,7 +37,7 @@ export function aTicket(overrides: Partial<TicketDetail> = {}): TicketDetail {
     assumedAt: '2026-09-29T10:30:00Z',
     resolvedAt: null,
     closedAt: null,
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -55,7 +55,7 @@ export function aSummary(overrides: Partial<TicketSummary> = {}): TicketSummary 
     engineeringAlert: false,
     createdAt: '2026-09-29T10:00:00Z',
     updatedAt: '2026-09-29T11:00:00Z',
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -67,7 +67,7 @@ export function aMessage(overrides: Partial<TicketMessage> = {}): TicketMessage 
     body: 'Oi, o app travou de novo.',
     attachments: [],
     createdAt: '2026-09-29T10:05:00Z',
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -78,7 +78,7 @@ export function anAttachment(overrides: Partial<Attachment> = {}): Attachment {
     contentType: 'image/png',
     sizeBytes: 2048,
     downloadPath: '/tickets/12/attachments/3',
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -90,7 +90,7 @@ export function anEmployee(overrides: Partial<EmployeeMe> = {}): EmployeeMe {
     presence: 'ONLINE',
     presenceChangedAt: '2026-09-29T11:30:00Z',
     skills: ['DESENVOLVEDOR'],
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -103,7 +103,7 @@ export function aNotification(overrides: Partial<AppNotification> = {}): AppNoti
     body: 'O usuário respondeu no ticket #12.',
     read: false,
     createdAt: '2026-09-29T11:55:00Z',
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -113,22 +113,22 @@ export const SEGMENTS: SegmentOption[] = [
     label: 'Defeito no App / Problemas com App',
     queue: 'TECNOLOGIA',
     skill: 'DESENVOLVEDOR',
-    slaMinutes: 240
+    slaMinutes: 240,
   },
   {
     segment: 'PROBLEMA_PEDIDO',
     label: 'Problemas com pedido',
     queue: 'MARKETPLACE',
     skill: 'GESTAO_ENTREGAS',
-    slaMinutes: 480
+    slaMinutes: 480,
   },
   {
     segment: 'FEEDBACK_SUGESTAO',
     label: 'Feedback / Sugestões',
     queue: 'PRODUTO',
     skill: 'PRODUTO_MELHORIAS',
-    slaMinutes: 2880
-  }
+    slaMinutes: 2880,
+  },
 ];
 
 /** Erro HTTP no formato do ApiErrorResponse; sem mensagem, o corpo vem nulo. */
@@ -136,7 +136,7 @@ export function httpError(status: number, message?: string): HttpErrorResponse {
   return new HttpErrorResponse({
     status,
     statusText: 'Error',
-    error: message === undefined ? null : { status, message }
+    error: message === undefined ? null : { status, message },
   });
 }
 

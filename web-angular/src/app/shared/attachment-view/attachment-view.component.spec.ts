@@ -16,16 +16,26 @@ describe('AttachmentViewComponent', () => {
     download = vi.fn(() => of(new Blob(['x'])));
     createObjectURL = vi.fn(() => 'blob:preview');
     revokeObjectURL = vi.fn();
-    Object.defineProperty(URL, 'createObjectURL', { value: createObjectURL, configurable: true, writable: true });
-    Object.defineProperty(URL, 'revokeObjectURL', { value: revokeObjectURL, configurable: true, writable: true });
+    Object.defineProperty(URL, 'createObjectURL', {
+      value: createObjectURL,
+      configurable: true,
+      writable: true,
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      value: revokeObjectURL,
+      configurable: true,
+      writable: true,
+    });
     TestBed.configureTestingModule({
-      providers: [{ provide: TicketService, useValue: { downloadAttachment: download } }]
+      providers: [{ provide: TicketService, useValue: { downloadAttachment: download } }],
     });
   });
 
   afterEach(() => vi.restoreAllMocks());
 
-  async function render(attachment: Attachment): Promise<ComponentFixture<AttachmentViewComponent>> {
+  async function render(
+    attachment: Attachment,
+  ): Promise<ComponentFixture<AttachmentViewComponent>> {
     const fixture = TestBed.createComponent(AttachmentViewComponent);
     fixture.componentRef.setInput('attachment', attachment);
     await fixture.whenStable();

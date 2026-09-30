@@ -7,7 +7,7 @@ import {
   apiErrorMessage,
   GENERIC_ACTION_ERROR,
   httpStatus,
-  isTransientError
+  isTransientError,
 } from '../../core/utils/api-error';
 
 export interface TransferResult {
@@ -18,7 +18,7 @@ export interface TransferResult {
 @Component({
   selector: 'app-transfer-modal',
   standalone: true,
-  templateUrl: './transfer-modal.component.html'
+  templateUrl: './transfer-modal.component.html',
 })
 export class TransferModalComponent {
   private readonly tickets = inject(TicketService);
@@ -35,7 +35,7 @@ export class TransferModalComponent {
   readonly saving = signal(false);
   readonly error = signal('');
   readonly options = computed(() =>
-    (this.segments() ?? []).filter(option => option.segment !== this.ticket().segment)
+    (this.segments() ?? []).filter((option) => option.segment !== this.ticket().segment),
   );
 
   constructor() {
@@ -43,11 +43,11 @@ export class TransferModalComponent {
       .segments()
       .pipe(takeUntilDestroyed())
       .subscribe({
-        next: segments => this.segments.set(segments),
+        next: (segments) => this.segments.set(segments),
         error: () => {
           this.segments.set([]);
           this.error.set('Não foi possível carregar os segmentos.');
-        }
+        },
       });
   }
 
@@ -68,7 +68,7 @@ export class TransferModalComponent {
       return;
     }
 
-    const option = this.options().find(item => item.segment === this.selected());
+    const option = this.options().find((item) => item.segment === this.selected());
     if (!option) {
       this.error.set('Escolha o segmento de destino.');
       return;
@@ -78,11 +78,11 @@ export class TransferModalComponent {
     this.error.set('');
 
     this.tickets.transfer(this.ticket().id, option.segment as Segment).subscribe({
-      next: ticket => {
+      next: (ticket) => {
         this.saving.set(false);
         this.transferred.emit({ ticket, label: option.label });
       },
-      error: error => {
+      error: (error) => {
         this.saving.set(false);
         const status = httpStatus(error);
         if (status === 400 || status === 422) {
@@ -92,7 +92,7 @@ export class TransferModalComponent {
         } else {
           this.failed.emit(error);
         }
-      }
+      },
     });
   }
 }

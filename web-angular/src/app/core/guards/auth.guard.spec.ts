@@ -5,7 +5,7 @@ import {
   provideRouter,
   Router,
   RouterStateSnapshot,
-  UrlTree
+  UrlTree,
 } from '@angular/router';
 
 import { authGuard } from './auth.guard';
@@ -19,7 +19,7 @@ describe('authGuard', () => {
 
   function runGuard(): boolean | UrlTree {
     return TestBed.runInInjectionContext(() =>
-      authGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot)
+      authGuard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot),
     ) as boolean | UrlTree;
   }
 

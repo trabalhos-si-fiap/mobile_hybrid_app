@@ -40,7 +40,11 @@
             <li>
               <span>{{ file.name }}</span>
               <small>{{ size(file.size) }}</small>
-              <button type="button" [attr.aria-label]="'Remover ' + file.name" (click)="removeFile($index)">
+              <button
+                type="button"
+                [attr.aria-label]="'Remover ' + file.name"
+                (click)="removeFile($index)"
+              >
                 ×
               </button>
             </li>

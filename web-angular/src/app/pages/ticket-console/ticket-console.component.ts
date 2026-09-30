@@ -11,7 +11,7 @@ import {
   Subject,
   switchMap,
   takeUntil,
-  tap
+  tap,
 } from 'rxjs';
 
 import { TicketDetail, TicketEvent, TicketMessage } from '../../core/models/ticket.model';
@@ -25,7 +25,7 @@ import {
   badgeClass,
   PRIORITY_LABELS,
   SLA_LABELS,
-  STATUS_LABELS
+  STATUS_LABELS,
 } from '../../core/utils/ticket-labels';
 import { availableActions, chatBlockReason, Viewer } from '../../core/utils/ticket-permissions';
 import { TimedMessage } from '../../core/utils/timed-message';
@@ -50,10 +50,10 @@ type PollName = 'detail' | 'messages';
     TicketChatComponent,
     TicketActionsBarComponent,
     ErrorBannerComponent,
-    SuccessToastComponent
+    SuccessToastComponent,
   ],
   templateUrl: './ticket-console.component.html',
-  styleUrl: './ticket-console.component.scss'
+  styleUrl: './ticket-console.component.scss',
 })
 export class TicketConsoleComponent {
   private readonly route = inject(ActivatedRoute);
@@ -85,7 +85,7 @@ export class TicketConsoleComponent {
     return {
       userId: this.auth.currentUser()?.id ?? -1,
       isAdmin: this.auth.isAdmin(),
-      employeeId: me?.id ?? null
+      employeeId: me?.id ?? null,
     };
   });
   readonly actions = computed(() => {
@@ -110,9 +110,9 @@ export class TicketConsoleComponent {
     // Trocar o :id (ex.: clique numa notificação) derruba os pollings do ticket anterior.
     this.route.paramMap
       .pipe(
-        map(params => Number(params.get('id'))),
+        map((params) => Number(params.get('id'))),
         distinctUntilChanged(),
-        switchMap(id => {
+        switchMap((id) => {
           this.reset();
           if (!Number.isInteger(id) || id <= 0) {
             this.notFound.set(true);
@@ -120,7 +120,7 @@ export class TicketConsoleComponent {
           }
           return this.watch(id);
         }),
-        takeUntilDestroyed()
+        takeUntilDestroyed(),
       )
       .subscribe();
   }
@@ -181,17 +181,17 @@ export class TicketConsoleComponent {
 
     // Uma ação iniciada no ticket anterior não pode responder depois da troca de :id.
     action$.pipe(takeUntil(this.idChange)).subscribe({
-      next: ticket => {
+      next: (ticket) => {
         this.busy.set(false);
         this.ticket.set(ticket);
         this.errorMessage.set('');
         this.toast.show(success);
         this.reloadAll();
       },
-      error: error => {
+      error: (error) => {
         this.busy.set(false);
         this.actionFailed(error);
-      }
+      },
     });
   }
 
@@ -201,9 +201,9 @@ export class TicketConsoleComponent {
     const detail$ = poll(
       () => forkJoin({ ticket: this.tickets.get(id), events: this.tickets.events(id) }),
       DETAIL_POLL_MS,
-      this.detailReload
+      this.detailReload,
     ).pipe(
-      tap(event => {
+      tap((event) => {
         if (event.ok) {
           this.ticket.set(event.value.ticket);
           this.events.set(event.value.events);
@@ -211,18 +211,22 @@ export class TicketConsoleComponent {
         } else {
           this.pollFailed('detail', event.error, stop);
         }
-      })
+      }),
     );
 
-    const messages$ = poll(() => this.tickets.messages(id), MESSAGES_POLL_MS, this.messagesReload).pipe(
-      tap(event => {
+    const messages$ = poll(
+      () => this.tickets.messages(id),
+      MESSAGES_POLL_MS,
+      this.messagesReload,
+    ).pipe(
+      tap((event) => {
         if (event.ok) {
           this.messages.set(event.value);
           this.polled('messages');
         } else {
           this.pollFailed('messages', event.error, stop);
         }
-      })
+      }),
     );
 
     return merge(detail$, messages$).pipe(takeUntil(stop));
@@ -230,7 +234,7 @@ export class TicketConsoleComponent {
 
   // Cada polling marca a própria falha, para o sucesso de um não apagar o aviso do outro.
   private setFailed(name: PollName, failed: boolean): void {
-    this.failedPolls.update(current => {
+    this.failedPolls.update((current) => {
       const next = new Set(current);
       if (failed) {
         next.add(name);

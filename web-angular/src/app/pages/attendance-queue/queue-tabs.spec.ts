@@ -5,7 +5,12 @@ import { QUEUE_TABS, resolveQueueView, sameQueueView, visibleTabs } from './queu
 describe('queue-tabs', () => {
   it('mirrors the scope and the accepted statuses of the API', () => {
     expect(QUEUE_TABS.minha.scope).toBe('mine');
-    expect(QUEUE_TABS.minha.statuses).toEqual(['EM_FILA', 'EM_ATENDIMENTO', 'ESCALADO', 'RESOLVIDO']);
+    expect(QUEUE_TABS.minha.statuses).toEqual([
+      'EM_FILA',
+      'EM_ATENDIMENTO',
+      'ESCALADO',
+      'RESOLVIDO',
+    ]);
     expect(QUEUE_TABS.skills.scope).toBe('skills');
     expect(QUEUE_TABS.skills.statuses).toEqual(['EM_FILA', 'EM_ATENDIMENTO', 'ESCALADO']);
     expect(QUEUE_TABS.todos.scope).toBe('all');
@@ -14,7 +19,7 @@ describe('queue-tabs', () => {
       'EM_FILA',
       'EM_ATENDIMENTO',
       'ESCALADO',
-      'RESOLVIDO'
+      'RESOLVIDO',
     ]);
   });
 
@@ -28,13 +33,19 @@ describe('queue-tabs', () => {
   it('reads the tab and the status from the URL', () => {
     expect(resolveQueueView('skills', 'EM_FILA', ['minha', 'skills'])).toEqual({
       tab: 'skills',
-      status: 'EM_FILA'
+      status: 'EM_FILA',
     });
   });
 
   it('falls back to the first tab and drops statuses the tab does not accept', () => {
-    expect(resolveQueueView('todos', null, ['minha', 'skills'])).toEqual({ tab: 'minha', status: null });
-    expect(resolveQueueView(null, 'ABERTO', ['minha', 'skills'])).toEqual({ tab: 'minha', status: null });
+    expect(resolveQueueView('todos', null, ['minha', 'skills'])).toEqual({
+      tab: 'minha',
+      status: null,
+    });
+    expect(resolveQueueView(null, 'ABERTO', ['minha', 'skills'])).toEqual({
+      tab: 'minha',
+      status: null,
+    });
     expect(resolveQueueView('minha', 'FECHADO', ['minha'])).toEqual({ tab: 'minha', status: null });
   });
 
@@ -43,8 +54,12 @@ describe('queue-tabs', () => {
   });
 
   it('compares views by value', () => {
-    expect(sameQueueView({ tab: 'minha', status: null }, { tab: 'minha', status: null })).toBe(true);
-    expect(sameQueueView({ tab: 'minha', status: null }, { tab: 'minha', status: 'EM_FILA' })).toBe(false);
+    expect(sameQueueView({ tab: 'minha', status: null }, { tab: 'minha', status: null })).toBe(
+      true,
+    );
+    expect(sameQueueView({ tab: 'minha', status: null }, { tab: 'minha', status: 'EM_FILA' })).toBe(
+      false,
+    );
     expect(sameQueueView(null, null)).toBe(true);
     expect(sameQueueView(null, { tab: 'minha', status: null })).toBe(false);
   });

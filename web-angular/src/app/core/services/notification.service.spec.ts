@@ -12,7 +12,7 @@ describe('NotificationService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()]
+      providers: [provideHttpClient(), provideHttpClientTesting()],
     });
     service = TestBed.inject(NotificationService);
     http = TestBed.inject(HttpTestingController);
@@ -22,7 +22,7 @@ describe('NotificationService', () => {
 
   function refresh(count: number): void {
     service.refreshUnread().subscribe();
-    const request = http.expectOne(req => req.url === '/api/v1/notifications');
+    const request = http.expectOne((req) => req.url === '/api/v1/notifications');
     expect(request.request.params.get('unreadOnly')).toBe('true');
     request.flush(Array.from({ length: count }, (_, i) => aNotification({ id: i + 1 })));
   }
@@ -51,7 +51,9 @@ describe('NotificationService', () => {
     expect(service.unreadCount()).toBe(1);
 
     service.markRead(aNotification({ id: 2, read: true })).subscribe();
-    http.expectOne('/api/v1/notifications/2/read').flush(null, { status: 204, statusText: 'No Content' });
+    http
+      .expectOne('/api/v1/notifications/2/read')
+      .flush(null, { status: 204, statusText: 'No Content' });
     expect(service.unreadCount()).toBe(1);
   });
 

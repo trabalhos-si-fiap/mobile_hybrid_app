@@ -1,14 +1,23 @@
 <div class="actions-bar" role="toolbar" aria-label="Ações rápidas">
   @if (has('assume')) {
-    <button class="btn btn-primary" type="button" [disabled]="busy()" (click)="assume.emit()">Assumir</button>
+    <button class="btn btn-primary" type="button" [disabled]="busy()" (click)="assume.emit()">
+      Assumir
+    </button>
   }
   @if (has('resolve')) {
-    <button class="btn btn-primary" type="button" [disabled]="busy()" (click)="dialog.set('resolve')">
+    <button
+      class="btn btn-primary"
+      type="button"
+      [disabled]="busy()"
+      (click)="dialog.set('resolve')"
+    >
       Encerrar
     </button>
   }
   @if (has('transfer')) {
-    <button class="btn" type="button" [disabled]="busy()" (click)="dialog.set('transfer')">Transferir</button>
+    <button class="btn" type="button" [disabled]="busy()" (click)="dialog.set('transfer')">
+      Transferir
+    </button>
   }
   @if (has('engineeringAlert')) {
     <button class="btn btn-danger" type="button" [disabled]="busy()" (click)="dialog.set('alert')">
@@ -21,7 +30,11 @@
   @case ('resolve') {
     <app-confirm-dialog
       heading="Encerrar ticket"
-      [message]="'O ticket #' + ticket().id + ' será marcado como resolvido. O usuário poderá confirmar a solução ou reabrir.'"
+      [message]="
+        'O ticket #' +
+        ticket().id +
+        ' será marcado como resolvido. O usuário poderá confirmar a solução ou reabrir.'
+      "
       confirmLabel="Encerrar"
       (confirmed)="confirmResolve()"
       (cancelled)="dialog.set(null)"

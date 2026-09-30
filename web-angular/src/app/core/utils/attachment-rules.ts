@@ -6,7 +6,7 @@ export const ACCEPTED_TYPES: readonly string[] = [
   'image/png',
   'image/jpeg',
   'image/webp',
-  'application/pdf'
+  'application/pdf',
 ];
 export const ACCEPT_ATTRIBUTE = ACCEPTED_TYPES.join(',');
 
@@ -56,7 +56,7 @@ export function messageProblem(body: string, files: File[]): string | null {
   if (files.length > MAX_FILES) {
     return TOO_MANY_FILES;
   }
-  return files.map(fileProblem).find(problem => problem !== null) ?? null;
+  return files.map(fileProblem).find((problem) => problem !== null) ?? null;
 }
 
 export function isImage(contentType: string): boolean {

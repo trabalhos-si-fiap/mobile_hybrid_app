@@ -71,14 +71,14 @@ describe('poll', () => {
     const events: PollEvent<number>[] = [];
     const subscription = poll(
       () => (++calls === 1 ? throwError(() => new Error('rede')) : of(calls)),
-      1000
-    ).subscribe(event => events.push(event));
+      1000,
+    ).subscribe((event) => events.push(event));
 
     vi.advanceTimersByTime(1000);
 
     expect(events).toEqual([
       { ok: false, error: new Error('rede') },
-      { ok: true, value: 2 }
+      { ok: true, value: 2 },
     ]);
     subscription.unsubscribe();
   });
@@ -93,8 +93,8 @@ describe('poll', () => {
         return of(calls).pipe(delay(calls === 1 ? 500 : 10));
       },
       10_000,
-      reload
-    ).subscribe(event => {
+      reload,
+    ).subscribe((event) => {
       if (event.ok) {
         values.push(event.value);
       }

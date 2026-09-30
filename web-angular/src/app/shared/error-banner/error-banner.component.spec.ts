@@ -12,7 +12,9 @@ describe('ErrorBannerComponent', () => {
     await fixture.whenStable();
 
     const element: HTMLElement = fixture.nativeElement;
-    expect(element.querySelector('[role="alert"]')?.textContent).toContain('Ticket 12 está fechado');
+    expect(element.querySelector('[role="alert"]')?.textContent).toContain(
+      'Ticket 12 está fechado',
+    );
 
     element.querySelector<HTMLButtonElement>('button')!.click();
     expect(dismissed).toBe(true);

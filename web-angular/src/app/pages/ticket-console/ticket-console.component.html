@@ -10,8 +10,12 @@
       <h1>#{{ ticket.id }} · {{ ticket.segmentLabel }}</h1>
       <div class="badges">
         <span [class]="badgeClass('status', ticket.status)">{{ statusLabels[ticket.status] }}</span>
-        <span [class]="badgeClass('priority', ticket.priority)">{{ priorityLabels[ticket.priority] }}</span>
-        <span [class]="badgeClass('sla', ticket.slaStatus)">SLA {{ slaLabels[ticket.slaStatus] }}</span>
+        <span [class]="badgeClass('priority', ticket.priority)">{{
+          priorityLabels[ticket.priority]
+        }}</span>
+        <span [class]="badgeClass('sla', ticket.slaStatus)"
+          >SLA {{ slaLabels[ticket.slaStatus] }}</span
+        >
         @if (ticket.engineeringAlert) {
           <span class="badge badge-alert">Alerta de engenharia</span>
         }

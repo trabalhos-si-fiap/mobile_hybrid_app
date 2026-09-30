@@ -11,7 +11,7 @@ import {
   tap,
   throwError,
   timeout,
-  timer
+  timer,
 } from 'rxjs';
 
 import { EmployeeMe, Presence } from '../models/ticket.model';
@@ -38,24 +38,22 @@ export class EmployeeService {
       return this.http.get<EmployeeMe>(`${this.apiUrl}/employees/me`);
     }).pipe(
       retry({
-        delay: error =>
-          isTransientError(error) ? timer(RETRY_DELAY_MS) : throwError(() => error)
+        delay: (error) =>
+          isTransientError(error) ? timer(RETRY_DELAY_MS) : throwError(() => error),
       }),
       // 403 aqui não é erro: é staff sem cadastro de atendente.
-      catchError(error => (httpStatus(error) === 403 ? of(null) : throwError(() => error))),
-      tap(me => this.meState.set(me))
+      catchError((error) => (httpStatus(error) === 403 ? of(null) : throwError(() => error))),
+      tap((me) => this.meState.set(me)),
     );
   }
 
   changePresence(presence: Presence): Observable<EmployeeMe> {
-    return this.http
-      .put<EmployeeMe>(`${this.apiUrl}/employees/me/presence`, { presence })
-      .pipe(
-        tap(me => {
-          this.meState.set(me);
-          this.presenceChanges.next(me.presence);
-        })
-      );
+    return this.http.put<EmployeeMe>(`${this.apiUrl}/employees/me/presence`, { presence }).pipe(
+      tap((me) => {
+        this.meState.set(me);
+        this.presenceChanges.next(me.presence);
+      }),
+    );
   }
 
   /** Antes de sair: OFFLINE, esperando no máximo 3 s. Uma falha não impede a saída. */
@@ -65,7 +63,7 @@ export class EmployeeService {
       .pipe(
         timeout(LOGOUT_TIMEOUT_MS),
         map(() => undefined),
-        catchError(() => of(undefined))
+        catchError(() => of(undefined)),
       );
   }
 

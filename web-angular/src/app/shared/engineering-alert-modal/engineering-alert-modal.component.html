@@ -27,7 +27,9 @@
       </div>
 
       <footer class="dialog-footer">
-        <button class="btn btn-link" type="button" [disabled]="saving()" (click)="close()">Cancelar</button>
+        <button class="btn btn-link" type="button" [disabled]="saving()" (click)="close()">
+          Cancelar
+        </button>
         <button class="btn btn-danger" type="submit" [disabled]="saving()">
           {{ saving() ? 'Enviando...' : 'Enviar alerta' }}
         </button>

@@ -14,14 +14,14 @@ describe('TicketChatComponent', () => {
     sendMessage = vi.fn(() => of(aMessage({ id: 101, senderType: 'EMPLOYEE' })));
     TestBed.configureTestingModule({
       providers: [
-        { provide: TicketService, useValue: { sendMessage, downloadAttachment: () => NEVER } }
-      ]
+        { provide: TicketService, useValue: { sendMessage, downloadAttachment: () => NEVER } },
+      ],
     });
   });
 
   async function render(
     messages: TicketMessage[] = [aMessage()],
-    blockReason: string | null = null
+    blockReason: string | null = null,
   ): Promise<{ fixture: ComponentFixture<TicketChatComponent>; sent: Mock; failed: Mock }> {
     const fixture = TestBed.createComponent(TicketChatComponent);
     fixture.componentRef.setInput('ticketId', 12);
@@ -39,13 +39,19 @@ describe('TicketChatComponent', () => {
     return fixture.nativeElement.querySelector('textarea[aria-label="Mensagem"]');
   }
 
-  async function type(fixture: ComponentFixture<TicketChatComponent>, value: string): Promise<void> {
+  async function type(
+    fixture: ComponentFixture<TicketChatComponent>,
+    value: string,
+  ): Promise<void> {
     textarea(fixture).value = value;
     textarea(fixture).dispatchEvent(new Event('input'));
     await fixture.whenStable();
   }
 
-  async function pick(fixture: ComponentFixture<TicketChatComponent>, files: File[]): Promise<HTMLInputElement> {
+  async function pick(
+    fixture: ComponentFixture<TicketChatComponent>,
+    files: File[],
+  ): Promise<HTMLInputElement> {
     const input: HTMLInputElement = fixture.nativeElement.querySelector('input[type="file"]');
     Object.defineProperty(input, 'files', { value: files, configurable: true });
     input.dispatchEvent(new Event('change'));
@@ -66,11 +72,11 @@ describe('TicketChatComponent', () => {
     const { fixture } = await render([
       aMessage({ id: 1, senderType: 'USER' }),
       aMessage({ id: 2, senderType: 'EMPLOYEE', senderName: 'Diego Dev' }),
-      aMessage({ id: 3, senderType: 'SYSTEM', senderName: 'Sistema' })
+      aMessage({ id: 3, senderType: 'SYSTEM', senderName: 'Sistema' }),
     ]);
 
     const senders = Array.from<HTMLElement>(fixture.nativeElement.querySelectorAll('.message')).map(
-      message => message.getAttribute('data-sender')
+      (message) => message.getAttribute('data-sender'),
     );
     expect(senders).toEqual(['USER', 'EMPLOYEE', 'SYSTEM']);
     expect(fixture.nativeElement.textContent).toContain('Oi, o app travou de novo.');
@@ -112,7 +118,9 @@ describe('TicketChatComponent', () => {
     textarea(fixture).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true }));
     expect(sendMessage).not.toHaveBeenCalled();
 
-    textarea(fixture).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', cancelable: true }));
+    textarea(fixture).dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Enter', cancelable: true }),
+    );
     expect(sendMessage).toHaveBeenCalledTimes(1);
   });
 
@@ -165,7 +173,7 @@ describe('TicketChatComponent', () => {
 
   it('refuses the sixth file and resets the picker', async () => {
     const { fixture } = await render();
-    const six = [1, 2, 3, 4, 5, 6].map(i => fakeFile(`${i}.png`, 'image/png', 10));
+    const six = [1, 2, 3, 4, 5, 6].map((i) => fakeFile(`${i}.png`, 'image/png', 10));
 
     const input = await pick(fixture, six);
 

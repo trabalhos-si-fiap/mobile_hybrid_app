@@ -6,7 +6,7 @@ import {
   assume,
   openTicket,
   resetAgentPresence,
-  setPresence
+  setPresence,
 } from './support/api';
 import { loginViaUi, waitForQueue } from './support/ui';
 
@@ -26,7 +26,9 @@ test.beforeEach(async () => {
   await Promise.all([user.dispose(), agent.dispose()]);
 });
 
-test('o alerta de engenharia com motivo mostra o selo e entra na linha do tempo', async ({ page }) => {
+test('o alerta de engenharia com motivo mostra o selo e entra na linha do tempo', async ({
+  page,
+}) => {
   await loginViaUi(page, ACCOUNTS.agent);
   await page.goto(`/atendimento/${ticketId}`);
 
@@ -38,7 +40,7 @@ test('o alerta de engenharia com motivo mostra o selo e entra na linha do tempo'
   await expect(page.locator('.console-header').getByText('Alerta de engenharia')).toBeVisible();
   await page.getByRole('button', { name: /Linha do tempo/ }).click();
   await expect(
-    page.getByRole('list', { name: 'Linha do tempo' }).getByText('Crash reproduzível no checkout')
+    page.getByRole('list', { name: 'Linha do tempo' }).getByText('Crash reproduzível no checkout'),
   ).toBeVisible();
 });
 
@@ -53,7 +55,7 @@ test('a transferência volta à fila com o aviso e tira o ticket de Minha fila',
 
   await expect(page).toHaveURL(/\/atendimento$/);
   await expect(
-    page.getByText(`Ticket #${ticketId} transferido para Feedback / Sugestões`)
+    page.getByText(`Ticket #${ticketId} transferido para Feedback / Sugestões`),
   ).toBeVisible();
   await waitForQueue(page);
   await expect(page.locator(`tr[data-ticket-id="${ticketId}"]`)).toHaveCount(0);
@@ -74,7 +76,7 @@ test('o ADMIN vê a aba Todos com o ticket; o EMPLOYEE não vê essa aba', async
   await waitForQueue(page);
   await expect(page.getByRole('tab', { name: 'Todos', exact: true })).toHaveAttribute(
     'aria-selected',
-    'true'
+    'true',
   );
   await expect(page.locator(`tr[data-ticket-id="${ticketId}"]`)).toBeVisible();
 });

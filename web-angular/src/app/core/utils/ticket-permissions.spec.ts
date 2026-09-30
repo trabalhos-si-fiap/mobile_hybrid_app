@@ -8,14 +8,14 @@ import {
   NO_EMPLOYEE,
   OTHER_AGENT,
   OWNER,
-  REQUESTER_STAFF
+  REQUESTER_STAFF,
 } from '../../testing/test-data';
 import {
   availableActions,
   canAssumeFromQueue,
   chatBlockReason,
   TicketAction,
-  Viewer
+  Viewer,
 } from './ticket-permissions';
 
 describe('availableActions', () => {
@@ -23,8 +23,18 @@ describe('availableActions', () => {
     ['EM_FILA sem dono, atendente', { status: 'EM_FILA', assignee: null }, OTHER_AGENT, ['assume']],
     ['EM_FILA meu', { status: 'EM_FILA' }, OWNER, ['assume', 'transfer', 'engineeringAlert']],
     ['EM_FILA de outro', { status: 'EM_FILA' }, OTHER_AGENT, []],
-    ['EM_FILA de outro, ADMIN', { status: 'EM_FILA' }, ADMIN, ['assume', 'transfer', 'engineeringAlert']],
-    ['ESCALADO sem dono, atendente', { status: 'ESCALADO', assignee: null }, OTHER_AGENT, ['assume']],
+    [
+      'EM_FILA de outro, ADMIN',
+      { status: 'EM_FILA' },
+      ADMIN,
+      ['assume', 'transfer', 'engineeringAlert'],
+    ],
+    [
+      'ESCALADO sem dono, atendente',
+      { status: 'ESCALADO', assignee: null },
+      OTHER_AGENT,
+      ['assume'],
+    ],
     ['ESCALADO meu', { status: 'ESCALADO' }, OWNER, ['assume', 'transfer', 'engineeringAlert']],
     ['EM_ATENDIMENTO meu', {}, OWNER, ['resolve', 'transfer', 'engineeringAlert']],
     ['EM_ATENDIMENTO de outro', {}, OTHER_AGENT, []],
@@ -38,7 +48,12 @@ describe('availableActions', () => {
     ['solicitante staff, na fila', { status: 'EM_FILA', assignee: null }, REQUESTER_STAFF, []],
     ['solicitante staff e dono', { assignee: { id: 10, name: 'Rita' } }, REQUESTER_STAFF, []],
     ['sem cadastro de atendente', { status: 'EM_FILA', assignee: null }, NO_EMPLOYEE, []],
-    ['ADMIN sem cadastro', { status: 'EM_FILA', assignee: null }, { ...NO_EMPLOYEE, isAdmin: true }, []]
+    [
+      'ADMIN sem cadastro',
+      { status: 'EM_FILA', assignee: null },
+      { ...NO_EMPLOYEE, isAdmin: true },
+      [],
+    ],
   ];
 
   it.each(cases)('%s', (_name, overrides, viewer, expected) => {
@@ -49,27 +64,27 @@ describe('availableActions', () => {
 describe('chatBlockReason', () => {
   it('blocks staff without an agent record first', () => {
     expect(chatBlockReason(aTicket(), NO_EMPLOYEE)).toBe(
-      'Sua conta não está cadastrada como atendente.'
+      'Sua conta não está cadastrada como atendente.',
     );
     expect(chatBlockReason(aTicket(), { ...NO_EMPLOYEE, userId: 50 })).toBe(
-      'Sua conta não está cadastrada como atendente.'
+      'Sua conta não está cadastrada como atendente.',
     );
   });
 
   it('sends the requester to the app', () => {
     expect(chatBlockReason(aTicket(), REQUESTER_STAFF)).toBe(
-      'Você abriu este ticket. Responda pelo app Edu.'
+      'Você abriu este ticket. Responda pelo app Edu.',
     );
   });
 
   it('explains closed and resolved tickets', () => {
     expect(chatBlockReason(aTicket({ status: 'FECHADO' }), OWNER)).toBe('Ticket fechado.');
     expect(chatBlockReason(aTicket({ status: 'RESOLVIDO' }), OWNER)).toBe(
-      'Ticket resolvido. Aguardando a confirmação do usuário.'
+      'Ticket resolvido. Aguardando a confirmação do usuário.',
     );
   });
 
-  it.each(['ABERTO', 'EM_FILA', 'ESCALADO'] as const)('asks to assume a %s ticket', status => {
+  it.each(['ABERTO', 'EM_FILA', 'ESCALADO'] as const)('asks to assume a %s ticket', (status) => {
     expect(chatBlockReason(aTicket({ status }), OWNER)).toBe('Assuma o ticket para responder.');
   });
 
@@ -105,7 +120,10 @@ describe('canAssumeFromQueue', () => {
 
   it('never offers Atender without an agent record', () => {
     expect(
-      canAssumeFromQueue(aSummary({ assigneeName: null }), false, { ...NO_EMPLOYEE, isAdmin: true })
+      canAssumeFromQueue(aSummary({ assigneeName: null }), false, {
+        ...NO_EMPLOYEE,
+        isAdmin: true,
+      }),
     ).toBe(false);
   });
 });

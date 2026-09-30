@@ -8,7 +8,7 @@ import { formatDateTime } from '../../../core/utils/time-format';
   selector: 'app-ticket-timeline',
   standalone: true,
   templateUrl: './ticket-timeline.component.html',
-  styleUrl: './ticket-timeline.component.scss'
+  styleUrl: './ticket-timeline.component.scss',
 })
 export class TicketTimelineComponent {
   readonly events = input.required<TicketEvent[]>();

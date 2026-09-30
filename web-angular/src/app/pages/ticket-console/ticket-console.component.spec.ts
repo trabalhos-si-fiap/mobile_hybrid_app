@@ -2,7 +2,13 @@ import { beforeEach, describe, expect, it, Mock, vi } from 'vitest';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { ActivatedRoute, convertToParamMap, ParamMap, provideRouter, Router } from '@angular/router';
+import {
+  ActivatedRoute,
+  convertToParamMap,
+  ParamMap,
+  provideRouter,
+  Router,
+} from '@angular/router';
 import { BehaviorSubject, NEVER, of, Subject, throwError } from 'rxjs';
 
 import { EmployeeMe, TicketDetail } from '../../core/models/ticket.model';
@@ -32,13 +38,15 @@ describe('TicketConsoleComponent', () => {
       segments: vi.fn(() => of(SEGMENTS)),
       transfer: vi.fn(),
       raiseEngineeringAlert: vi.fn(),
-      downloadAttachment: vi.fn(() => NEVER)
+      downloadAttachment: vi.fn(() => NEVER),
     };
     params = new BehaviorSubject(convertToParamMap({ id: '12' }));
     userId = 20;
   });
 
-  async function render(me: EmployeeMe | null = anEmployee()): Promise<ComponentFixture<TicketConsoleComponent>> {
+  async function render(
+    me: EmployeeMe | null = anEmployee(),
+  ): Promise<ComponentFixture<TicketConsoleComponent>> {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -49,10 +57,15 @@ describe('TicketConsoleComponent', () => {
           provide: AuthService,
           useValue: {
             isAdmin: () => false,
-            currentUser: () => ({ id: userId, name: 'Diego Dev', email: 'dev@edu.com', role: 'EMPLOYEE' })
-          }
-        }
-      ]
+            currentUser: () => ({
+              id: userId,
+              name: 'Diego Dev',
+              email: 'dev@edu.com',
+              role: 'EMPLOYEE',
+            }),
+          },
+        },
+      ],
     });
     router = TestBed.inject(Router);
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
@@ -72,8 +85,8 @@ describe('TicketConsoleComponent', () => {
 
   function actionLabels(fixture: ComponentFixture<TicketConsoleComponent>): string[] {
     return Array.from<HTMLButtonElement>(
-      fixture.nativeElement.querySelectorAll('[role="toolbar"] button')
-    ).map(button => button.textContent!.trim());
+      fixture.nativeElement.querySelectorAll('[role="toolbar"] button'),
+    ).map((button) => button.textContent!.trim());
   }
 
   it('loads the ticket, its events and its messages for the route id', async () => {
@@ -127,7 +140,7 @@ describe('TicketConsoleComponent', () => {
 
   it('shows the API message and reloads on a 409', async () => {
     tickets['resolve'].mockReturnValue(
-      throwError(() => httpError(409, 'Não é possível encerrar o ticket 12 no estado EM_FILA'))
+      throwError(() => httpError(409, 'Não é possível encerrar o ticket 12 no estado EM_FILA')),
     );
     const fixture = await render();
 
@@ -213,11 +226,11 @@ describe('TicketConsoleComponent', () => {
 
     bar.componentInstance.transferred.emit({
       ticket: aTicket({ segment: 'FEEDBACK_SUGESTAO' }),
-      label: 'Feedback / Sugestões'
+      label: 'Feedback / Sugestões',
     });
 
     expect(TestBed.inject(FlashMessageService).take()).toBe(
-      'Ticket #12 transferido para Feedback / Sugestões'
+      'Ticket #12 transferido para Feedback / Sugestões',
     );
     expect(router.navigate).toHaveBeenCalledWith(['/atendimento']);
   });
@@ -233,7 +246,10 @@ describe('TicketConsoleComponent', () => {
 
   it('shows the alert badge after the engineering alert', async () => {
     const fixture = await render();
-    const alerted: TicketDetail = aTicket({ engineeringAlert: true, engineeringAlertReason: 'Crash' });
+    const alerted: TicketDetail = aTicket({
+      engineeringAlert: true,
+      engineeringAlertReason: 'Crash',
+    });
     tickets['get'].mockReturnValue(of(alerted));
 
     fixture.componentInstance.alertRaised(alerted);

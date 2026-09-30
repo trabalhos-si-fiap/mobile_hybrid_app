@@ -16,20 +16,14 @@ import {
   PRESENCE_LABELS,
   PRIORITY_LABELS,
   SLA_LABELS,
-  STATUS_LABELS
+  STATUS_LABELS,
 } from '../../core/utils/ticket-labels';
 import { canAssumeFromQueue, Viewer } from '../../core/utils/ticket-permissions';
 import { relativeTime, slaDueLabel } from '../../core/utils/time-format';
 import { TimedMessage } from '../../core/utils/timed-message';
 import { ErrorBannerComponent } from '../../shared/error-banner/error-banner.component';
 import { SuccessToastComponent } from '../../shared/success-toast/success-toast.component';
-import {
-  QUEUE_TABS,
-  QueueTab,
-  resolveQueueView,
-  sameQueueView,
-  visibleTabs
-} from './queue-tabs';
+import { QUEUE_TABS, QueueTab, resolveQueueView, sameQueueView, visibleTabs } from './queue-tabs';
 
 const QUEUE_POLL_MS = 15_000;
 
@@ -38,7 +32,7 @@ const QUEUE_POLL_MS = 15_000;
   standalone: true,
   imports: [ErrorBannerComponent, SuccessToastComponent],
   templateUrl: './attendance-queue.component.html',
-  styleUrl: './attendance-queue.component.scss'
+  styleUrl: './attendance-queue.component.scss',
 })
 export class AttendanceQueueComponent {
   private readonly route = inject(ActivatedRoute);
@@ -60,9 +54,9 @@ export class AttendanceQueueComponent {
       resolveQueueView(
         this.queryParams().get('aba'),
         this.queryParams().get('status'),
-        this.tabs()
+        this.tabs(),
       ),
-    { equal: sameQueueView }
+    { equal: sameQueueView },
   );
   private readonly viewer = computed<Viewer | null>(() => {
     const me = this.me();
@@ -72,7 +66,7 @@ export class AttendanceQueueComponent {
     return {
       userId: this.auth.currentUser()?.id ?? -1,
       isAdmin: this.isAdmin,
-      employeeId: me?.id ?? null
+      employeeId: me?.id ?? null,
     };
   });
 
@@ -102,7 +96,7 @@ export class AttendanceQueueComponent {
     // porque ficar Online dispara o roteamento.
     toObservable(this.view)
       .pipe(
-        switchMap(view => {
+        switchMap((view) => {
           this.rows.set(null);
           if (!view) {
             return EMPTY;
@@ -110,12 +104,12 @@ export class AttendanceQueueComponent {
           return poll(
             () => this.tickets.queue(QUEUE_TABS[view.tab].scope, view.status),
             QUEUE_POLL_MS,
-            merge(this.reload, this.employees.presenceChanged$)
+            merge(this.reload, this.employees.presenceChanged$),
           );
         }),
-        takeUntilDestroyed()
+        takeUntilDestroyed(),
       )
-      .subscribe(event => {
+      .subscribe((event) => {
         if (event.ok) {
           this.rows.set(event.value);
           this.offline.set(false);
@@ -137,7 +131,7 @@ export class AttendanceQueueComponent {
     }
     this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { aba: view.tab, status: status || null }
+      queryParams: { aba: view.tab, status: status || null },
     });
   }
 
@@ -164,21 +158,21 @@ export class AttendanceQueueComponent {
         this.errorMessage.set('');
         this.router.navigate(['/atendimento', row.id]);
       },
-      error: error => {
+      error: (error) => {
         this.busyId.set(null);
         this.errorMessage.set(actionErrorMessage(error));
         if (httpStatus(error) === 409) {
           this.reload.next();
         }
-      }
+      },
     });
   }
 
   goOnline(): void {
     this.employees.changePresence('ONLINE').subscribe({
       next: () => this.errorMessage.set(''),
-      error: error =>
-        this.errorMessage.set(apiErrorMessage(error, 'Não foi possível mudar a presença.'))
+      error: (error) =>
+        this.errorMessage.set(apiErrorMessage(error, 'Não foi possível mudar a presença.')),
     });
   }
 

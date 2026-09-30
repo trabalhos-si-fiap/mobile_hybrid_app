@@ -10,7 +10,7 @@ import { Component, input, output } from '@angular/core';
       <button type="button" aria-label="Fechar aviso" (click)="dismissed.emit()">×</button>
     </div>
   `,
-  styleUrl: './error-banner.component.scss'
+  styleUrl: './error-banner.component.scss',
 })
 export class ErrorBannerComponent {
   readonly message = input.required<string>();

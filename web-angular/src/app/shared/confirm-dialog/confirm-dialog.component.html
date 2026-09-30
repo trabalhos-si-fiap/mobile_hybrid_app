@@ -2,7 +2,9 @@
   <section class="dialog-card" role="dialog" aria-modal="true" [attr.aria-label]="heading()">
     <header class="dialog-header">
       <h2>{{ heading() }}</h2>
-      <button class="dialog-close" type="button" aria-label="Fechar" (click)="cancelled.emit()">×</button>
+      <button class="dialog-close" type="button" aria-label="Fechar" (click)="cancelled.emit()">
+        ×
+      </button>
     </header>
 
     <div class="dialog-body">

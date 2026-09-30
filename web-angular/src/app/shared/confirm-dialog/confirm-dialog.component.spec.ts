@@ -4,7 +4,10 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ConfirmDialogComponent } from './confirm-dialog.component';
 
 describe('ConfirmDialogComponent', () => {
-  async function render(): Promise<{ fixture: ComponentFixture<ConfirmDialogComponent>; events: string[] }> {
+  async function render(): Promise<{
+    fixture: ComponentFixture<ConfirmDialogComponent>;
+    events: string[];
+  }> {
     const fixture = TestBed.createComponent(ConfirmDialogComponent);
     fixture.componentRef.setInput('heading', 'Encerrar ticket');
     fixture.componentRef.setInput('message', 'O ticket #12 será marcado como resolvido.');
@@ -16,9 +19,12 @@ describe('ConfirmDialogComponent', () => {
     return { fixture, events };
   }
 
-  function button(fixture: ComponentFixture<ConfirmDialogComponent>, label: string): HTMLButtonElement {
+  function button(
+    fixture: ComponentFixture<ConfirmDialogComponent>,
+    label: string,
+  ): HTMLButtonElement {
     const buttons = Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button'));
-    return buttons.find(item => item.textContent?.trim() === label)!;
+    return buttons.find((item) => item.textContent?.trim() === label)!;
   }
 
   it('is a dialog with the heading and the message', async () => {

@@ -32,19 +32,19 @@ describe('AttendanceQueueComponent', () => {
 
   async function render(
     params: Record<string, string> = {},
-    notice?: string
+    notice?: string,
   ): Promise<ComponentFixture<AttendanceQueueComponent>> {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
         {
           provide: ActivatedRoute,
-          useValue: { queryParamMap: new BehaviorSubject(convertToParamMap(params)) }
+          useValue: { queryParamMap: new BehaviorSubject(convertToParamMap(params)) },
         },
         { provide: TicketService, useValue: { queue, assume } },
         {
           provide: EmployeeService,
-          useValue: { me, presenceChanged$: presenceChanged, changePresence }
+          useValue: { me, presenceChanged$: presenceChanged, changePresence },
         },
         {
           provide: AuthService,
@@ -54,11 +54,11 @@ describe('AttendanceQueueComponent', () => {
               id: 20,
               name: 'Diego Dev',
               email: 'dev@edu.com',
-              role: admin ? 'ADMIN' : 'EMPLOYEE'
-            })
-          }
-        }
-      ]
+              role: admin ? 'ADMIN' : 'EMPLOYEE',
+            }),
+          },
+        },
+      ],
     });
     router = TestBed.inject(Router);
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
@@ -77,13 +77,13 @@ describe('AttendanceQueueComponent', () => {
 
   function tabs(fixture: ComponentFixture<AttendanceQueueComponent>): string[] {
     return Array.from<HTMLElement>(fixture.nativeElement.querySelectorAll('[role="tab"]')).map(
-      tab => tab.textContent!.trim()
+      (tab) => tab.textContent!.trim(),
     );
   }
 
   function button(root: HTMLElement, label: string): HTMLButtonElement | undefined {
     return Array.from(root.querySelectorAll('button')).find(
-      item => item.textContent?.trim() === label
+      (item) => item.textContent?.trim() === label,
     );
   }
 
@@ -144,7 +144,7 @@ describe('AttendanceQueueComponent', () => {
     button(fixture.nativeElement, 'Filas das minhas skills')!.click();
     expect(router.navigate).toHaveBeenCalledWith(
       [],
-      expect.objectContaining({ queryParams: { aba: 'skills' } })
+      expect.objectContaining({ queryParams: { aba: 'skills' } }),
     );
 
     const select: HTMLSelectElement = fixture.nativeElement.querySelector('select');
@@ -152,7 +152,7 @@ describe('AttendanceQueueComponent', () => {
     select.dispatchEvent(new Event('change'));
     expect(router.navigate).toHaveBeenCalledWith(
       [],
-      expect.objectContaining({ queryParams: { aba: 'minha', status: 'RESOLVIDO' } })
+      expect.objectContaining({ queryParams: { aba: 'minha', status: 'RESOLVIDO' } }),
     );
   });
 
@@ -192,7 +192,9 @@ describe('AttendanceQueueComponent', () => {
   });
 
   it('shows the API message and reloads on a 409', async () => {
-    assume.mockReturnValue(throwError(() => httpError(409, 'Ticket 12 está atribuído a outro atendente')));
+    assume.mockReturnValue(
+      throwError(() => httpError(409, 'Ticket 12 está atribuído a outro atendente')),
+    );
     const fixture = await render();
 
     button(row(fixture, 12), 'Atender')!.click();

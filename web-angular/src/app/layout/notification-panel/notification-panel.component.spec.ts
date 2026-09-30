@@ -18,22 +18,25 @@ describe('NotificationPanelComponent', () => {
     list = vi.fn(() =>
       of([
         aNotification(),
-        aNotification({ id: 901, ticketId: 13, read: true, title: 'Novo ticket na sua fila' })
-      ])
+        aNotification({ id: 901, ticketId: 13, read: true, title: 'Novo ticket na sua fila' }),
+      ]),
     );
     markRead = vi.fn(() => of(undefined));
     markAllRead = vi.fn(() => of(undefined));
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
-        { provide: NotificationService, useValue: { list, markRead, markAllRead } }
-      ]
+        { provide: NotificationService, useValue: { list, markRead, markAllRead } },
+      ],
     });
     router = TestBed.inject(Router);
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
   });
 
-  async function render(): Promise<{ fixture: ComponentFixture<NotificationPanelComponent>; closed: Mock }> {
+  async function render(): Promise<{
+    fixture: ComponentFixture<NotificationPanelComponent>;
+    closed: Mock;
+  }> {
     const fixture = TestBed.createComponent(NotificationPanelComponent);
     const closed = vi.fn();
     fixture.componentInstance.closed.subscribe(closed);
@@ -80,14 +83,14 @@ describe('NotificationPanelComponent', () => {
   it('marks all as read', async () => {
     const { fixture } = await render();
 
-    const button = Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button')).find(
-      item => item.textContent?.trim() === 'Marcar todas como lidas'
-    )!;
+    const button = Array.from<HTMLButtonElement>(
+      fixture.nativeElement.querySelectorAll('button'),
+    ).find((item) => item.textContent?.trim() === 'Marcar todas como lidas')!;
     button.click();
     await fixture.whenStable();
 
     expect(markAllRead).toHaveBeenCalled();
-    expect(items(fixture).some(item => item.classList.contains('unread'))).toBe(false);
+    expect(items(fixture).some((item) => item.classList.contains('unread'))).toBe(false);
   });
 
   it('says when there is nothing', async () => {

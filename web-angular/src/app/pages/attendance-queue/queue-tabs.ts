@@ -15,20 +15,20 @@ export const QUEUE_TABS: Record<QueueTab, QueueTabConfig> = {
     label: 'Minha fila',
     scope: 'mine',
     statuses: ['EM_FILA', 'EM_ATENDIMENTO', 'ESCALADO', 'RESOLVIDO'],
-    emptyMessage: 'Nenhum ticket na sua fila.'
+    emptyMessage: 'Nenhum ticket na sua fila.',
   },
   skills: {
     label: 'Filas das minhas skills',
     scope: 'skills',
     statuses: ['EM_FILA', 'EM_ATENDIMENTO', 'ESCALADO'],
-    emptyMessage: 'Nenhum ticket nas filas das suas skills.'
+    emptyMessage: 'Nenhum ticket nas filas das suas skills.',
   },
   todos: {
     label: 'Todos',
     scope: 'all',
     statuses: ['ABERTO', 'EM_FILA', 'EM_ATENDIMENTO', 'ESCALADO', 'RESOLVIDO'],
-    emptyMessage: 'Nenhum ticket aberto.'
-  }
+    emptyMessage: 'Nenhum ticket aberto.',
+  },
 };
 
 export interface QueueView {
@@ -45,7 +45,7 @@ export function visibleTabs(hasEmployee: boolean, isAdmin: boolean): QueueTab[] 
 export function resolveQueueView(
   aba: string | null,
   status: string | null,
-  tabs: QueueTab[]
+  tabs: QueueTab[],
 ): QueueView | null {
   if (tabs.length === 0) {
     return null;
@@ -56,7 +56,7 @@ export function resolveQueueView(
 
   return {
     tab,
-    status: accepted.includes(status as TicketStatus) ? (status as TicketStatus) : null
+    status: accepted.includes(status as TicketStatus) ? (status as TicketStatus) : null,
   };
 }
 

@@ -11,10 +11,10 @@ describe('EngineeringAlertModalComponent', () => {
 
   beforeEach(() => {
     raiseEngineeringAlert = vi.fn(() =>
-      of(aTicket({ engineeringAlert: true, engineeringAlertReason: 'Crash no checkout' }))
+      of(aTicket({ engineeringAlert: true, engineeringAlertReason: 'Crash no checkout' })),
     );
     TestBed.configureTestingModule({
-      providers: [{ provide: TicketService, useValue: { raiseEngineeringAlert } }]
+      providers: [{ provide: TicketService, useValue: { raiseEngineeringAlert } }],
     });
   });
 
@@ -33,7 +33,10 @@ describe('EngineeringAlertModalComponent', () => {
     return { fixture, raised, failed };
   }
 
-  async function fillAndSubmit(fixture: ComponentFixture<EngineeringAlertModalComponent>, reason: string): Promise<void> {
+  async function fillAndSubmit(
+    fixture: ComponentFixture<EngineeringAlertModalComponent>,
+    reason: string,
+  ): Promise<void> {
     const textarea: HTMLTextAreaElement = fixture.nativeElement.querySelector('textarea');
     textarea.value = reason;
     textarea.dispatchEvent(new Event('input'));
@@ -74,7 +77,9 @@ describe('EngineeringAlertModalComponent', () => {
 
     await fillAndSubmit(fixture, 'Crash');
 
-    expect(fixture.nativeElement.textContent).toContain('Não foi possível concluir. Tente de novo.');
+    expect(fixture.nativeElement.textContent).toContain(
+      'Não foi possível concluir. Tente de novo.',
+    );
     expect(failed).not.toHaveBeenCalled();
   });
 

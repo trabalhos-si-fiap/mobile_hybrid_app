@@ -7,7 +7,7 @@ import {
   input,
   output,
   signal,
-  viewChild
+  viewChild,
 } from '@angular/core';
 
 import { TicketMessage } from '../../../core/models/ticket.model';
@@ -18,7 +18,7 @@ import {
   addFiles,
   formatBytes,
   MAX_BODY_LENGTH,
-  messageProblem
+  messageProblem,
 } from '../../../core/utils/attachment-rules';
 import { formatTime } from '../../../core/utils/time-format';
 import { AttachmentViewComponent } from '../../../shared/attachment-view/attachment-view.component';
@@ -31,7 +31,7 @@ const NEAR_BOTTOM_PX = 80;
   standalone: true,
   imports: [AttachmentViewComponent],
   templateUrl: './ticket-chat.component.html',
-  styleUrl: './ticket-chat.component.scss'
+  styleUrl: './ticket-chat.component.scss',
 })
 export class TicketChatComponent {
   private readonly tickets = inject(TicketService);
@@ -93,7 +93,7 @@ export class TicketChatComponent {
   }
 
   removeFile(index: number): void {
-    this.files.update(files => files.filter((_, i) => i !== index));
+    this.files.update((files) => files.filter((_, i) => i !== index));
   }
 
   send(): void {
@@ -113,24 +113,24 @@ export class TicketChatComponent {
     this.error.set('');
 
     this.tickets.sendMessage(this.ticketId(), sentBody.trim(), sentFiles).subscribe({
-      next: message => {
+      next: (message) => {
         this.sending.set(false);
         // Preserva o que foi digitado ou anexado durante o envio.
         if (this.body() === sentBody) {
           this.body.set('');
         }
-        this.files.update(files => files.filter(file => !sentFiles.includes(file)));
+        this.files.update((files) => files.filter((file) => !sentFiles.includes(file)));
         this.stickToBottom = true;
         this.sent.emit(message);
       },
-      error: error => {
+      error: (error) => {
         this.sending.set(false);
         if (httpStatus(error) === 400) {
           this.error.set(apiErrorMessage(error, 'Confira a mensagem e os anexos.'));
           return;
         }
         this.failed.emit(error);
-      }
+      },
     });
   }
 

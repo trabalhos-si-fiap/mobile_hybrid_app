@@ -10,7 +10,7 @@ import { formatBytes, isImage } from '../../core/utils/attachment-rules';
   selector: 'app-attachment-view',
   standalone: true,
   templateUrl: './attachment-view.component.html',
-  styleUrl: './attachment-view.component.scss'
+  styleUrl: './attachment-view.component.scss',
 })
 export class AttachmentViewComponent implements OnInit {
   private readonly tickets = inject(TicketService);
@@ -39,8 +39,8 @@ export class AttachmentViewComponent implements OnInit {
       this.download()
         .pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe({
-          next: url => this.previewUrl.set(url),
-          error: () => this.failed.set(true)
+          next: (url) => this.previewUrl.set(url),
+          error: () => this.failed.set(true),
         });
     }
   }
@@ -55,7 +55,7 @@ export class AttachmentViewComponent implements OnInit {
     this.download()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: url => {
+        next: (url) => {
           this.failed.set(false);
           if (tab) {
             tab.location.href = url;
@@ -66,7 +66,7 @@ export class AttachmentViewComponent implements OnInit {
         error: () => {
           tab?.close();
           this.failed.set(true);
-        }
+        },
       });
   }
 
@@ -77,15 +77,15 @@ export class AttachmentViewComponent implements OnInit {
 
     if (!this.cachedDownload) {
       this.cachedDownload = this.tickets.downloadAttachment(this.attachment()).pipe(
-        map(blob => {
+        map((blob) => {
           this.objectUrl = URL.createObjectURL(blob);
           return this.objectUrl;
         }),
-        catchError(error => {
+        catchError((error) => {
           this.cachedDownload = null;
           throw error;
         }),
-        shareReplay({ bufferSize: 1, refCount: true })
+        shareReplay({ bufferSize: 1, refCount: true }),
       );
     }
 

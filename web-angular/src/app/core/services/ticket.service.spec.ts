@@ -12,7 +12,7 @@ describe('TicketService', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(), provideHttpClientTesting()]
+      providers: [provideHttpClient(), provideHttpClientTesting()],
     });
     service = TestBed.inject(TicketService);
     http = TestBed.inject(HttpTestingController);
@@ -22,13 +22,13 @@ describe('TicketService', () => {
 
   it('lists the queue by scope, with the status only when given', () => {
     service.queue('mine', null).subscribe();
-    const plain = http.expectOne(req => req.url === '/api/v1/tickets/queue');
+    const plain = http.expectOne((req) => req.url === '/api/v1/tickets/queue');
     expect(plain.request.params.get('scope')).toBe('mine');
     expect(plain.request.params.has('status')).toBe(false);
     plain.flush([]);
 
     service.queue('all', 'ABERTO').subscribe();
-    const filtered = http.expectOne(req => req.url === '/api/v1/tickets/queue');
+    const filtered = http.expectOne((req) => req.url === '/api/v1/tickets/queue');
     expect(filtered.request.params.get('scope')).toBe('all');
     expect(filtered.request.params.get('status')).toBe('ABERTO');
     filtered.flush([]);
@@ -53,7 +53,7 @@ describe('TicketService', () => {
     expect(request.request.method).toBe('POST');
     const form = request.request.body as FormData;
     expect(form.get('body')).toBe('Olá');
-    expect((form.getAll('files') as File[]).map(file => file.name)).toEqual(['a.png', 'b.pdf']);
+    expect((form.getAll('files') as File[]).map((file) => file.name)).toEqual(['a.png', 'b.pdf']);
   });
 
   it('posts the quick actions', () => {
@@ -65,10 +65,10 @@ describe('TicketService', () => {
     expect(http.expectOne('/api/v1/tickets/12/assume').request.method).toBe('POST');
     expect(http.expectOne('/api/v1/tickets/12/resolve').request.method).toBe('POST');
     expect(http.expectOne('/api/v1/tickets/12/transfer').request.body).toEqual({
-      segment: 'FEEDBACK_SUGESTAO'
+      segment: 'FEEDBACK_SUGESTAO',
     });
     expect(http.expectOne('/api/v1/tickets/12/engineering-alert').request.body).toEqual({
-      reason: 'Crash no checkout'
+      reason: 'Crash no checkout',
     });
   });
 

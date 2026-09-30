@@ -29,11 +29,11 @@ describe('SidebarComponent', () => {
         provideRouter([]),
         { provide: EmployeeService, useValue: { me, goOffline, clear: vi.fn() } },
         { provide: NotificationService, useValue: { clear: vi.fn() } },
-        { provide: AuthService, useValue: { logout } }
-      ]
+        { provide: AuthService, useValue: { logout } },
+      ],
     });
     TestBed.overrideComponent(SidebarComponent, {
-      set: { imports: [RouterLink, RouterLinkActive, AgentCardStubComponent] }
+      set: { imports: [RouterLink, RouterLinkActive, AgentCardStubComponent] },
     });
     router = TestBed.inject(Router);
     vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
@@ -52,13 +52,15 @@ describe('SidebarComponent', () => {
   it('links Atendimento right after Dashboard', async () => {
     const fixture = await render();
 
-    const links = Array.from<HTMLAnchorElement>(fixture.nativeElement.querySelectorAll('a.nav-item'));
-    expect(links.map(link => link.textContent?.trim())).toEqual([
+    const links = Array.from<HTMLAnchorElement>(
+      fixture.nativeElement.querySelectorAll('a.nav-item'),
+    );
+    expect(links.map((link) => link.textContent?.trim())).toEqual([
       'Dashboard',
       'Atendimento',
       'Produtos e Estoque',
       'Transportadoras',
-      'Ocorrências'
+      'Ocorrências',
     ]);
     expect(links[1].getAttribute('href')).toBe('/atendimento');
   });

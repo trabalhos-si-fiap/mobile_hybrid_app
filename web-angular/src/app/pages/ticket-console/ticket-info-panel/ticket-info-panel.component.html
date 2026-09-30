@@ -26,7 +26,9 @@
   <section class="block">
     <h2>Prazo</h2>
     <div class="sla">
-      <span [class]="badgeClass('sla', ticket().slaStatus)">{{ slaLabels[ticket().slaStatus] }}</span>
+      <span [class]="badgeClass('sla', ticket().slaStatus)">{{
+        slaLabels[ticket().slaStatus]
+      }}</span>
       <span>{{ slaDue() }}</span>
       @if (slaRelative()) {
         <span class="muted">{{ slaRelative() }}</span>

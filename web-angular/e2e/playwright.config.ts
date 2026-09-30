@@ -10,19 +10,19 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   reporter: [
     ['list'],
-    ['html', { outputFolder: process.env['REPORT_DIR'] ?? 'report', open: 'never' }]
+    ['html', { outputFolder: process.env['REPORT_DIR'] ?? 'report', open: 'never' }],
   ],
   use: {
     baseURL: process.env['BASE_URL'] ?? 'http://localhost:4200',
     locale: 'pt-BR',
     timezoneId: 'America/Sao_Paulo',
     trace: 'retain-on-failure',
-    screenshot: 'only-on-failure'
+    screenshot: 'only-on-failure',
   },
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } }
-    }
-  ]
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+    },
+  ],
 });

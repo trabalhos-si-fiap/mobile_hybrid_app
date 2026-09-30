@@ -5,7 +5,7 @@ import {
   TicketEventType,
   TicketPriority,
   TicketQueue,
-  TicketStatus
+  TicketStatus,
 } from '../models/ticket.model';
 
 export const STATUS_LABELS: Record<TicketStatus, string> = {
@@ -14,13 +14,13 @@ export const STATUS_LABELS: Record<TicketStatus, string> = {
   EM_ATENDIMENTO: 'Em atendimento',
   ESCALADO: 'Escalado',
   RESOLVIDO: 'Resolvido',
-  FECHADO: 'Fechado'
+  FECHADO: 'Fechado',
 };
 
 export const PRIORITY_LABELS: Record<TicketPriority, string> = {
   NORMAL: 'Normal',
   ALTA: 'Alta',
-  CRITICA: 'Crítica'
+  CRITICA: 'Crítica',
 };
 
 export const SLA_LABELS: Record<SlaStatus, string> = {
@@ -28,24 +28,24 @@ export const SLA_LABELS: Record<SlaStatus, string> = {
   EM_RISCO: 'Em risco',
   ESTOURADO: 'Estourado',
   CUMPRIDO: 'Cumprido',
-  VIOLADO: 'Violado'
+  VIOLADO: 'Violado',
 };
 
 export const PRESENCE_LABELS: Record<Presence, string> = {
   ONLINE: 'Online',
   AUSENTE: 'Ausente',
-  OFFLINE: 'Offline'
+  OFFLINE: 'Offline',
 };
 
 export const CHANNEL_LABELS: Record<TicketChannel, string> = {
   APP: 'App',
-  CHATBOT_IA: 'Chatbot IA'
+  CHATBOT_IA: 'Chatbot IA',
 };
 
 export const QUEUE_LABELS: Record<TicketQueue, string> = {
   TECNOLOGIA: 'Tecnologia',
   MARKETPLACE: 'Marketplace',
-  PRODUTO: 'Produto'
+  PRODUTO: 'Produto',
 };
 
 export const EVENT_LABELS: Record<TicketEventType, string> = {
@@ -58,7 +58,7 @@ export const EVENT_LABELS: Record<TicketEventType, string> = {
   REABERTO: 'Reaberto',
   FECHADO: 'Fechado',
   ALERTA_ENGENHARIA: 'Alerta de engenharia',
-  ERRO_ESCALONAMENTO: 'Erro no escalonamento'
+  ERRO_ESCALONAMENTO: 'Erro no escalonamento',
 };
 
 export type BadgeKind = 'status' | 'priority' | 'sla';

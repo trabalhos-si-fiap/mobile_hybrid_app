@@ -40,7 +40,11 @@
         }
       </div>
 
-      <select #statusSelect aria-label="Filtrar por status" (change)="selectStatus(statusSelect.value)">
+      <select
+        #statusSelect
+        aria-label="Filtrar por status"
+        (change)="selectStatus(statusSelect.value)"
+      >
         <option value="" [selected]="!view.status">Todos os status</option>
         @for (status of tabConfig[view.tab].statuses; track status) {
           <option [value]="status" [selected]="status === view.status">
@@ -73,27 +77,43 @@
           <tbody>
             @if (rows(); as rows) {
               @for (row of rows; track row.id) {
-                <tr [attr.data-ticket-id]="row.id" tabindex="0" (click)="open(row)" (keydown.enter)="$event.target === $event.currentTarget && open(row)">
+                <tr
+                  [attr.data-ticket-id]="row.id"
+                  tabindex="0"
+                  (click)="open(row)"
+                  (keydown.enter)="$event.target === $event.currentTarget && open(row)"
+                >
                   <td>
                     <div class="ticket-cell">
                       <strong>
                         #{{ row.id }}
                         @if (row.engineeringAlert) {
-                          <span class="alert-icon" aria-label="Alerta de engenharia" title="Alerta de engenharia">!</span>
+                          <span
+                            class="alert-icon"
+                            aria-label="Alerta de engenharia"
+                            title="Alerta de engenharia"
+                            >!</span
+                          >
                         }
                       </strong>
                       <span>{{ row.segmentLabel }}</span>
                     </div>
                   </td>
                   <td>
-                    <span [class]="badgeClass('priority', row.priority)">{{ priorityLabels[row.priority] }}</span>
+                    <span [class]="badgeClass('priority', row.priority)">{{
+                      priorityLabels[row.priority]
+                    }}</span>
                   </td>
                   <td>
-                    <span [class]="badgeClass('status', row.status)">{{ statusLabels[row.status] }}</span>
+                    <span [class]="badgeClass('status', row.status)">{{
+                      statusLabels[row.status]
+                    }}</span>
                   </td>
                   <td>
                     <div class="sla-cell">
-                      <span [class]="badgeClass('sla', row.slaStatus)">{{ slaLabels[row.slaStatus] }}</span>
+                      <span [class]="badgeClass('sla', row.slaStatus)">{{
+                        slaLabels[row.slaStatus]
+                      }}</span>
                       @if (isSlaRunning(row.slaStatus)) {
                         <small>{{ slaDue(row.slaDueAt) }}</small>
                       }
@@ -113,7 +133,11 @@
                         Atender
                       </button>
                     } @else {
-                      <button class="btn" type="button" (click)="open(row); $event.stopPropagation()">
+                      <button
+                        class="btn"
+                        type="button"
+                        (click)="open(row); $event.stopPropagation()"
+                      >
                         Abrir
                       </button>
                     }

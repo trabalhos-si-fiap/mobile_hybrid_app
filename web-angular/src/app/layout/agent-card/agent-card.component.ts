@@ -18,7 +18,7 @@ const UNREAD_POLL_MS = 30_000;
   standalone: true,
   imports: [NotificationPanelComponent],
   templateUrl: './agent-card.component.html',
-  styleUrl: './agent-card.component.scss'
+  styleUrl: './agent-card.component.scss',
 })
 export class AgentCardComponent {
   private readonly auth = inject(AuthService);
@@ -42,7 +42,7 @@ export class AgentCardComponent {
   }
 
   togglePanel(): void {
-    this.panelOpen.update(open => !open);
+    this.panelOpen.update((open) => !open);
   }
 
   closePanel(): void {
@@ -64,11 +64,11 @@ export class AgentCardComponent {
 
     this.employees.changePresence(next).subscribe({
       next: () => this.saving.set(false),
-      error: error => {
+      error: (error) => {
         this.saving.set(false);
         select.value = previous;
         this.error.set(apiErrorMessage(error, 'Não foi possível mudar a presença.'));
-      }
+      },
     });
   }
 }

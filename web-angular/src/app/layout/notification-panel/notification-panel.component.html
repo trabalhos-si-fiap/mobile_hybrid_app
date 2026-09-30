@@ -5,7 +5,12 @@
       <button class="btn btn-link" type="button" [disabled]="!hasUnread()" (click)="markAll()">
         Marcar todas como lidas
       </button>
-      <button class="panel-close" type="button" aria-label="Fechar notificações" (click)="closed.emit()">
+      <button
+        class="panel-close"
+        type="button"
+        aria-label="Fechar notificações"
+        (click)="closed.emit()"
+      >
         ×
       </button>
     </div>

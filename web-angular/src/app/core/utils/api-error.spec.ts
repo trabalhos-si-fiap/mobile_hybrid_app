@@ -7,12 +7,14 @@ import {
   FORBIDDEN_ERROR,
   GENERIC_ACTION_ERROR,
   httpStatus,
-  isTransientError
+  isTransientError,
 } from './api-error';
 
 describe('api-error', () => {
   it('prefers the message field of the ApiErrorResponse', () => {
-    expect(apiErrorMessage(httpError(409, 'Ticket 12 está fechado'), 'x')).toBe('Ticket 12 está fechado');
+    expect(apiErrorMessage(httpError(409, 'Ticket 12 está fechado'), 'x')).toBe(
+      'Ticket 12 está fechado',
+    );
   });
 
   it('falls back when there is no usable message', () => {
@@ -37,7 +39,9 @@ describe('api-error', () => {
     expect(actionErrorMessage(httpError(500, 'Erro interno'))).toBe(GENERIC_ACTION_ERROR);
     expect(actionErrorMessage(httpError(403))).toBe(FORBIDDEN_ERROR);
     expect(actionErrorMessage(httpError(403, 'Somente ADMIN'))).toBe('Somente ADMIN');
-    expect(actionErrorMessage(httpError(409, 'Ticket 12 está fechado'))).toBe('Ticket 12 está fechado');
+    expect(actionErrorMessage(httpError(409, 'Ticket 12 está fechado'))).toBe(
+      'Ticket 12 está fechado',
+    );
     expect(GENERIC_ACTION_ERROR).toBe('Não foi possível concluir. Tente de novo.');
     expect(FORBIDDEN_ERROR).toBe('Você não tem permissão para esta ação.');
   });

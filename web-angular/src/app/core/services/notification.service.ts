@@ -27,24 +27,20 @@ export class NotificationService {
   refreshUnread(): Observable<number> {
     const params = new HttpParams().set('unreadOnly', 'true');
 
-    return this.http
-      .get<AppNotification[]>(`${this.apiUrl}/notifications`, { params })
-      .pipe(
-        map(list => list.length),
-        tap(count => this.unreadState.set(count))
-      );
+    return this.http.get<AppNotification[]>(`${this.apiUrl}/notifications`, { params }).pipe(
+      map((list) => list.length),
+      tap((count) => this.unreadState.set(count)),
+    );
   }
 
   markRead(notification: AppNotification): Observable<void> {
-    return this.http
-      .post<void>(`${this.apiUrl}/notifications/${notification.id}/read`, null)
-      .pipe(
-        tap(() => {
-          if (!notification.read) {
-            this.unreadState.update(count => Math.max(0, count - 1));
-          }
-        })
-      );
+    return this.http.post<void>(`${this.apiUrl}/notifications/${notification.id}/read`, null).pipe(
+      tap(() => {
+        if (!notification.read) {
+          this.unreadState.update((count) => Math.max(0, count - 1));
+        }
+      }),
+    );
   }
 
   markAllRead(): Observable<void> {

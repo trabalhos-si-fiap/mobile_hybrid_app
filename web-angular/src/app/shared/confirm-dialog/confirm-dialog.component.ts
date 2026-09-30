@@ -3,7 +3,7 @@ import { Component, input, output } from '@angular/core';
 @Component({
   selector: 'app-confirm-dialog',
   standalone: true,
-  templateUrl: './confirm-dialog.component.html'
+  templateUrl: './confirm-dialog.component.html',
 })
 export class ConfirmDialogComponent {
   readonly heading = input.required<string>();

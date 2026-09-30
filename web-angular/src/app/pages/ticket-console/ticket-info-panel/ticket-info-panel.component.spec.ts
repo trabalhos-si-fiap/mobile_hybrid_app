@@ -11,7 +11,7 @@ import { TicketInfoPanelComponent } from './ticket-info-panel.component';
 describe('TicketInfoPanelComponent', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [{ provide: TicketService, useValue: { downloadAttachment: () => NEVER } }]
+      providers: [{ provide: TicketService, useValue: { downloadAttachment: () => NEVER } }],
     });
   });
 
@@ -70,11 +70,13 @@ describe('TicketInfoPanelComponent', () => {
 
     plain.componentRef.setInput(
       'ticket',
-      aTicket({ engineeringAlert: true, engineeringAlertReason: 'Crash no checkout' })
+      aTicket({ engineeringAlert: true, engineeringAlertReason: 'Crash no checkout' }),
     );
     await plain.whenStable();
 
-    expect(plain.nativeElement.querySelector('.block-alert').textContent).toContain('Crash no checkout');
+    expect(plain.nativeElement.querySelector('.block-alert').textContent).toContain(
+      'Crash no checkout',
+    );
   });
 
   it('keeps the line breaks of the description as text', async () => {
@@ -87,7 +89,12 @@ describe('TicketInfoPanelComponent', () => {
 
   it('lists the opening attachments', async () => {
     const fixture = await render(
-      aTicket({ attachments: [anAttachment(), anAttachment({ id: 4, fileName: 'b.pdf', contentType: 'application/pdf' })] })
+      aTicket({
+        attachments: [
+          anAttachment(),
+          anAttachment({ id: 4, fileName: 'b.pdf', contentType: 'application/pdf' }),
+        ],
+      }),
     );
 
     expect(fixture.nativeElement.querySelectorAll('app-attachment-view')).toHaveLength(2);

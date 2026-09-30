@@ -26,10 +26,10 @@ export function formatDateTime(iso: string | null | undefined, timeZone?: string
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-    hourCycle: 'h23'
+    hourCycle: 'h23',
   }).formatToParts(time);
   const part = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find(item => item.type === type)?.value ?? '';
+    parts.find((item) => item.type === type)?.value ?? '';
 
   return `${part('day')}/${part('month')}/${part('year')} ${part('hour')}:${part('minute')}`;
 }
@@ -45,7 +45,7 @@ export function formatTime(iso: string | null | undefined, timeZone?: string): s
     timeZone,
     hour: '2-digit',
     minute: '2-digit',
-    hourCycle: 'h23'
+    hourCycle: 'h23',
   }).format(time);
 }
 

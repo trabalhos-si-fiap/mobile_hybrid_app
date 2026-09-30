@@ -15,16 +15,18 @@ describe('LoginComponent', () => {
     login = vi.fn();
   });
 
-  async function render(query: Record<string, string> = {}): Promise<ComponentFixture<LoginComponent>> {
+  async function render(
+    query: Record<string, string> = {},
+  ): Promise<ComponentFixture<LoginComponent>> {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { queryParamMap: convertToParamMap(query) } }
+          useValue: { snapshot: { queryParamMap: convertToParamMap(query) } },
         },
-        { provide: AuthService, useValue: { login } }
-      ]
+        { provide: AuthService, useValue: { login } },
+      ],
     });
     router = TestBed.inject(Router);
     vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
@@ -36,7 +38,11 @@ describe('LoginComponent', () => {
 
   async function submit(fixture: ComponentFixture<LoginComponent>, user: AuthUser): Promise<void> {
     login.mockReturnValue(of(user));
-    fixture.componentInstance.form.setValue({ email: user.email, password: 'secret', remember: false });
+    fixture.componentInstance.form.setValue({
+      email: user.email,
+      password: 'secret',
+      remember: false,
+    });
     fixture.componentInstance.submit();
     await fixture.whenStable();
   }
@@ -51,7 +57,7 @@ describe('LoginComponent', () => {
     await submit(fixture, { id: 50, name: 'Ana Usuária', email: 'ana@edu.com', role: 'USER' });
 
     expect(text(fixture)).toContain(
-      'Esta conta é de cliente. Use o app Edu para abrir e acompanhar chamados.'
+      'Esta conta é de cliente. Use o app Edu para abrir e acompanhar chamados.',
     );
     expect(router.navigateByUrl).not.toHaveBeenCalled();
   });

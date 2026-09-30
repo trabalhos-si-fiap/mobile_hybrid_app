@@ -18,6 +18,6 @@ for (const url of targets) {
       console.error(`tempo esgotado esperando ${url}`);
       process.exit(1);
     }
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await new Promise((resolve) => setTimeout(resolve, 3000));
   }
 }

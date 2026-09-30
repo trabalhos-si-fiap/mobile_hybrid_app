@@ -19,8 +19,8 @@ describe('authInterceptor', () => {
       providers: [
         provideRouter([]),
         provideHttpClient(withInterceptors([authInterceptor])),
-        provideHttpClientTesting()
-      ]
+        provideHttpClientTesting(),
+      ],
     });
     http = TestBed.inject(HttpClient);
     controller = TestBed.inject(HttpTestingController);
@@ -30,7 +30,7 @@ describe('authInterceptor', () => {
     localStorage.setItem('edu_admin_token', 'jwt');
     localStorage.setItem(
       'edu_admin_user',
-      JSON.stringify({ id: 20, name: 'Diego Dev', email: 'dev@edu.com', role: 'EMPLOYEE' })
+      JSON.stringify({ id: 20, name: 'Diego Dev', email: 'dev@edu.com', role: 'EMPLOYEE' }),
     );
   });
 
@@ -53,16 +53,14 @@ describe('authInterceptor', () => {
 
     expect(localStorage.getItem('edu_admin_token')).toBeNull();
     expect(router.navigate).toHaveBeenCalledWith(['/login'], {
-      queryParams: { sessao: 'expirada' }
+      queryParams: { sessao: 'expirada' },
     });
   });
 
   it('clears the previous account state on a 401', () => {
     const notifications = TestBed.inject(NotificationService);
     notifications.refreshUnread().subscribe();
-    controller
-      .expectOne(req => req.url.endsWith('/notifications'))
-      .flush([{ id: 1 }, { id: 2 }]);
+    controller.expectOne((req) => req.url.endsWith('/notifications')).flush([{ id: 1 }, { id: 2 }]);
     expect(notifications.unreadCount()).toBe(2);
 
     http.get('/api/v1/tickets/queue').subscribe({ error: () => undefined });
@@ -86,7 +84,7 @@ describe('authInterceptor', () => {
 
   it('passes other errors through without logging out', () => {
     let status = 0;
-    http.get('/api/v1/tickets/queue').subscribe({ error: error => (status = error.status) });
+    http.get('/api/v1/tickets/queue').subscribe({ error: (error) => (status = error.status) });
 
     controller
       .expectOne('/api/v1/tickets/queue')

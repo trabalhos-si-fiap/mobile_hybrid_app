@@ -8,7 +8,7 @@ import {
   Observable,
   of,
   startWith,
-  switchMap
+  switchMap,
 } from 'rxjs';
 
 export type PollEvent<T> = { ok: true; value: T } | { ok: false; error: unknown };
@@ -23,28 +23,28 @@ export function poll<T>(
   source: () => Observable<T>,
   intervalMs: number,
   reload$: Observable<unknown> = EMPTY,
-  doc: Document = document
+  doc: Document = document,
 ): Observable<PollEvent<T>> {
   const visible$ = fromEvent(doc, 'visibilitychange').pipe(
     startWith(null),
     map(() => doc.visibilityState !== 'hidden'),
-    distinctUntilChanged()
+    distinctUntilChanged(),
   );
 
   return visible$.pipe(
-    switchMap(visible =>
+    switchMap((visible) =>
       visible
         ? reload$.pipe(
             startWith(null),
-            switchMap(() => interval(intervalMs).pipe(startWith(-1)))
+            switchMap(() => interval(intervalMs).pipe(startWith(-1))),
           )
-        : EMPTY
+        : EMPTY,
     ),
     switchMap(() =>
       source().pipe(
-        map(value => ({ ok: true, value }) as PollEvent<T>),
-        catchError(error => of({ ok: false, error } as PollEvent<T>))
-      )
-    )
+        map((value) => ({ ok: true, value }) as PollEvent<T>),
+        catchError((error) => of({ ok: false, error } as PollEvent<T>)),
+      ),
+    ),
   );
 }
