@@ -21,7 +21,8 @@ class TokenRefresher {
   /// Returns `true` when a new token pair was obtained and saved.
   Future<bool> refresh() async {
     final refreshToken = await _tokenStore.readRefreshToken();
-    if (refreshToken == null) return false;
+    // A API não tem /auth/refresh e o login salva o refresh token vazio.
+    if (refreshToken == null || refreshToken.isEmpty) return false;
 
     final http.Response res;
     try {

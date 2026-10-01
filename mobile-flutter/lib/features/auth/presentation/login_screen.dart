@@ -1,11 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import '../../../core/app_services.dart';
+import '../../../core/session/session.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/network/token_store.dart';
-import '../../../core/utils/jwt_utils.dart';
-import '../../logistics/presentation/picking_queue_screen.dart';
-import '../../logistics/presentation/delivery_queue_screen.dart';
-import '../../admin/presentation/admin_dashboard_screen.dart';
-import '../../notifications/data/messaging_service.dart';
 import '../data/auth_api.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -19,8 +17,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _authApi = AuthApi();
-  final _tokenStore = TokenStore();
   bool _obscurePassword = true;
   bool _submitting = false;
   String? _erro;
@@ -41,6 +37,9 @@ class _LoginScreenState extends State<LoginScreen> {
     if (_checkedResetFlag) return;
     _checkedResetFlag = true;
     final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map && args['sessionExpired'] == true) {
+      _erro = 'Sua sessão expirou. Entre de novo.';
+    }
     if (args is Map && args['passwordReset'] == true) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -64,56 +63,25 @@ class _LoginScreenState extends State<LoginScreen> {
       _submitting = true;
       _erro = null;
     });
+    final services = AppScope.of(context);
     try {
-      await _authApi.login(email: email, password: password);
-      // Now that a JWT exists, register this device for push notifications.
-      // Best-effort: never block navigation on it.
-      await MessagingService().syncToken();
+      final role = parseRole(
+        await services.authApi.login(email: email, password: password),
+      );
+      if (role == null) {
+        await services.authApi.logout();
+        if (!mounted) return;
+        setState(() => _erro = 'Esta conta não tem acesso ao app.');
+        return;
+      }
+      if (role == UserRole.user) unawaited(services.startUserSession());
       if (!mounted) return;
-      await _redirecionarPorPapel();
+      unawaited(Navigator.pushReplacementNamed(context, homeRouteFor(role)));
     } on AuthException catch (e) {
       if (!mounted) return;
       setState(() => _erro = e.message);
     } finally {
       if (mounted) setState(() => _submitting = false);
-    }
-  }
-
-  /// Lê o claim `role` do access token recém-salvo e decide para onde
-  /// navegar. Separador e entregador têm seu próprio ponto de entrada;
-  /// aluno segue para a home de sempre.
-  Future<void> _redirecionarPorPapel() async {
-    final accessToken = await _tokenStore.readAccessToken();
-    final role = accessToken != null ? extrairRoleDoToken(accessToken) : null;
-
-    if (!mounted) return;
-
-    switch (role) {
-      case 'separador':
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const SeparadorFilaScreen()),
-        );
-        break;
-      case 'entregador':
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const EntregadorFilaScreen()),
-        );
-        break;
-      case 'admin':
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
-        );
-        break;
-      case 'student':
-      default:
-        Navigator.pushReplacementNamed(
-          context,
-          '/home',
-          arguments: {'justLoggedIn': true},
-        );
     }
   }
 
@@ -169,10 +137,8 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            // Nota: o antigo link "Acessar Edu Logistics" foi removido —
-            // com RBAC unificado, separador/entregador entram por este
-            // mesmo formulário e são redirecionados automaticamente
-            // (ver _redirecionarPorPapel). Ver STATUS.md para detalhes.
+            // Todos os papéis entram por este formulário; _handleLogin
+            // decide a tela (USER: tickets; staff: dashboard).
           ],
           ),
         ),
@@ -308,6 +274,7 @@ class _LoginCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             TextFormField(
+              key: const Key('login-email'),
               controller: emailController,
               keyboardType: TextInputType.emailAddress,
               textInputAction: TextInputAction.next,
@@ -329,6 +296,7 @@ class _LoginCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             TextFormField(
+              key: const Key('login-password'),
               controller: passwordController,
               obscureText: obscurePassword,
               textInputAction: TextInputAction.done,
@@ -386,6 +354,7 @@ class _LoginCard extends StatelessWidget {
             ],
             const SizedBox(height: 28),
             ElevatedButton(
+              key: const Key('login-submit'),
               onPressed: submitting ? null : onLogin,
               child: submitting
                   ? const SizedBox(

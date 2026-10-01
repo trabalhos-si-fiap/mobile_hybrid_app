@@ -30,8 +30,12 @@ class AuthApi {
   final TokenStore _tokenStore;
   final SessionStore _sessionStore;
 
-  /// Authenticates against `POST /auth/login` and persists the JWT pair.
-  Future<void> login({required String email, required String password}) async {
+  /// Authenticates against `POST /auth/login`, persists the JWT pair and
+  /// returns the user's role (`USER`, `EMPLOYEE` or `ADMIN`).
+  Future<String?> login({
+    required String email,
+    required String password,
+  }) async {
     final http.Response res;
     try {
       res = await _client.post(
@@ -53,7 +57,11 @@ class AuthApi {
       throw AuthException('Falha ao entrar (código ${res.statusCode})');
     }
 
-    await _persistAuth(jsonDecode(res.body) as Map<String, dynamic>);
+    // UTF-8 explícito: a API não manda charset e res.body usaria latin1
+    // ("UsuÃ¡rio" no nome salvo).
+    final body = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+    await _persistAuth(body);
+    return (body['user'] as Map<String, dynamic>?)?['role'] as String?;
   }
 
   /// Solicita redefinição de senha via `POST /auth/password-reset/request`.

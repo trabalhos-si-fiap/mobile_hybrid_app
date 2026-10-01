@@ -123,3 +123,15 @@ TicketMessage testMessage({
   attachments: attachments,
   createdAt: createdAt ?? DateTime.utc(2026, 9, 30, 12, 20),
 );
+
+/// JWT sem assinatura válida, só para o app ler role e exp.
+String fakeJwt({String role = 'USER', DateTime? expiresAt}) {
+  String part(Map<String, dynamic> json) =>
+      base64Url.encode(utf8.encode(jsonEncode(json))).replaceAll('=', '');
+  final exp =
+      (expiresAt ?? testNow.add(const Duration(hours: 2)))
+          .millisecondsSinceEpoch ~/
+      1000;
+  return '${part({'alg': 'HS256'})}.'
+      '${part({'sub': 'ana@edu.com', 'role': role, 'exp': exp})}.assinatura';
+}

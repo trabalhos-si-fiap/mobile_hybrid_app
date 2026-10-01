@@ -17,14 +17,3 @@ Map<String, dynamic> decodeJwtPayload(String token) {
   final decoded = utf8.decode(base64Url.decode(payload));
   return jsonDecode(decoded) as Map<String, dynamic>;
 }
-
-/// Extrai o papel do usuário (`student`, `admin`, `separador`, `entregador`)
-/// de um access token. Retorna `null` se o token não puder ser decodificado.
-String? extrairRoleDoToken(String token) {
-  try {
-    final payload = decodeJwtPayload(token);
-    return payload['role'] as String?;
-  } catch (_) {
-    return null;
-  }
-}
