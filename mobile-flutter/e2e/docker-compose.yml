@@ -1,0 +1,89 @@
+# Stack efêmera do e2e do app: sem o seed de demonstração. A API fica só em
+# 127.0.0.1:18080, e o celular chega nela por adb reverse. Rode ./run.sh, que
+# sobe, testa e derruba tudo.
+name: edu-mobile-e2e
+
+services:
+  oracle:
+    image: gvenzl/oracle-free:23-slim-faststart
+    environment:
+      ORACLE_PASSWORD: e2e_sys
+      APP_USER: edu_admin
+      APP_USER_PASSWORD: edu_admin
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 20s
+
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: edu_admin
+      MINIO_ROOT_PASSWORD: edu_admin_minio
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+
+  api:
+    build: ../../api
+    depends_on:
+      oracle:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:oracle:thin:@oracle:1521/FREEPDB1
+      DB_USERNAME: edu_admin
+      DB_PASSWORD: edu_admin
+      JWT_SECRET: e2e-secret-key-for-the-mobile-run-0123456789
+      MINIO_URL: http://minio:9000
+      MINIO_ACCESS_KEY: edu_admin
+      MINIO_SECRET_KEY: edu_admin_minio
+      MINIO_BUCKET: ticket-attachments
+      # Sem o job de SLA: o roteamento acontece só quando o teste muda a presença.
+      TICKET_JOBS_ENABLED: "false"
+      # Migrations e PL/SQL, mais as contas do e2e no lugar do seed (db/seed).
+      SPRING_FLYWAY_LOCATIONS: classpath:db/migration,classpath:db/plsql,filesystem:/e2e/fixtures
+    volumes:
+      - ./fixtures:/e2e/fixtures:ro
+    ports:
+      - "127.0.0.1:18080:8080"
+
+  # Roda o integration_test no aparelho. O adb do container assume a USB (o
+  # run.sh derruba o adb do host antes) e usa a chave que o aparelho já
+  # autorizou.
+  runner:
+    image: ghcr.io/cirruslabs/flutter:3.44.0
+    profiles: ["test"]
+    privileged: true
+    network_mode: host
+    entrypoint: ["bash", "/src/tool/container.sh", "e2e"]
+    environment:
+      DEVICE: ${DEVICE:-}
+      E2E_API_PORT: "18080"
+    volumes:
+      - ..:/src:ro
+      - /dev/bus/usb:/dev/bus/usb
+      - edu-flutter-pub-cache:/root/.pub-cache
+      - edu-flutter-gradle:/root/.gradle
+      - edu-flutter-android:/root/.android
+      - edu-flutter-android-sdk:/opt/android-sdk-linux
+      - ${HOME}/.android/adbkey:/root/.android/adbkey:ro
+      - ${HOME}/.android/adbkey.pub:/root/.android/adbkey.pub:ro
+
+# Os caches do serviço flutter do Compose da API (api/docker-compose.yml).
+# Externos: o "down -v" do e2e não os apaga.
+volumes:
+  edu-flutter-pub-cache:
+    external: true
+  edu-flutter-gradle:
+    external: true
+  edu-flutter-android:
+    external: true
+  edu-flutter-android-sdk:
+    external: true

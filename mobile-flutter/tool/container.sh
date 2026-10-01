@@ -65,8 +65,25 @@ case "$command" in
       cat "$file" >"/host/$file"
     done < <(find "$@" -name '*.dart' -print0)
     ;;
+  e2e)
+    : "${DEVICE:?Defina DEVICE com o serial do aparelho.}"
+    copy_sources
+    pub_get
+    adb start-server >/dev/null
+    adb -s "$DEVICE" wait-for-device
+    # localhost:8080 no aparelho -> API do e2e no host.
+    adb -s "$DEVICE" reverse tcp:8080 "tcp:${E2E_API_PORT:-18080}"
+    adb -s "$DEVICE" shell input keyevent KEYCODE_WAKEUP
+    adb -s "$DEVICE" shell svc power stayon usb
+    status=0
+    flutter test integration_test/app_test.dart -d "$DEVICE" "$@" || status=$?
+    adb -s "$DEVICE" shell svc power stayon false || true
+    adb -s "$DEVICE" reverse --remove-all || true
+    adb kill-server || true
+    exit "$status"
+    ;;
   *)
-    echo "Uso: analyze | test [caminhos] | apk | lock | format <arquivos>" >&2
+    echo "Uso: analyze | test [caminhos] | apk | lock | format <arquivos> | e2e" >&2
     exit 2
     ;;
 esac
