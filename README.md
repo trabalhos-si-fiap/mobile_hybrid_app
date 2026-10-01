@@ -28,7 +28,7 @@ quanto pelo app mobile via HTTP/JSON.
 .
 ├── api/             # Backend Spring Boot (regras de negócio, persistência, Swagger/OpenAPI)
 ├── web-angular/     # Painel administrativo web (dashboard, produtos/estoque, transportadoras, ocorrências)
-└── mobile-flutter/  # App mobile (autenticação, admin, logística, notificações)
+└── mobile-flutter/  # App mobile (tickets do usuário, notificações, dashboard admin)
 ```
 
 Cada pasta tem seu próprio README com instruções específicas:
@@ -54,10 +54,11 @@ Cada pasta tem seu próprio README com instruções específicas:
 * Node só em container, como o Java
 
 **Mobile (`mobile-flutter/`)**
-* Flutter / Dart
-* `http` para consumo da API
-* `flutter_secure_storage` para armazenamento seguro do JWT
-* `url_launcher` para abrir o painel web a partir do app
+* Flutter 3.44 / Dart 3.12, só em container, como o Java e o Node
+* `http` para consumo da API e `flutter_secure_storage` para o JWT
+* `image_picker` e `file_selector` para os anexos (câmera, galeria e PDF)
+* `flutter_local_notifications` para avisar das respostas com o app aberto
+* `integration_test` no celular para os testes de ponta a ponta
 
 ## 🚀 Como rodar o projeto
 
@@ -157,14 +158,47 @@ O relatório HTML fica em `web-angular/e2e/report/`.
 
 ### 3. App mobile (`mobile-flutter/`)
 
+O app roda num celular Android (ou num emulador) ligado por USB. O Flutter
+roda só em container; na máquina bastam Docker e o `adb` (Android
+platform-tools).
+
 ```bash
-cd mobile-flutter
-flutter pub get
-flutter run
+# em api/, com a stack do passo 1 no ar
+docker compose run --rm flutter apk              # gera mobile-flutter/dist/app-debug.apk
+adb install -r ../mobile-flutter/dist/app-debug.apk
+adb reverse tcp:8080 tcp:8080                    # localhost:8080 do celular -> API desta máquina
 ```
 
-Certifique-se de que a API esteja rodando e acessível pelo dispositivo/emulador
-escolhido (ver configuração de host em `lib/core/network`).
+A primeira geração do APK baixa o Gradle, o NDK e o SDK do Android (cerca de
+10 min). Refaça o `adb reverse` sempre que reconectar o cabo.
+
+No app, `usuario@edu.com` (senha `usuario123`) abre e acompanha tickets:
+
+* escolhe o tipo do problema, descreve e anexa fotos ou PDFs;
+* conversa com o atendente;
+* confirma a solução ou reabre o ticket.
+
+Chega notificação no celular quando o atendente responde, com o app aberto.
+Contas `EMPLOYEE` e `ADMIN` entram no dashboard administrativo; o atendimento
+é no painel web.
+
+#### Testes
+
+```bash
+# em api/
+docker compose run --rm flutter analyze   # análise estática, sem nenhum aviso
+docker compose run --rm flutter test      # unidade e widget
+```
+
+O e2e roda no celular ligado por USB, desbloqueado, contra uma stack efêmera
+própria (sem o seed). Ele sobe Oracle, MinIO e API, instala o app de teste,
+roda os cenários e derruba tudo:
+
+```bash
+mobile-flutter/e2e/run.sh                 # com mais de um aparelho: DEVICE=<serial>
+```
+
+Detalhes em [`mobile-flutter/README.md`](./mobile-flutter/README.md).
 
 ## 📚 Documentação da API
 

@@ -46,3 +46,16 @@ Como usar:
 | P2B-06 | Uma marcação de "lida" que falha é engolida: o item parece lido até a próxima consulta. | `web-angular/src/app/layout/notification-panel/notification-panel.component.ts` | Reverter o item e mostrar o erro. |
 | P2B-07 | Se `GET /employees/me` falhar com status inesperado (fora 401/403/5xx), o cartão fica em "Carregando atendente...". | `web-angular/src/app/core/services/employee.service.ts` | Estado de erro com "Tentar de novo". |
 | P2B-08 | No Safari, o Enter que confirma uma composição IME (`keyCode` 229) pode enviar a mensagem antes da hora. | `web-angular/src/app/pages/ticket-console/ticket-chat/ticket-chat.component.ts` (`onKeydown`) | Ignorar também `keyCode` 229. |
+
+## Sub-projeto 2C — App do usuário (Flutter)
+
+Os caminhos desta seção são relativos à raiz do repositório.
+
+| ID | Situação | Onde | Correção sugerida |
+|---|---|---|---|
+| P2C-01 | A notificação só chega com o app aberto: o polling para em segundo plano, e com o app fechado nada chega até ele abrir de novo. Decisão da Fase 6 (sem Firebase). | `mobile-flutter/lib/features/notifications/notification_center.dart` | WorkManager (mínimo de 15 min no Android) ou FCM. |
+| P2C-02 | Sem refresh token na API: depois de `JWT_EXPIRATION_MINUTES` (120), o próximo 401 leva o usuário ao login. | `mobile-flutter/lib/core/network/token_refresher.dart` | `POST /auth/refresh` na API; o `AuthHttpClient` já sabe usar. |
+| P2C-03 | iOS não foi compilado nem testado (sem Mac). O `Info.plist` não tem `NSCameraUsageDescription` nem `NSPhotoLibraryUsageDescription`, que o `image_picker` exige. | `mobile-flutter/ios/Runner/Info.plist` | Acrescentar as descrições e testar num iPhone. |
+| P2C-04 | Cadastro e "esqueci a senha" continuam stubs (a API não tem esses endpoints), e os botões Google e Apple do login não fazem nada. | `mobile-flutter/lib/features/auth/` | Criar os endpoints na API, ou esconder as opções. |
+| P2C-05 | O e2e não confere a notificação na bandeja do Android (exigiria UiAutomator). Ela é conferida no smoke manual. | `mobile-flutter/integration_test/app_test.dart` | Um teste com UiAutomator (`uiautomator` via `adb`) depois do cenário de notificações. |
+| P2C-06 | O Flutter instalado na máquina de desenvolvimento (3.41) não atende o lockfile (3.44): tudo roda no container, sem hot reload. | `mobile-flutter/pubspec.lock` | Atualizar o Flutter da máquina, se quiser hot reload. |
