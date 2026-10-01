@@ -56,6 +56,8 @@ class _AttachmentTileState extends State<AttachmentTile> {
               if (bytes != null) {
                 return Image.memory(
                   bytes,
+                  cacheWidth: (88 * MediaQuery.devicePixelRatioOf(context))
+                      .round(),
                   fit: BoxFit.cover,
                   errorBuilder: (_, _, _) =>
                       const _Placeholder(Icons.broken_image_outlined),

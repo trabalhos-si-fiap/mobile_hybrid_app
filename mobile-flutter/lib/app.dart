@@ -38,6 +38,7 @@ class EduApp extends StatelessWidget {
       title: 'Edu Admin',
       theme: AppTheme.light,
       navigatorKey: services.navigatorKey,
+      navigatorObservers: [services.routeObserver],
       initialRoute: '/',
       routes: {
         '/': (_) => const SessionGate(),

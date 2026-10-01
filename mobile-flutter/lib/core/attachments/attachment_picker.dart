@@ -74,6 +74,10 @@ class DeviceAttachmentPicker implements AttachmentPicker {
         );
       }
       throw const AttachmentPickException('Não foi possível anexar o arquivo.');
+    } on AttachmentPickException {
+      rethrow;
+    } on Exception {
+      throw const AttachmentPickException('Não foi possível anexar o arquivo.');
     }
   }
 

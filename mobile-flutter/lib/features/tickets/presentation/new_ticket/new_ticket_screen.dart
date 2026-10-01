@@ -9,6 +9,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/attachment_source.dart';
 import '../../../../core/widgets/error_banner.dart';
 import '../../../../core/widgets/picked_attachment_tile.dart';
+import '../../../../core/widgets/user_menu_button.dart';
 import '../../domain/ticket_models.dart';
 import '../../domain/ticket_rules.dart';
 import 'new_ticket_controller.dart';
@@ -60,7 +61,10 @@ class _NewTicketScreenState extends State<NewTicketScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Abrir ticket')),
+      appBar: AppBar(
+        title: const Text('Abrir ticket'),
+        actions: const [UserMenuButton()],
+      ),
       body: ListenableBuilder(
         listenable: _controller,
         builder: (context, _) {

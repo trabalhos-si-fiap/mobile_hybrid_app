@@ -9,6 +9,7 @@ import '../../../../core/widgets/attachment_source.dart';
 import '../../../../core/widgets/attachment_tile.dart';
 import '../../../../core/widgets/error_banner.dart';
 import '../../../../core/widgets/status_chip.dart';
+import '../../../../core/widgets/user_menu_button.dart';
 import '../../domain/ticket_models.dart';
 import '../../domain/ticket_rules.dart';
 import 'composer.dart';
@@ -75,6 +76,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
     final text = _message.text;
     final sent = await _controller.send(text);
     // Só apaga se ninguém mudou o texto durante o envio.
+    if (sent) _stickToBottom = true;
     if (sent && mounted && _message.text == text) _message.clear();
   }
 
@@ -130,6 +132,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
       builder: (context, _) => Scaffold(
         appBar: AppBar(
           title: Text('#${widget.ticketId}', key: const Key('ticket-title')),
+          actions: const [UserMenuButton()],
         ),
         body: _buildBody(),
       ),
@@ -179,6 +182,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
             onRefresh: _controller.reload,
             child: ListView(
               controller: _scroll,
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               children: [
                 _Header(ticket: ticket),
@@ -196,7 +200,7 @@ class _TicketDetailScreenState extends State<TicketDetailScreen> {
                     ),
                   ),
                 for (final message in _controller.messages)
-                  MessageBubble(message: message),
+                  MessageBubble(key: ValueKey(message.id), message: message),
               ],
             ),
           ),
@@ -278,7 +282,10 @@ class _Request extends StatelessWidget {
           runSpacing: 8,
           children: [
             for (final attachment in ticket.attachments)
-              AttachmentTile(attachment: attachment),
+              AttachmentTile(
+                key: ValueKey(attachment.id),
+                attachment: attachment,
+              ),
           ],
         ),
       ],

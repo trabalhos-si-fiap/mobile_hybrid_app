@@ -6,6 +6,7 @@ import '../../../core/app_services.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/time_format.dart';
 import '../../../core/widgets/error_banner.dart';
+import '../../../core/widgets/user_menu_button.dart';
 import '../domain/app_notification.dart';
 import 'notifications_controller.dart';
 
@@ -36,20 +37,28 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     super.dispose();
   }
 
+  bool _opening = false;
+
   Future<void> _open(AppNotification notification) async {
-    final result = await _controller.open(notification);
-    final ticketId = result.ticketId;
-    if (!mounted || !result.ok || ticketId == null) return;
-    await Navigator.of(context).pushNamed('/tickets/$ticketId');
-    if (mounted) unawaited(_controller.load());
+    if (_opening) return;
+    _opening = true;
+    try {
+      final result = await _controller.open(notification);
+      final ticketId = result.ticketId;
+      if (!mounted || !result.ok || ticketId == null) return;
+      await Navigator.of(context).pushNamed('/tickets/$ticketId');
+      if (mounted) unawaited(_controller.load());
+    } finally {
+      _opening = false;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final now = AppScope.of(context).clock();
     return ListenableBuilder(
       listenable: _controller,
       builder: (context, _) {
+        final now = AppScope.of(context).clock();
         final items = _controller.items;
         final loadError = _controller.loadError;
         final actionError = _controller.actionError;
@@ -64,6 +73,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     : null,
                 child: const Text('Marcar todas como lidas'),
               ),
+              const UserMenuButton(),
             ],
           ),
           body: RefreshIndicator(

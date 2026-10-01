@@ -81,6 +81,7 @@ class TicketDetailController extends ScreenController {
     loadError = null;
     offline = false;
     notify();
+    unawaited(_center.markTicketRead(ticketId));
   }
 
   void _onError(Object error) {

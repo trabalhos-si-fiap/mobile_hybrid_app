@@ -24,11 +24,17 @@ for volume in edu-flutter-pub-cache edu-flutter-gradle edu-flutter-android edu-f
 done
 
 cleanup() {
-  docker compose --profile test down -v --remove-orphans
+  docker compose --profile test down -v --remove-orphans || true
   # Devolve a USB ao adb do host.
   adb start-server >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
+
+# O container usa a chave do adb do host para o aparelho autorizar a USB.
+if [[ ! -f "$HOME/.android/adbkey" ]]; then
+  echo "Falta ~/.android/adbkey. Rode 'adb start-server' com o aparelho ligado e autorize a depuração USB." >&2
+  exit 1
+fi
 
 docker compose up -d --build oracle minio api
 

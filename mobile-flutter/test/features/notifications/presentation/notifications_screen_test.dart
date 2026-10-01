@@ -52,6 +52,22 @@ void main() {
     expect(find.text('route:/tickets/8'), findsOneWidget);
   });
 
+  testWidgets('a double tap opens the ticket once', (tester) async {
+    await pump(tester);
+
+    await tester.tap(find.byKey(const Key('notification-22')));
+    await tester.tap(find.byKey(const Key('notification-22')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('route:/tickets/8'), findsOneWidget);
+    expect(notifications.calls.where((c) => c == 'read 22'), hasLength(1));
+    final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+    navigator.pop();
+    await tester.pumpAndSettle();
+    expect(find.text('route:/tickets/8'), findsNothing);
+    expect(find.byType(NotificationsScreen), findsOneWidget);
+  });
+
   testWidgets('a failed mark-as-read reverts and explains', (tester) async {
     notifications.markReadError = const ApiException(ApiErrorKind.network);
     await pump(tester);

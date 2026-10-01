@@ -35,6 +35,9 @@ class MyTicketsController extends ScreenController {
   /// Erro da primeira carga (sem nada na tela).
   String? loadError;
 
+  /// A primeira carga voltou 403: a conta não é de usuário.
+  bool forbidden = false;
+
   /// Falha no polling com a lista já na tela.
   bool offline = false;
 
@@ -48,6 +51,7 @@ class MyTicketsController extends ScreenController {
   void _onData(List<TicketSummary> data) {
     tickets = sortForUser(data);
     loadError = null;
+    forbidden = false;
     offline = false;
     notify();
   }
@@ -58,6 +62,7 @@ class MyTicketsController extends ScreenController {
       return;
     }
     if (tickets == null) {
+      forbidden = error is ApiException && error.kind == ApiErrorKind.forbidden;
       loadError = error is ApiException
           ? error.message
           : const ApiException(ApiErrorKind.server).message;

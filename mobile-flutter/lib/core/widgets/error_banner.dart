@@ -9,11 +9,13 @@ class ErrorBanner extends StatelessWidget {
     required this.message,
     this.onRetry,
     this.subtle = false,
+    this.actionLabel = 'Tentar de novo',
   });
 
   final String message;
   final VoidCallback? onRetry;
   final bool subtle;
+  final String actionLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +47,7 @@ class ErrorBanner extends StatelessWidget {
             if (onRetry != null)
               TextButton(
                 onPressed: onRetry,
-                child: const Text('Tentar de novo'),
+                child: Text(actionLabel),
               ),
           ],
         ),

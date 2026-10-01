@@ -121,6 +121,60 @@ void main() {
     expect(mineCalls(), 2);
   });
 
+  testWidgets('reloads when coming back from the notifications screen', (
+    tester,
+  ) async {
+    await pumpScreen(tester, services, const MyTicketsScreen());
+    expect(mineCalls(), 1);
+
+    await tester.tap(find.byKey(const Key('bell')));
+    await tester.pumpAndSettle();
+    expect(find.text('route:/notifications'), findsOneWidget);
+
+    services.navigatorKey.currentState!.pop();
+    await tester.pumpAndSettle();
+    expect(mineCalls(), 2);
+  });
+
+  testWidgets('relative times follow the clock on every poll', (tester) async {
+    var now = testNow;
+    services = testServices(tickets: tickets, clock: () => now);
+    await pumpScreen(tester, services, const MyTicketsScreen());
+    expect(find.text('Atualizado há 5 min'), findsNWidgets(3));
+
+    now = now.add(const Duration(minutes: 10));
+    await tester.pump(const Duration(seconds: 30));
+
+    expect(find.text('Atualizado há 15 min'), findsNWidgets(3));
+  });
+
+  testWidgets('the empty state has a button that opens a ticket', (
+    tester,
+  ) async {
+    tickets.mineResult = const [];
+    await pumpScreen(tester, services, const MyTicketsScreen());
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Abrir ticket'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('route:/tickets/new'), findsOneWidget);
+  });
+
+  testWidgets('a forbidden account is offered the logout, not a retry', (
+    tester,
+  ) async {
+    tickets.mineError = const ApiException(ApiErrorKind.forbidden);
+    await pumpScreen(tester, services, const MyTicketsScreen());
+
+    expect(find.text('Esta conta não tem acesso a esta área.'), findsOneWidget);
+    expect(find.text('Tentar de novo'), findsNothing);
+
+    await tester.tap(find.text('Sair'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('route:/login'), findsOneWidget);
+  });
+
   testWidgets('the button opens the new ticket screen', (tester) async {
     await pumpScreen(tester, services, const MyTicketsScreen());
 

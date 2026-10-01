@@ -32,7 +32,8 @@ class AppServices {
     required this.opener,
     required this.attachments,
     this.clock = DateTime.now,
-  });
+    RouteObserver<ModalRoute<void>>? routeObserver,
+  }) : routeObserver = routeObserver ?? RouteObserver<ModalRoute<void>>();
 
   /// [picker] e [notifier] são trocados no e2e (seletor falso, sem pedir
   /// permissão de notificação).
@@ -85,21 +86,37 @@ class AppServices {
   final AttachmentCache attachments;
   final DateTime Function() clock;
 
+  /// Avisa as telas (RouteAware) quando voltam a ficar visíveis.
+  final RouteObserver<ModalRoute<void>> routeObserver;
+
+  bool _sessionEnded = false;
+
   static String notificationRoute(int? ticketId) =>
       ticketId == null ? '/notifications' : '/tickets/$ticketId';
 
   /// Liga o que só a sessão USER usa.
-  Future<void> startUserSession() => notificationCenter.start();
+  Future<void> startUserSession() {
+    _sessionEnded = false;
+    return notificationCenter.start();
+  }
 
   Future<void> logout() async {
     _endSession();
-    await tokenStore.clear();
-    await sessionStore.clear();
-    navigatorKey.currentState?.pushNamedAndRemoveUntil('/login', (_) => false);
+    try {
+      await tokenStore.clear();
+      await sessionStore.clear();
+    } finally {
+      navigatorKey.currentState?.pushNamedAndRemoveUntil(
+        '/login',
+        (_) => false,
+      );
+    }
   }
 
   /// Chamado pelo AuthHttpClient num 401; ele já apagou os tokens.
   void sessionExpired() {
+    // Um polling em voo pode receber 401 depois de um logout voluntário.
+    if (_sessionEnded) return;
     _endSession();
     unawaited(sessionStore.clear());
     navigatorKey.currentState?.pushNamedAndRemoveUntil(
@@ -110,6 +127,7 @@ class AppServices {
   }
 
   void _endSession() {
+    _sessionEnded = true;
     notificationCenter.stop();
     attachments.clear();
   }

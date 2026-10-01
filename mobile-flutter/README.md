@@ -27,10 +27,12 @@ Flutter na máquina: analyze, testes e build rodam no serviço `flutter` do
 Compose da API (`ghcr.io/cirruslabs/flutter:3.44.0`).
 
 1. Suba a stack, em `api/`: `docker compose up -d --build`.
-2. Gere o APK de debug, em `api/`: `docker compose run --rm flutter apk`. O
-   arquivo sai em `mobile-flutter/dist/app-debug.apk`. A primeira vez leva
-   cerca de 10 min.
-3. Ligue o celular por USB, com a depuração USB autorizada, e rode:
+2. Gere o APK de debug, também em `api/`: `docker compose run --rm flutter apk`.
+   O arquivo sai em `mobile-flutter/dist/app-debug.apk`. A primeira vez leva
+   de 10 min a mais de 1 hora, conforme a rede (downloads do Gradle, do NDK e
+   do SDK do Android); as seguintes levam alguns minutos.
+3. Ligue o celular por USB, com a depuração USB autorizada, e rode, a partir
+   da raiz do repositório:
 
    ```bash
    adb install -r mobile-flutter/dist/app-debug.apk
@@ -43,6 +45,10 @@ O app fala com `http://localhost:8080/api/v1`. O `adb reverse` leva essa
 porta do celular até a API da máquina, pelo cabo, sem depender do IP da rede.
 Refaça o `adb reverse` a cada reconexão. No emulador, o passo a passo é o
 mesmo.
+
+O e2e (`e2e/run.sh`) desinstala o app de teste e remove as regras do
+`adb reverse`. Depois dele, a demonstração pede de novo o `adb install -r …`
+e o `adb reverse tcp:8080 tcp:8080` do passo 3.
 
 Para apontar para outra API, gere o APK com
 `docker compose run --rm flutter apk --dart-define=API_BASE_URL=http://<host>:8080/api/v1`.
@@ -82,7 +88,7 @@ DEVICE=<serial> mobile-flutter/e2e/run.sh   # com mais de um aparelho
 ```
 
 O aparelho precisa estar desbloqueado. A primeira execução compila a API e
-faz o build Gradle, e leva de 10 a 15 min.
+faz o build Gradle, e leva de 10 min a mais de 1 hora, conforme a rede.
 
 ## Estrutura
 

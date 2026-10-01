@@ -36,6 +36,8 @@ class PickedAttachmentTile extends StatelessWidget {
               child: file.isImage
                   ? Image.memory(
                       file.bytes,
+                      cacheWidth: (40 * MediaQuery.devicePixelRatioOf(context))
+                          .round(),
                       fit: BoxFit.cover,
                       errorBuilder: (_, _, _) =>
                           const Icon(Icons.image_outlined),

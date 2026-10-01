@@ -332,4 +332,20 @@ void main() {
     expect(callsOf('detail'), 2);
     services.notificationCenter.stop();
   });
+
+  testWidgets('opening the ticket marks its notifications as read', (
+    tester,
+  ) async {
+    final notifications = FakeNotificationRepository()
+      ..unreadResponses.add([testNotification(id: 31, ticketId: 7)]);
+    services = testServices(tickets: tickets, notifications: notifications);
+    await services.notificationCenter.start();
+    await tester.pump();
+
+    await pump(tester);
+    await tester.pump();
+
+    expect(notifications.calls, contains('read 31'));
+    services.notificationCenter.stop();
+  });
 }

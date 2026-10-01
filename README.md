@@ -169,8 +169,11 @@ adb install -r ../mobile-flutter/dist/app-debug.apk
 adb reverse tcp:8080 tcp:8080                    # localhost:8080 do celular -> API desta máquina
 ```
 
-A primeira geração do APK baixa o Gradle, o NDK e o SDK do Android (cerca de
-10 min). Refaça o `adb reverse` sempre que reconectar o cabo.
+A primeira geração do APK baixa o Gradle, o NDK e o SDK do Android e leva de
+10 min a mais de 1 hora, conforme a rede; as seguintes levam alguns minutos.
+Refaça o `adb reverse` sempre que reconectar o cabo. O e2e desinstala o app de
+teste e remove as regras do `adb reverse`: depois dele, repita o `adb install -r`
+e o `adb reverse tcp:8080 tcp:8080`.
 
 No app, `usuario@edu.com` (senha `usuario123`) abre e acompanha tickets:
 

@@ -27,6 +27,7 @@ AppServices testServices({
   http.Client? authClient,
   List<int?>? openedFromNotification,
   Duration notificationInterval = const Duration(seconds: 30),
+  DateTime Function()? clock,
 }) {
   final ticketRepository = tickets ?? FakeTicketRepository();
   final notificationRepository = notifications ?? FakeNotificationRepository();
@@ -53,7 +54,7 @@ AppServices testServices({
     picker: picker ?? FakeAttachmentPicker(),
     opener: opener ?? FakeFileOpener(),
     attachments: AttachmentCache(ticketRepository.download),
-    clock: () => testNow,
+    clock: clock ?? () => testNow,
   );
 }
 
@@ -69,6 +70,7 @@ Future<void> pumpScreen(
       services: services,
       child: MaterialApp(
         navigatorKey: services.navigatorKey,
+        navigatorObservers: [services.routeObserver],
         home: screen,
         onGenerateRoute: (settings) => MaterialPageRoute<void>(
           settings: settings,

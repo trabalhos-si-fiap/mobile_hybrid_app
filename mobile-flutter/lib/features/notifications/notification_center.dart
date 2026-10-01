@@ -35,6 +35,7 @@ class NotificationCenter extends ChangeNotifier {
   bool _notifierReady = false;
   int? _baseline;
   int _unreadCount = 0;
+  List<AppNotification> _unread = const [];
 
   /// Ticket aberto na tela de detalhe: novidades dele não viram notificação
   /// local, porque a tela já recarrega.
@@ -70,6 +71,7 @@ class NotificationCenter extends ChangeNotifier {
     _poller?.dispose();
     _poller = null;
     _baseline = null;
+    _unread = const [];
     currentTicketId = null;
     if (_unreadCount != 0) {
       _unreadCount = 0;
@@ -80,6 +82,23 @@ class NotificationCenter extends ChangeNotifier {
 
   Future<void> refreshNow() async => _poller?.refresh();
 
+  /// Abrir o ticket já é ler as novidades dele: limpa as não lidas do sino.
+  Future<void> markTicketRead(int ticketId) async {
+    final pending = [
+      for (final notification in _unread)
+        if (notification.ticketId == ticketId) notification,
+    ];
+    if (pending.isEmpty) return;
+    for (final notification in pending) {
+      try {
+        await _repository.markRead(notification.id);
+      } on ApiException {
+        // A próxima consulta corrige o contador.
+      }
+    }
+    await refreshNow();
+  }
+
   @override
   void dispose() {
     stop();
@@ -88,6 +107,7 @@ class NotificationCenter extends ChangeNotifier {
   }
 
   void _onData(List<AppNotification> unread) {
+    _unread = unread;
     _unreadCount = unread.length;
     final newest = unread.fold<int>(0, (max, n) => n.id > max ? n.id : max);
     final baseline = _baseline;
@@ -146,7 +166,9 @@ class NotificationCenter extends ChangeNotifier {
     }
     final parts = payload.split(':');
     final notificationId = int.tryParse(parts.first);
-    _onOpen(parts.length > 1 ? int.tryParse(parts[1]) : null);
+    final ticketId = parts.length > 1 ? int.tryParse(parts[1]) : null;
+    // O ticket já está na tela: só marca como lida.
+    if (ticketId == null || ticketId != currentTicketId) _onOpen(ticketId);
     if (notificationId == null) return;
     try {
       await _repository.markRead(notificationId);

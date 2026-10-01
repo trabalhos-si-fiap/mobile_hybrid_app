@@ -230,6 +230,48 @@ void main() {
     });
   });
 
+  test('tapping the ticket already on screen does not open it again', () {
+    fakeAsync((async) {
+      final h = _Harness();
+      h.center.start();
+      async.flushMicrotasks();
+      h.center.currentTicketId = 8;
+
+      h.notifier.onTap!('22:8');
+      async.flushMicrotasks();
+
+      expect(h.opened, isEmpty);
+      expect(h.repository.calls, contains('read 22'));
+      h.center.stop();
+    });
+  });
+
+  test("markTicketRead marks only that ticket's unread notifications", () {
+    fakeAsync((async) {
+      final h = _Harness();
+      h.repository.unreadResponses.add([
+        testNotification(id: 21, ticketId: 7),
+        testNotification(id: 22, ticketId: 8),
+        testNotification(id: 23, ticketId: 7),
+      ]);
+      h.center.start();
+      async.flushMicrotasks();
+
+      h.center.markTicketRead(7);
+      async.flushMicrotasks();
+
+      final reads = h.repository.calls.where((c) => c.startsWith('read'));
+      expect(reads, ['read 21', 'read 23']);
+      h.center.markTicketRead(99);
+      async.flushMicrotasks();
+      expect(
+        h.repository.calls.where((c) => c.startsWith('read')),
+        hasLength(2),
+      );
+      h.center.stop();
+    });
+  });
+
   test('tapping the summary opens the list', () {
     fakeAsync((async) {
       final h = _Harness();

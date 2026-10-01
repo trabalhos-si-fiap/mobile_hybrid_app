@@ -37,6 +37,38 @@ void main() {
     expect(tickets.calls.where((c) => c.startsWith('download')), hasLength(2));
   });
 
+  testWidgets('sessionExpired after a voluntary logout shows no notice', (
+    tester,
+  ) async {
+    final services = testServices();
+    final logins = <RouteSettings>[];
+    await tester.pumpWidget(
+      AppScope(
+        services: services,
+        child: MaterialApp(
+          navigatorKey: services.navigatorKey,
+          home: const Text('home'),
+          onGenerateRoute: (settings) {
+            if (settings.name == '/login') logins.add(settings);
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const Text('login'),
+            );
+          },
+        ),
+      ),
+    );
+    await services.startUserSession();
+    await services.logout();
+    await tester.pumpAndSettle();
+
+    services.sessionExpired();
+    await tester.pumpAndSettle();
+
+    expect(logins, hasLength(1));
+    expect(logins.single.arguments, isNull);
+  });
+
   testWidgets('sessionExpired goes to login with the notice argument', (
     tester,
   ) async {

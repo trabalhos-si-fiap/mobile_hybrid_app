@@ -20,8 +20,9 @@ class MyTicketsScreen extends StatefulWidget {
   State<MyTicketsScreen> createState() => _MyTicketsScreenState();
 }
 
-class _MyTicketsScreenState extends State<MyTicketsScreen> {
+class _MyTicketsScreenState extends State<MyTicketsScreen> with RouteAware {
   late final MyTicketsController _controller;
+  RouteObserver<ModalRoute<void>>? _observer;
 
   @override
   void initState() {
@@ -34,19 +35,28 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_observer != null) return;
+    final route = ModalRoute.of(context);
+    if (route == null) return;
+    _observer = AppScope.of(context).routeObserver..subscribe(this, route);
+  }
+
+  @override
+  void didPopNext() => unawaited(_controller.reload());
+
+  @override
   void dispose() {
+    _observer?.unsubscribe(this);
     _controller.dispose();
     super.dispose();
   }
 
-  Future<void> _go(String route) async {
-    await Navigator.of(context).pushNamed(route);
-    if (mounted) unawaited(_controller.reload());
-  }
+  void _go(String route) => unawaited(Navigator.of(context).pushNamed(route));
 
   @override
   Widget build(BuildContext context) {
-    final now = AppScope.of(context).clock();
     return Scaffold(
       appBar: AppBar(
         title: const Text('Meus tickets'),
@@ -61,6 +71,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
       body: ListenableBuilder(
         listenable: _controller,
         builder: (context, _) {
+          final now = AppScope.of(context).clock();
           final tickets = _controller.tickets;
           final loadError = _controller.loadError;
           return RefreshIndicator(
@@ -73,10 +84,17 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> {
                     message: 'Sem conexão. Tentando de novo…',
                     subtle: true,
                   ),
-                if (loadError != null)
+                if (loadError != null && _controller.forbidden)
+                  ErrorBanner(
+                    message: loadError,
+                    actionLabel: 'Sair',
+                    onRetry: () => unawaited(AppScope.of(context).logout()),
+                  )
+                else if (loadError != null)
                   ErrorBanner(message: loadError, onRetry: _controller.reload),
                 if (tickets == null && loadError == null) const _LoadingCards(),
-                if (tickets != null && tickets.isEmpty) const _EmptyState(),
+                if (tickets != null && tickets.isEmpty)
+                  _EmptyState(onOpen: () => _go('/tickets/new')),
                 for (final ticket in tickets ?? const <TicketSummary>[])
                   _TicketCard(
                     ticket: ticket,
@@ -183,26 +201,34 @@ class _LoadingCards extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState();
+  const _EmptyState({required this.onOpen});
+
+  final VoidCallback onOpen;
 
   @override
-  Widget build(BuildContext context) => const Padding(
-    padding: EdgeInsets.fromLTRB(32, 64, 32, 0),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(32, 64, 32, 0),
     child: Column(
       children: [
-        Icon(Icons.support_agent, size: 56, color: AppColors.textSecondary),
-        SizedBox(height: 16),
-        Text(
+        const Icon(
+          Icons.support_agent,
+          size: 56,
+          color: AppColors.textSecondary,
+        ),
+        const SizedBox(height: 16),
+        const Text(
           'Você ainda não abriu tickets',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
         ),
-        SizedBox(height: 8),
-        Text(
+        const SizedBox(height: 8),
+        const Text(
           'Toque em "Abrir ticket" para falar com o suporte.',
           textAlign: TextAlign.center,
           style: TextStyle(color: AppColors.textSecondary),
         ),
+        const SizedBox(height: 16),
+        FilledButton(onPressed: onOpen, child: const Text('Abrir ticket')),
       ],
     ),
   );

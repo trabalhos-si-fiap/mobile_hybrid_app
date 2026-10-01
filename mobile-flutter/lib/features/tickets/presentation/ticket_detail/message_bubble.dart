@@ -61,7 +61,10 @@ class MessageBubble extends StatelessWidget {
                   runSpacing: 6,
                   children: [
                     for (final attachment in message.attachments)
-                      AttachmentTile(attachment: attachment),
+                      AttachmentTile(
+                        key: ValueKey(attachment.id),
+                        attachment: attachment,
+                      ),
                   ],
                 ),
               ],
