@@ -84,7 +84,13 @@ segmento da conversa)`.
   estado vai para `CONFIRMACAO`, `current_faq_id` aponta para o item e, se a
   conversa ainda não tem segmento, ela recebe o segmento do item.
 - Sem resultado: `misses` sobe um. Na 1ª vez, o bot diz que não entendeu e
-  volta ao menu (`INICIO`). Na 2ª, passa para o atendente.
+  volta ao menu (`INICIO`), mantendo o segmento. Na 2ª, passa para o
+  atendente. `misses` conta a conversa inteira; um acerto não o zera.
+
+**"Outro assunto"** volta a `INICIO` e limpa o segmento da conversa.
+
+**Ordem dos segmentos no menu:** a do enum (`DEFEITO_APP`,
+`PROBLEMA_PEDIDO`, `FEEDBACK_SUGESTAO`).
 
 **Passagem.** O estado vai para `ENCAMINHAMENTO`, sem opções, e o turno traz
 `handoff` com:
@@ -125,9 +131,9 @@ Rótulos das opções: o `label` do segmento, a `question` do item do FAQ,
 | Tabela | Colunas |
 |---|---|
 | `chatbot_faq` | `id` (identity), `segment` (FK → `ticket_tipo_config`), `question` (200), `answer` (1000), `sort_order` (NUMBER(3)), `active` (BOOLEAN, padrão TRUE) |
-| `chatbot_faq_keywords` | `faq_id` (FK), `keyword` (40). PK `(faq_id, keyword)`. A palavra é gravada normalizada (minúsculas, sem acento) e como radical (`entreg`, `rastre`, `notific`) |
+| `chatbot_faq_keywords` | `faq_id` (FK), `keyword` (40). PK `(faq_id, keyword)`. A palavra é gravada normalizada (minúsculas, sem acento) e como radical (`entreg`, `rastre`, `notific`); um CHECK (`^[a-z0-9]+$`) exige uma palavra só |
 | `chatbot_conversations` | `id`, `user_id` (FK → `admin_users`), `segment` (FK, nulo), `state` (CHECK com os 6 estados, padrão `INICIO`), `misses` (padrão 0), `current_faq_id` (FK, nulo), `ticket_id` (FK → `tickets`, nulo, UNIQUE), `created_at`, `updated_at`, `finished_at` |
-| `chatbot_messages` | `id`, `conversation_id` (FK), `sender` (CHECK `BOT`/`USER`), `body` (1000), `faq_id` (FK, nulo), `created_at` |
+| `chatbot_messages` | `id`, `conversation_id` (FK), `sender` (CHECK `BOT`/`USER`), `body` (1000), `option_id` (40, nulo: a opção escolhida, que separa as escolhas dos textos digitados), `faq_id` (FK, nulo), `created_at` |
 
 Índices: `chatbot_conversations (user_id)`, `chatbot_messages
 (conversation_id, id)`, `chatbot_faq (segment, sort_order)`.
@@ -158,9 +164,12 @@ Texto nulo ou vazio devolve nulo.
   - Feedback / Sugestões: como enviar uma sugestão, onde acompanhar o que
     sugeri, a equipe responde as sugestões?, como avaliar o app.
 - Um ticket de demonstração do `usuario@edu.com`, canal `CHATBOT_IA`,
-  segmento Problemas com pedido, status `ABERTO` e sem atendente (é roteado
-  quando alguém da skill fica Online), com a conversa ligada (estado
-  `ENCAMINHADA`, 6 a 8 mensagens).
+  segmento Problemas com pedido, no estado em que o `PR_ROTEAR_TICKET` deixa
+  um ticket aberto sem ninguém Online: `EM_FILA`, sem atendente, com SLA e os
+  eventos `ABERTO` e `ROTEADO`. Ele aparece na fila da skill e é roteado
+  quando alguém dela fica Online. A conversa ligada fica `ENCAMINHADA`, com 8
+  mensagens. (`ABERTO` não serve: nem a presença nem o job roteiam esse
+  estado, e a fila do console não o mostra.)
 
 ## API
 
@@ -216,7 +225,7 @@ dois envios simultâneos não se atropelarem.
 Sem o campo, o ticket nasce `APP`, como hoje.
 
 **`GET /tickets/{id}/chatbot-conversation`** →
-`{"conversationId", "startedAt", "messages": [{"sender", "body", "createdAt"}]}`.
+`{"conversationId", "startedAt", "messages": [{"id", "sender", "body", "createdAt"}]}`.
 Visibilidade igual à do detalhe do ticket (`access.visibleTicket`). 404 se o
 ticket não veio do bot.
 
@@ -237,7 +246,8 @@ ticket não veio do bot.
 
 - Em Meus tickets, o botão flutuante "Abrir ticket" vira "Preciso de ajuda"
   (ícone `support_agent`, key `need-help-button`) e abre `/assistant`. O
-  botão do estado vazio também abre `/assistant`.
+  estado vazio diz 'Toque em "Preciso de ajuda" para falar com o suporte.', e
+  o botão dele, "Preciso de ajuda", também abre `/assistant`.
 - `/tickets/new` continua existindo, mas só é aberto pelo bot.
 
 ### Tela do assistente (`/assistant`)
@@ -246,8 +256,8 @@ ticket não veio do bot.
 - Balões: os do bot à esquerda, com o rótulo "Mentor Edu"; os do usuário à
   direita. Mesmo estilo do chat do ticket.
 - Respostas rápidas: as opções do último turno, como botões abaixo da última
-  mensagem do bot (key `assistant-option-<id>`). Tocar envia o `optionId`; as
-  opções somem até chegar o próximo turno.
+  mensagem do bot (key `assistant-option-<id>`). Tocar envia o `optionId`. As
+  opções somem durante qualquer envio e voltam se ele falhar.
 - Campo "Digite sua dúvida" (key `assistant-input`, até 500 caracteres) e
   botão enviar (key `assistant-send`, com tooltip).
 - Durante o envio: "Mentor Edu está digitando…", e o campo e as opções ficam
@@ -266,6 +276,9 @@ ticket não veio do bot.
   segmento, descrição). Com ele, o segmento vem marcado e a descrição
   preenchida, ambos editáveis, e aparece o aviso "Sua conversa com o Mentor
   Edu vai junto com o ticket.".
+- A passagem pode chegar sem segmento e com a descrição vazia (por exemplo,
+  "Falar com atendente" logo na saudação). O formulário continua exigindo os
+  dois antes do envio, como hoje.
 - O envio inclui `chatbotConversationId`.
 - 409 na abertura com a conversa: faixa "Não foi possível ligar a conversa.
   Envie de novo para abrir o ticket sem ela."; o vínculo é solto e o aviso
@@ -276,8 +289,12 @@ ticket não veio do bot.
 - Falha ao iniciar a conversa: estado de erro com "Tentar de novo".
 - Falha ao enviar: faixa com "Tentar de novo", que reenvia o mesmo texto ou
   opção; o texto digitado não se perde.
-- 409 numa mensagem (conversa encerrada em outra tela): faixa "Esta conversa
-  foi encerrada." e o botão "Voltar aos meus tickets".
+- 409 ou 404 numa mensagem (conversa encerrada ou inexistente): faixa "Esta
+  conversa foi encerrada." e o botão "Voltar aos meus tickets".
+- Reenvio depois de uma resposta perdida (a API processou o turno, mas a
+  resposta não chegou): o "Tentar de novo" de uma opção volta 400 e o de um
+  texto vira uma segunda mensagem. Aceito no nível 0; o contrato não tem
+  chave de idempotência.
 - 401: o fluxo de sessão expirada que já existe.
 
 ### Código
@@ -296,8 +313,9 @@ parâmetro opcional da conversa.
 
 ## Console web
 
-- No painel esquerdo do console, o bloco "Conversa com o chatbot" entra entre
-  o segmento e a descrição. Só aparece com canal `CHATBOT_IA`.
+- No painel esquerdo do console, o bloco "Conversa com o chatbot" entra logo
+  antes da descrição (depois do prazo e do alerta de engenharia). Só aparece
+  com canal `CHATBOT_IA`. Enquanto carrega, mostra "Carregando conversa...".
 - Carrega `GET /tickets/{id}/chatbot-conversation` uma vez ao abrir o ticket
   (a transcrição não muda depois da passagem).
 - Lista as falas com o remetente ("Mentor Edu" ou o nome do usuário) e a hora,
