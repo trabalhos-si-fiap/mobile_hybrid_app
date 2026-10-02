@@ -148,16 +148,20 @@ void main() {
     expect(find.text('Atualizado há 15 min'), findsNWidgets(3));
   });
 
-  testWidgets('the empty state has a button that opens a ticket', (
+  testWidgets('the empty state has a button that opens the assistant', (
     tester,
   ) async {
     tickets.mineResult = const [];
     await pumpScreen(tester, services, const MyTicketsScreen());
 
-    await tester.tap(find.widgetWithText(FilledButton, 'Abrir ticket'));
+    expect(
+      find.text('Toque em "Preciso de ajuda" para falar com o suporte.'),
+      findsOneWidget,
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Preciso de ajuda'));
     await tester.pumpAndSettle();
 
-    expect(find.text('route:/tickets/new'), findsOneWidget);
+    expect(find.text('route:/assistant'), findsOneWidget);
   });
 
   testWidgets('a forbidden account is offered the logout, not a retry', (
@@ -175,13 +179,22 @@ void main() {
     expect(find.text('route:/login'), findsOneWidget);
   });
 
-  testWidgets('the button opens the new ticket screen', (tester) async {
+  testWidgets('the help button opens the assistant', (tester) async {
     await pumpScreen(tester, services, const MyTicketsScreen());
 
-    await tester.tap(find.byKey(const Key('new-ticket-button')));
+    final button = find.byKey(const Key('need-help-button'));
+    expect(
+      find.descendant(of: button, matching: find.text('Preciso de ajuda')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: button, matching: find.byIcon(Icons.support_agent)),
+      findsOneWidget,
+    );
+    await tester.tap(button);
     await tester.pumpAndSettle();
 
-    expect(find.text('route:/tickets/new'), findsOneWidget);
+    expect(find.text('route:/assistant'), findsOneWidget);
   });
 
   testWidgets('reloads when the notification center reports news', (

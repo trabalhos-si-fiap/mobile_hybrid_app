@@ -63,10 +63,10 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with RouteAware {
         actions: const [BellButton(), UserMenuButton()],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        key: const Key('new-ticket-button'),
-        onPressed: () => _go('/tickets/new'),
-        icon: const Icon(Icons.add),
-        label: const Text('Abrir ticket'),
+        key: const Key('need-help-button'),
+        onPressed: () => _go('/assistant'),
+        icon: const Icon(Icons.support_agent),
+        label: const Text('Preciso de ajuda'),
       ),
       body: ListenableBuilder(
         listenable: _controller,
@@ -94,7 +94,7 @@ class _MyTicketsScreenState extends State<MyTicketsScreen> with RouteAware {
                   ErrorBanner(message: loadError, onRetry: _controller.reload),
                 if (tickets == null && loadError == null) const _LoadingCards(),
                 if (tickets != null && tickets.isEmpty)
-                  _EmptyState(onOpen: () => _go('/tickets/new')),
+                  _EmptyState(onOpen: () => _go('/assistant')),
                 for (final ticket in tickets ?? const <TicketSummary>[])
                   _TicketCard(
                     ticket: ticket,
@@ -223,12 +223,12 @@ class _EmptyState extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Toque em "Abrir ticket" para falar com o suporte.',
+          'Toque em "Preciso de ajuda" para falar com o suporte.',
           textAlign: TextAlign.center,
           style: TextStyle(color: AppColors.textSecondary),
         ),
         const SizedBox(height: 16),
-        FilledButton(onPressed: onOpen, child: const Text('Abrir ticket')),
+        FilledButton(onPressed: onOpen, child: const Text('Preciso de ajuda')),
       ],
     ),
   );

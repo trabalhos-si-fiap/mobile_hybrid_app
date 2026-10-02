@@ -61,12 +61,14 @@ AppServices testServices({
 }
 
 /// Monta [screen] dentro de AppScope e MaterialApp. As outras rotas viram o
-/// texto `route:<nome>`, para conferir navegação.
+/// texto `route:<nome>`, para conferir navegação; [pushed] recebe as
+/// RouteSettings delas (nome e argumentos).
 Future<void> pumpScreen(
   WidgetTester tester,
   AppServices services,
-  Widget screen,
-) async {
+  Widget screen, {
+  List<RouteSettings>? pushed,
+}) async {
   await tester.pumpWidget(
     AppScope(
       services: services,
@@ -74,10 +76,13 @@ Future<void> pumpScreen(
         navigatorKey: services.navigatorKey,
         navigatorObservers: [services.routeObserver],
         home: screen,
-        onGenerateRoute: (settings) => MaterialPageRoute<void>(
-          settings: settings,
-          builder: (_) => Scaffold(body: Text('route:${settings.name}')),
-        ),
+        onGenerateRoute: (settings) {
+          pushed?.add(settings);
+          return MaterialPageRoute<void>(
+            settings: settings,
+            builder: (_) => Scaffold(body: Text('route:${settings.name}')),
+          );
+        },
       ),
     ),
   );

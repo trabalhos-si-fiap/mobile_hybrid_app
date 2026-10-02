@@ -8,6 +8,7 @@ import 'features/auth/presentation/forgot_password_screen.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/auth/presentation/register_screen.dart';
 import 'features/auth/presentation/reset_password_screen.dart';
+import 'features/chatbot/presentation/assistant_screen.dart';
 import 'features/notifications/presentation/notifications_screen.dart';
 import 'features/tickets/presentation/my_tickets/my_tickets_screen.dart';
 import 'features/tickets/presentation/new_ticket/new_ticket_screen.dart';
@@ -49,6 +50,7 @@ class EduApp extends StatelessWidget {
         '/home': (_) => const AdminDashboardScreen(),
         '/tickets': (_) => const MyTicketsScreen(),
         '/tickets/new': (_) => const NewTicketScreen(),
+        '/assistant': (_) => const AssistantScreen(),
         '/notifications': (_) => const NotificationsScreen(),
       },
       onGenerateRoute: onGenerateRoute,
