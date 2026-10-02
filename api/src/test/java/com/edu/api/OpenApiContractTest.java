@@ -38,7 +38,8 @@ class OpenApiContractTest {
                 "/tickets/{ticketId}/assume", "/tickets/{ticketId}/resolve", "/tickets/{ticketId}/transfer",
                 "/tickets/{ticketId}/engineering-alert",
                 "/employees/me", "/employees/me/presence",
-                "/notifications", "/notifications/{notificationId}/read", "/notifications/read-all");
+                "/notifications", "/notifications/{notificationId}/read", "/notifications/read-all",
+                "/chatbot/conversations", "/chatbot/conversations/{conversationId}/messages");
 
         Matcher refs = Pattern.compile("\\$ref: '#/components/(\\w+)/(\\w+)'").matcher(raw);
         while (refs.find()) {

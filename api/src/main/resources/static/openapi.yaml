@@ -32,6 +32,7 @@ tags:
   - name: Tickets
   - name: Atendimento
   - name: Notifications
+  - name: Chatbot
 
 paths:
 
@@ -921,6 +922,50 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /chatbot/conversations:
+    post:
+      tags: [Chatbot]
+      summary: Inicia uma conversa com o Mentor Edu (chatbot nível 0); qualquer usuário autenticado
+      operationId: startChatbotConversation
+      responses:
+        '201':
+          description: Saudação do bot e as opções do menu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatbotTurnResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /chatbot/conversations/{conversationId}/messages:
+    parameters:
+      - $ref: '#/components/parameters/ConversationId'
+    post:
+      tags: [Chatbot]
+      summary: Envia um texto ou uma opção; devolve a mensagem do usuário, as respostas do bot e as novas opções
+      operationId: replyToChatbot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatbotReplyRequest'
+      responses:
+        '200':
+          description: Turno do bot; na passagem para o atendente, state ENCAMINHAMENTO, sem opções e com handoff
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatbotTurnResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
 components:
 
   securitySchemes:
@@ -937,6 +982,14 @@ components:
 
     TicketId:
       name: ticketId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+
+    ConversationId:
+      name: conversationId
       in: path
       required: true
       schema:
@@ -1009,7 +1062,7 @@ components:
             $ref: '#/components/schemas/ErrorResponse'
 
     Conflict:
-      description: Transição de estado inválida para o ticket
+      description: Transição de estado inválida para o ticket ou a conversa do chatbot
       content:
         application/json:
           schema:
@@ -1918,3 +1971,79 @@ components:
         createdAt:
           type: string
           format: date-time
+
+    ChatbotState:
+      type: string
+      description: INICIO, SEGMENTO e CONFIRMACAO aceitam mensagens; ENCAMINHAMENTO espera o ticket; RESOLVIDA e ENCAMINHADA são finais
+      enum: [INICIO, SEGMENTO, CONFIRMACAO, ENCAMINHAMENTO, RESOLVIDA, ENCAMINHADA]
+
+    ChatbotMessageResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        sender:
+          type: string
+          enum: [BOT, USER]
+        body:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    ChatbotOptionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: segment:<SEGMENTO>, faq:<id>, menu, human, resolved ou not_resolved
+          example: segment:PROBLEMA_PEDIDO
+        label:
+          type: string
+          example: Problemas com pedido
+
+    ChatbotHandoffResponse:
+      type: object
+      nullable: true
+      description: Rascunho do ticket na passagem para o atendente (só no estado ENCAMINHAMENTO)
+      properties:
+        segment:
+          type: string
+          enum: [DEFEITO_APP, PROBLEMA_PEDIDO, FEEDBACK_SUGESTAO]
+          nullable: true
+        description:
+          type: string
+          maxLength: 2000
+          description: 'Os textos digitados, um por linha; sem nenhum, "Dúvida: " e a pergunta do FAQ; ou vazio'
+
+    ChatbotTurnResponse:
+      type: object
+      properties:
+        conversationId:
+          type: integer
+          format: int64
+        state:
+          $ref: '#/components/schemas/ChatbotState'
+        messages:
+          type: array
+          description: A mensagem do usuário (ausente no início da conversa) seguida das respostas do bot
+          items:
+            $ref: '#/components/schemas/ChatbotMessageResponse'
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatbotOptionResponse'
+        handoff:
+          $ref: '#/components/schemas/ChatbotHandoffResponse'
+
+    ChatbotReplyRequest:
+      type: object
+      description: Exatamente um dos dois campos
+      properties:
+        text:
+          type: string
+          maxLength: 500
+        optionId:
+          type: string
+          example: human
