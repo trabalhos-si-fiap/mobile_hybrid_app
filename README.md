@@ -21,6 +21,7 @@ quanto pelo app mobile via HTTP/JSON.
 * ⚠️ Ocorrências
 * 📈 Dashboard (métricas agregadas)
 * 🎫 Tickets omnichannel (roteamento por skill, SLA e escalonamento em PL/SQL)
+* 🤖 Chatbot nível 0 (Mentor Edu: dúvidas comuns por menu ou texto livre, com passagem para ticket)
 
 ## 📁 Estrutura do repositório
 
@@ -202,6 +203,51 @@ mobile-flutter/e2e/run.sh                 # com mais de um aparelho: DEVICE=<ser
 ```
 
 Detalhes em [`mobile-flutter/README.md`](./mobile-flutter/README.md).
+
+## 🤖 Chatbot nível 0
+
+O atendimento no app começa pelo **Mentor Edu**, um bot de regras que
+responde às dúvidas comuns antes de envolver um atendente.
+
+1. Em "Meus tickets", o usuário toca em **Preciso de ajuda**.
+2. O bot oferece os três segmentos (Defeito no App, Problemas com pedido,
+   Feedback / Sugestões) e "Falar com atendente". Cada segmento mostra as
+   perguntas mais comuns do FAQ; o usuário também pode digitar a dúvida.
+3. Depois de cada resposta, o bot pergunta se resolveu. "Resolveu" encerra a
+   conversa no nível 0.
+4. "Não resolveu", "Falar com atendente" ou duas mensagens que o bot não
+   entende levam ao formulário **Abrir ticket**, com o segmento e a
+   descrição já preenchidos a partir da conversa. O usuário revisa, anexa
+   evidências e envia.
+5. O ticket nasce com o canal `CHATBOT_IA`, ligado à conversa. No console
+   web, o painel do ticket mostra o bloco **Conversa com o chatbot**, para o
+   atendente receber o contexto.
+
+**Onde fica cada parte:**
+
+| Parte | Onde |
+|---|---|
+| FAQ e conversas | tabelas `chatbot_faq`, `chatbot_faq_keywords`, `chatbot_conversations` e `chatbot_messages` (`V5__chatbot.sql`; FAQ de demonstração em `V6__seed_chatbot.sql`) |
+| Casamento do texto livre | function PL/SQL `FN_CHATBOT_RESPOSTA` (`db/plsql/R__fn_chatbot_resposta.sql`): normaliza o texto (minúsculas, sem acento) e escolhe o item do FAQ com mais palavras-chave em comum |
+| Fluxo da conversa | `ChatbotService` na API; `POST /chatbot/conversations` e `POST /chatbot/conversations/{id}/messages` |
+| Passagem para o ticket | campo `chatbotConversationId` em `POST /tickets`; transcrição em `GET /tickets/{id}/chatbot-conversation` |
+
+**Por que não o chatbot do repositório `edu`.** O requisito pede para reusar
+a estrutura de chatbot do Edu. O `chatbot-service` de lá (FastAPI, RAG com
+FAISS e LLM do Groq) não foi reusado, por quatro motivos:
+
+* precisa de uma chave paga do Groq e de rede, e baixa o modelo de
+  embeddings do HuggingFace na primeira subida; sem isso responde 503, e a
+  demonstração precisa rodar offline no Docker;
+* não guarda a conversa nem tem passagem para um humano: o "encaminhar para
+  o suporte" é só uma frase no prompt, e o console precisa da transcrição;
+* é outra stack (Python e Postgres), e este projeto é Java e Oracle;
+* com regras no Oracle, o casamento do texto vira PL/SQL, que é requisito da
+  Fase 6.
+
+Do `edu` foram reusados o formato da conversa em balões, o nome do
+assistente (Mentor Edu) e as dúvidas da base de conhecimento dele (prazo de
+entrega, trocas, rastreio), como semente do FAQ.
 
 ## 📚 Documentação da API
 

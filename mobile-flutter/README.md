@@ -8,8 +8,12 @@ App mobile do Edu Admin.
 
 ## O que o usuário faz
 
-* **Abre um ticket:** escolhe o tipo do problema, descreve e anexa até 5
-  arquivos (câmera, galeria ou PDF; PNG, JPEG, WEBP ou PDF, até 5 MB cada).
+* **Pede ajuda ao Mentor Edu:** o botão "Preciso de ajuda" abre o assistente,
+  que responde às dúvidas comuns por menu ou texto livre. Se não resolver,
+  leva ao formulário de ticket já preenchido.
+* **Abre um ticket** a partir do assistente: confere o tipo do problema e a
+  descrição e anexa até 5 arquivos (câmera, galeria ou PDF; PNG, JPEG, WEBP
+  ou PDF, até 5 MB cada). A conversa com o assistente vai junto.
 * **Acompanha os tickets** em "Meus tickets", com o status e o atendente. Os
   resolvidos, que esperam a confirmação, aparecem primeiro.
 * **Conversa com o atendente**, com anexos. A conversa atualiza sozinha a
@@ -98,7 +102,8 @@ lib/
 ├── core/                    # AppServices, cliente da API, polling, sessão, anexos, widgets
 └── features/
     ├── auth/                # login (rota por papel)
-    ├── tickets/             # Meus tickets, Abrir ticket, Detalhe
+    ├── chatbot/             # assistente Mentor Edu (conversa e passagem para o ticket)
+    ├── tickets/             # Meus tickets, Abrir ticket (pelo assistente), Detalhe
     ├── notifications/       # sino, tela, NotificationCenter e notificação local
     └── admin/               # dashboard administrativo (staff)
 test/                        # espelha lib/; falsos em test/support
