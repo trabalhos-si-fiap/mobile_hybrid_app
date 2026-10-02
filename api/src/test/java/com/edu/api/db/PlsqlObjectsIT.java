@@ -33,6 +33,6 @@ class PlsqlObjectsIT extends OracleIntegrationTest {
 
         assertThat(invalid).isEmpty();
         assertThat(objects).contains("FN_PROXIMO_ATENDENTE", "FN_STATUS_SLA_TICKET", "PR_ROTEAR_TICKET",
-                "PR_ESCALAR_TICKET_CRITICO", "FN_CHATBOT_RESPOSTA");
+                "PR_ESCALAR_TICKET_CRITICO", "FN_CHATBOT_RESPOSTA", "FN_CALC_TAXA_VARIACAO");
     }
 }
