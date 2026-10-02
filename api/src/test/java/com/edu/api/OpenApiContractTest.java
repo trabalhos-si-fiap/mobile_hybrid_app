@@ -31,6 +31,7 @@ class OpenApiContractTest {
         Map<String, Object> components = (Map<String, Object>) spec.get("components");
 
         assertThat(paths).containsKeys(
+                "/dashboard/omnichannel",
                 "/segments", "/tickets", "/tickets/mine", "/tickets/queue",
                 "/tickets/{ticketId}", "/tickets/{ticketId}/messages", "/tickets/{ticketId}/chatbot-conversation",
                 "/tickets/{ticketId}/attachments/{attachmentId}",

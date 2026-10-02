@@ -79,6 +79,32 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /dashboard/omnichannel:
+    get:
+      tags: [Dashboard]
+      summary: Resumo do atendimento omnichannel (PR_RESUMO_DASHBOARD)
+      description: |
+        Indicadores de tickets nos últimos N dias comparados aos N dias anteriores
+        (variação pela FN_CALC_TAXA_VARIACAO), os mesmos por segmento e as anomalias
+        de volume das últimas 24 horas (z-score contra as janelas de 24 horas dos 28
+        dias anteriores). Só EMPLOYEE e ADMIN.
+      operationId: getOmnichannelDashboard
+      parameters:
+        - $ref: '#/components/parameters/PeriodDays'
+      responses:
+        '200':
+          description: Resumo do atendimento
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OmnichannelDashboardResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
   /products:
     get:
       tags: [Products]
@@ -1055,6 +1081,15 @@ components:
         maximum: 365
         default: 30
 
+    PeriodDays:
+      name: days
+      in: query
+      description: Tamanho do período, em dias
+      schema:
+        type: integer
+        enum: [7, 30, 90]
+        default: 7
+
     ProductId:
       name: productId
       in: path
@@ -1317,6 +1352,137 @@ components:
           format: date-time
         status:
           $ref: '#/components/schemas/OccurrenceStatus'
+
+    MetricComparison:
+      type: object
+      description: Valor no período, no período anterior e a variação percentual (FN_CALC_TAXA_VARIACAO)
+      properties:
+        current:
+          type: number
+          nullable: true
+          example: 31
+        previous:
+          type: number
+          nullable: true
+          example: 24
+        variation:
+          type: number
+          nullable: true
+          description: Nula quando o período anterior é 0 ou não tem valor
+          example: 29.2
+
+    ChannelComparison:
+      type: object
+      properties:
+        app:
+          $ref: '#/components/schemas/MetricComparison'
+        chatbot:
+          $ref: '#/components/schemas/MetricComparison'
+
+    OmnichannelKpis:
+      type: object
+      properties:
+        opened:
+          $ref: '#/components/schemas/MetricComparison'
+        resolved:
+          $ref: '#/components/schemas/MetricComparison'
+        backlog:
+          type: integer
+          description: Tickets não resolvidos agora (foto do momento, sem comparação)
+          example: 6
+        slaMetPercentage:
+          $ref: '#/components/schemas/MetricComparison'
+        escalated:
+          $ref: '#/components/schemas/MetricComparison'
+        averageMinutesToAssume:
+          $ref: '#/components/schemas/MetricComparison'
+        averageHoursToResolve:
+          $ref: '#/components/schemas/MetricComparison'
+        openedByChannel:
+          $ref: '#/components/schemas/ChannelComparison'
+
+    SegmentSummary:
+      type: object
+      properties:
+        segment:
+          $ref: '#/components/schemas/Segment'
+        label:
+          type: string
+          example: Problemas com pedido
+        opened:
+          $ref: '#/components/schemas/MetricComparison'
+        resolved:
+          $ref: '#/components/schemas/MetricComparison'
+        slaMetPercentage:
+          $ref: '#/components/schemas/MetricComparison'
+        backlog:
+          type: integer
+          example: 2
+
+    SegmentAnomaly:
+      type: object
+      properties:
+        segment:
+          $ref: '#/components/schemas/Segment'
+        label:
+          type: string
+          example: Problemas com pedido
+        last24h:
+          type: integer
+          description: Tickets abertos nas últimas 24 horas
+          example: 12
+        mean:
+          type: number
+          nullable: true
+          example: 3.4
+        standardDeviation:
+          type: number
+          nullable: true
+          example: 1.1
+        zScore:
+          type: number
+          nullable: true
+          example: 7.82
+        status:
+          type: string
+          enum: [NORMAL, ANOMALIA, SEM_HISTORICO]
+        direction:
+          type: string
+          enum: [PICO, QUEDA]
+          nullable: true
+        windows:
+          type: integer
+          description: Janelas de 24 horas de histórico usadas (SEM_HISTORICO abaixo de 7)
+          example: 28
+
+    OmnichannelDashboardResponse:
+      type: object
+      properties:
+        days:
+          type: integer
+          enum: [7, 30, 90]
+        periodStart:
+          type: string
+          format: date-time
+        periodEnd:
+          type: string
+          format: date-time
+        kpis:
+          $ref: '#/components/schemas/OmnichannelKpis'
+        segments:
+          type: array
+          items:
+            $ref: '#/components/schemas/SegmentSummary'
+        anomalies:
+          type: array
+          items:
+            $ref: '#/components/schemas/SegmentAnomaly'
+        highlights:
+          type: array
+          items:
+            type: string
+          example:
+            - 'Pico de tickets em Problemas com pedido: 12 nas últimas 24h, contra média de 3,4.'
 
     CreateProductRequest:
       type: object

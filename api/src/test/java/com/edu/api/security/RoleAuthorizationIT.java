@@ -48,4 +48,17 @@ class RoleAuthorizationIT extends OracleIntegrationTest {
         mockMvc.perform(get("/products").header(AUTHORIZATION, bearer("ADMIN")))
                 .andExpect(status().isOk());
     }
+
+    @Test
+    void userIsForbiddenOnTheAttendanceDashboard() throws Exception {
+        mockMvc.perform(get("/dashboard/omnichannel").header(AUTHORIZATION, bearer("USER")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("FORBIDDEN"));
+    }
+
+    @Test
+    void theAttendanceDashboardNeedsAToken() throws Exception {
+        mockMvc.perform(get("/dashboard/omnichannel"))
+                .andExpect(status().isUnauthorized());
+    }
 }
