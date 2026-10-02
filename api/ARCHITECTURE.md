@@ -50,6 +50,11 @@ Regras de versionamento:
   `V__` pendentes, inclusive o seed; por isso o seed não pode depender de
   objetos PL/SQL.
 
+O modelo de dados (MER, DER, dicionário e documentação PL/SQL) está em
+[`docs/banco-de-dados/`](../docs/banco-de-dados/README.md). Uma migration
+nova também atualiza o `ddl-consolidado.sql` de lá, conferido por
+`docs/banco-de-dados/conferir-ddl.sh`.
+
 ## Tickets omnichannel
 
 ```text
@@ -71,6 +76,7 @@ console assume ◄── notificação ◄──────────┘
 | `FN_STATUS_SLA_TICKET` | `NO_PRAZO`, `EM_RISCO`, `ESTOURADO`, `CUMPRIDO` ou `VIOLADO` |
 | `PR_ROTEAR_TICKET` | Aplica a matriz de triagem e atribui o ticket |
 | `PR_ESCALAR_TICKET_CRITICO` | Sobe a prioridade e reatribui tickets com SLA estourado |
+| `FN_CHATBOT_RESPOSTA` | Casa o texto livre do usuário com o FAQ do chatbot pelas palavras-chave |
 | `FN_CALC_TAXA_VARIACAO` | Variação percentual entre o período atual e o anterior (dashboard) |
 | `PR_RESUMO_DASHBOARD` | Indicadores, segmentos e anomalias do dashboard do atendimento, em três cursores |
 
@@ -86,6 +92,14 @@ Numeração Flyway: a próxima versão é o maior `V` entre `migration/` e
 - `products`, `inventories` e `inventory_adjustments`
 - `carriers` e `carrier_occurrences`
 - `admin_users`
+- Tickets: `skills`, `employees`, `employee_skills`, `ticket_tipo_config`,
+  `tickets`, `ticket_messages`, `ticket_attachments`, `ticket_events` e
+  `notifications`
+- Chatbot: `chatbot_faq`, `chatbot_faq_keywords`, `chatbot_conversations`
+  e `chatbot_messages`
+
+Detalhes de cada tabela no
+[dicionário de dados](../docs/banco-de-dados/dicionario-de-dados.md).
 
 ## Testes
 

@@ -29,7 +29,8 @@ quanto pelo app mobile via HTTP/JSON.
 .
 ├── api/             # Backend Spring Boot (regras de negócio, persistência, Swagger/OpenAPI)
 ├── web-angular/     # Painel administrativo web (dashboard, produtos/estoque, transportadoras, ocorrências)
-└── mobile-flutter/  # App mobile (tickets do usuário, notificações, dashboard admin)
+├── mobile-flutter/  # App mobile (tickets do usuário, notificações, dashboard admin)
+└── docs/            # Specs, planos, pendências e modelo de dados (MER, DER, dicionário, PL/SQL)
 ```
 
 Cada pasta tem seu próprio README com instruções específicas:
@@ -37,6 +38,7 @@ Cada pasta tem seu próprio README com instruções específicas:
 * [`api/ARCHITECTURE.md`](./api/ARCHITECTURE.md)
 * [`web-angular/README.md`](./web-angular/README.md)
 * [`mobile-flutter/README.md`](./mobile-flutter/README.md)
+* [`docs/banco-de-dados/README.md`](./docs/banco-de-dados/README.md): MER, DER, dicionário de dados e PL/SQL
 
 ## 🛠️ Tecnologias
 
