@@ -66,12 +66,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           appBar: AppBar(
             title: const Text('Notificações'),
             actions: [
-              TextButton(
+              IconButton(
                 key: const Key('mark-all-read'),
+                tooltip: 'Marcar todas como lidas',
+                icon: const Icon(Icons.done_all),
                 onPressed: _controller.hasUnread && !_controller.busy
                     ? _controller.markAllRead
                     : null,
-                child: const Text('Marcar todas como lidas'),
               ),
               const UserMenuButton(),
             ],

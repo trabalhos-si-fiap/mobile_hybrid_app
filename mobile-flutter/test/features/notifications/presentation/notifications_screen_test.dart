@@ -82,7 +82,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('route:'), findsNothing);
-    final markAll = tester.widget<TextButton>(
+    final markAll = tester.widget<IconButton>(
       find.byKey(const Key('mark-all-read')),
     );
     expect(markAll.onPressed, isNotNull, reason: 'o item voltou a não lido');
@@ -91,11 +91,12 @@ void main() {
   testWidgets('marks all as read', (tester) async {
     await pump(tester);
 
+    expect(find.byTooltip('Marcar todas como lidas'), findsOneWidget);
     await tester.tap(find.byKey(const Key('mark-all-read')));
     await tester.pump();
 
     expect(notifications.calls, contains('read all'));
-    final markAll = tester.widget<TextButton>(
+    final markAll = tester.widget<IconButton>(
       find.byKey(const Key('mark-all-read')),
     );
     expect(markAll.onPressed, isNull);
