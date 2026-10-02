@@ -10,12 +10,16 @@ import '../../../../core/widgets/attachment_source.dart';
 import '../../../../core/widgets/error_banner.dart';
 import '../../../../core/widgets/picked_attachment_tile.dart';
 import '../../../../core/widgets/user_menu_button.dart';
+import '../../domain/new_ticket_prefill.dart';
 import '../../domain/ticket_models.dart';
 import '../../domain/ticket_rules.dart';
 import 'new_ticket_controller.dart';
 
 class NewTicketScreen extends StatefulWidget {
-  const NewTicketScreen({super.key});
+  const NewTicketScreen({super.key, this.prefill});
+
+  /// Vem do Mentor Edu, na passagem para o atendente.
+  final NewTicketPrefill? prefill;
 
   @override
   State<NewTicketScreen> createState() => _NewTicketScreenState();
@@ -28,7 +32,11 @@ class _NewTicketScreenState extends State<NewTicketScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = NewTicketController(repository: AppScope.of(context).tickets);
+    _controller = NewTicketController(
+      repository: AppScope.of(context).tickets,
+      prefill: widget.prefill,
+    );
+    _description.text = widget.prefill?.description ?? '';
     unawaited(_controller.loadSegments());
   }
 
@@ -79,6 +87,7 @@ class _NewTicketScreenState extends State<NewTicketScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (_controller.linkedToConversation) const _ChatbotNotice(),
                 const _SectionTitle('Tipo do problema'),
                 if (segmentsError != null)
                   ErrorBanner(
@@ -176,6 +185,32 @@ class _NewTicketScreenState extends State<NewTicketScreen> {
       ),
     );
   }
+}
+
+class _ChatbotNotice extends StatelessWidget {
+  const _ChatbotNotice();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.only(bottom: 16),
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: AppColors.purpleSoft,
+      borderRadius: BorderRadius.circular(10),
+    ),
+    child: const Row(
+      children: [
+        Icon(Icons.support_agent, color: AppColors.purple, size: 20),
+        SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            'Sua conversa com o Mentor Edu vai junto com o ticket.',
+            style: TextStyle(fontSize: 13),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _SectionTitle extends StatelessWidget {

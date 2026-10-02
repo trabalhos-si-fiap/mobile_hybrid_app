@@ -10,6 +10,7 @@ import 'features/auth/presentation/register_screen.dart';
 import 'features/auth/presentation/reset_password_screen.dart';
 import 'features/chatbot/presentation/assistant_screen.dart';
 import 'features/notifications/presentation/notifications_screen.dart';
+import 'features/tickets/domain/new_ticket_prefill.dart';
 import 'features/tickets/presentation/my_tickets/my_tickets_screen.dart';
 import 'features/tickets/presentation/new_ticket/new_ticket_screen.dart';
 import 'features/tickets/presentation/ticket_detail/ticket_detail_screen.dart';
@@ -21,8 +22,16 @@ class EduApp extends StatelessWidget {
 
   static final _ticketRoute = RegExp(r'^/tickets/(\d+)$');
 
-  /// Rotas com parâmetro: `/tickets/<id>`.
+  /// Rotas com parâmetro: `/tickets/<id>` e `/tickets/new`, que recebe nos
+  /// argumentos o preenchimento do Mentor Edu.
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
+    if (settings.name == '/tickets/new') {
+      return MaterialPageRoute<void>(
+        settings: settings,
+        builder: (_) =>
+            NewTicketScreen(prefill: settings.arguments as NewTicketPrefill?),
+      );
+    }
     final match = _ticketRoute.firstMatch(settings.name ?? '');
     if (match == null) return null;
     final ticketId = int.parse(match.group(1)!);
@@ -49,7 +58,6 @@ class EduApp extends StatelessWidget {
         '/reset-password': (_) => ResetPasswordScreen(),
         '/home': (_) => const AdminDashboardScreen(),
         '/tickets': (_) => const MyTicketsScreen(),
-        '/tickets/new': (_) => const NewTicketScreen(),
         '/assistant': (_) => const AssistantScreen(),
         '/notifications': (_) => const NotificationsScreen(),
       },

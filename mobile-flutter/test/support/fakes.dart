@@ -118,6 +118,9 @@ class FakeTicketRepository implements TicketRepository {
   final sentBodies = <String>[];
   final sentFiles = <List<PickedAttachment>>[];
 
+  /// O chatbotConversationId de cada open (nulo quando foi sem conversa).
+  final openedConversations = <int?>[];
+
   static void _throwIf(Object? error) {
     if (error != null) throw error;
   }
@@ -158,10 +161,12 @@ class FakeTicketRepository implements TicketRepository {
     required String segment,
     required String description,
     required List<PickedAttachment> files,
+    int? chatbotConversationId,
   }) async {
     calls.add('open $segment');
     sentBodies.add(description);
     sentFiles.add(List.of(files));
+    openedConversations.add(chatbotConversationId);
     await gate?.future;
     _throwIf(actionError);
     return openResult ??

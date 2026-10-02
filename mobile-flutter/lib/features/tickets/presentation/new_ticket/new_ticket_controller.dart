@@ -5,12 +5,18 @@ import '../../../../core/attachments/attachment_rules.dart' as rules;
 import '../../../../core/attachments/picked_attachment.dart';
 import '../../../../core/screen_controller.dart';
 import '../../data/ticket_api.dart';
+import '../../domain/new_ticket_prefill.dart';
 import '../../domain/ticket_models.dart';
 
 class NewTicketController extends ScreenController {
-  NewTicketController({required this._repository});
+  NewTicketController({required this._repository, NewTicketPrefill? prefill})
+    : selectedSegment = prefill?.segment,
+      _conversationId = prefill?.conversationId;
 
   final TicketRepository _repository;
+
+  /// Conversa com o Mentor Edu que vai junto com o ticket.
+  int? _conversationId;
 
   /// Nulo enquanto carrega.
   List<SegmentOption>? segments;
@@ -22,6 +28,8 @@ class NewTicketController extends ScreenController {
   String? error;
 
   int get remainingSlots => rules.maxFiles - files.length;
+
+  bool get linkedToConversation => _conversationId != null;
 
   Future<void> loadSegments() async {
     segmentsError = null;
@@ -81,8 +89,18 @@ class NewTicketController extends ScreenController {
         segment: selectedSegment!,
         description: description.trim(),
         files: files,
+        chatbotConversationId: _conversationId,
       );
     } on ApiException catch (failure) {
+      // A conversa já foi para outro ticket ou saiu da passagem: o próximo
+      // envio abre o ticket sem ela.
+      if (failure.kind == ApiErrorKind.conflict && _conversationId != null) {
+        _conversationId = null;
+        error =
+            'Não foi possível ligar a conversa. Envie de novo para abrir o '
+            'ticket sem ela.';
+        return null;
+      }
       if (failure.kind != ApiErrorKind.unauthorized) error = failure.message;
       if (failure.kind == ApiErrorKind.unprocessable) {
         unawaited(loadSegments());

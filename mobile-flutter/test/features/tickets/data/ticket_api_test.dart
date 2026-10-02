@@ -88,8 +88,25 @@ void main() {
     expect(body, contains('name="description"'));
     expect(body, contains('O app fecha sozinho.'));
     expect(body, contains('filename="tela.png"'));
+    expect(body, isNot(contains('chatbotConversationId')));
     expect(created.id, 12);
     expect(created.status, TicketStatus.emFila);
+  });
+
+  test('open sends the chatbot conversation id when there is one', () async {
+    api
+      ..status = 201
+      ..reply = detailJson(id: 12, status: 'EM_FILA');
+
+    await api.repository().open(
+      segment: 'DEFEITO_APP',
+      description: 'O app fecha sozinho.',
+      files: const [],
+      chatbotConversationId: 42,
+    );
+
+    final body = utf8.decode(api.last.bodyBytes);
+    expect(body, contains('name="chatbotConversationId"\r\n\r\n42\r\n'));
   });
 
   test('sendMessage sends the body and files', () async {

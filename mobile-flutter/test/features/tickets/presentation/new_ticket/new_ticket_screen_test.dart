@@ -8,6 +8,7 @@ import 'package:mobile_flutter/core/api/api_exception.dart';
 import 'package:mobile_flutter/core/attachments/attachment_picker.dart';
 import 'package:mobile_flutter/core/attachments/picked_attachment.dart';
 import 'package:mobile_flutter/core/app_services.dart';
+import 'package:mobile_flutter/features/tickets/domain/new_ticket_prefill.dart';
 import 'package:mobile_flutter/features/tickets/presentation/new_ticket/new_ticket_screen.dart';
 
 import '../../../../support/fakes.dart';
@@ -26,12 +27,32 @@ void main() {
     services = testServices(tickets: tickets, picker: picker);
   });
 
-  Future<void> pump(WidgetTester tester) async {
+  const notice = 'Sua conversa com o Mentor Edu vai junto com o ticket.';
+  const prefill = NewTicketPrefill(
+    conversationId: 42,
+    segment: 'PROBLEMA_PEDIDO',
+    description: 'O pedido veio sem um item.',
+  );
+
+  Future<void> pump(WidgetTester tester, {NewTicketPrefill? prefill}) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
-    await pumpScreen(tester, services, const NewTicketScreen());
+    await pumpScreen(tester, services, NewTicketScreen(prefill: prefill));
   }
+
+  bool selected(String segment) => find
+      .descendant(
+        of: find.byKey(Key('segment-$segment')),
+        matching: find.byIcon(Icons.radio_button_checked),
+      )
+      .evaluate()
+      .isNotEmpty;
+
+  String description(WidgetTester tester) => tester
+      .widget<TextField>(find.byKey(const Key('description-input')))
+      .controller!
+      .text;
 
   Future<void> tapSubmit(WidgetTester tester) async {
     await tester.ensureVisible(find.byKey(const Key('submit-ticket')));
@@ -125,7 +146,121 @@ void main() {
     expect(tickets.calls, contains('open DEFEITO_APP'));
     expect(tickets.sentBodies, ['O app fecha sozinho.']);
     expect(tickets.sentFiles.single.single.name, 'nota.pdf');
+    expect(tickets.openedConversations, [null]);
     expect(find.text('route:/tickets/12'), findsOneWidget);
+  });
+
+  testWidgets('without a prefill there is no notice and nothing selected', (
+    tester,
+  ) async {
+    await pump(tester);
+
+    expect(find.text(notice), findsNothing);
+    expect(selected('DEFEITO_APP'), isFalse);
+    expect(selected('PROBLEMA_PEDIDO'), isFalse);
+    expect(description(tester), isEmpty);
+  });
+
+  testWidgets('a prefill marks the segment, fills the description and shows '
+      'the notice', (tester) async {
+    await pump(tester, prefill: prefill);
+
+    expect(find.text(notice), findsOneWidget);
+    expect(selected('PROBLEMA_PEDIDO'), isTrue);
+    expect(selected('DEFEITO_APP'), isFalse);
+    expect(description(tester), 'O pedido veio sem um item.');
+  });
+
+  testWidgets('the prefilled fields stay editable', (tester) async {
+    await pump(tester, prefill: prefill);
+
+    await tester.tap(find.byKey(const Key('segment-DEFEITO_APP')));
+    await tester.enterText(
+      find.byKey(const Key('description-input')),
+      'Na verdade o app fecha sozinho.',
+    );
+    await tapSubmit(tester);
+    await tester.pumpAndSettle();
+
+    expect(tickets.calls, contains('open DEFEITO_APP'));
+    expect(tickets.sentBodies, ['Na verdade o app fecha sozinho.']);
+    expect(tickets.openedConversations, [42]);
+  });
+
+  testWidgets('sends the conversation id with the ticket', (tester) async {
+    await pump(tester, prefill: prefill);
+
+    await tapSubmit(tester);
+    await tester.pumpAndSettle();
+
+    expect(tickets.calls, contains('open PROBLEMA_PEDIDO'));
+    expect(tickets.sentBodies, ['O pedido veio sem um item.']);
+    expect(tickets.openedConversations, [42]);
+    expect(find.text('route:/tickets/12'), findsOneWidget);
+  });
+
+  testWidgets('a prefill without a segment leaves the choice to the user', (
+    tester,
+  ) async {
+    await pump(
+      tester,
+      prefill: const NewTicketPrefill(
+        conversationId: 42,
+        segment: null,
+        description: '',
+      ),
+    );
+
+    expect(find.text(notice), findsOneWidget);
+    expect(selected('DEFEITO_APP'), isFalse);
+
+    await tapSubmit(tester);
+    expect(find.text('Escolha o tipo do problema.'), findsOneWidget);
+    expect(openCalls(), 0);
+  });
+
+  testWidgets('a 409 lets go of the conversation and the next send opens '
+      'without it', (tester) async {
+    tickets.actionError = const ApiException(ApiErrorKind.conflict);
+    await pump(tester, prefill: prefill);
+
+    await tapSubmit(tester);
+    await tester.pump();
+
+    expect(
+      find.text(
+        'Não foi possível ligar a conversa. Envie de novo para abrir o '
+        'ticket sem ela.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text(notice), findsNothing);
+    expect(selected('PROBLEMA_PEDIDO'), isTrue);
+    expect(description(tester), 'O pedido veio sem um item.');
+    expect(find.textContaining('route:'), findsNothing);
+
+    tickets.actionError = null;
+    await tapSubmit(tester);
+    await tester.pumpAndSettle();
+
+    expect(tickets.openedConversations, [42, null]);
+    expect(find.text('route:/tickets/12'), findsOneWidget);
+  });
+
+  testWidgets('a 409 without a conversation keeps the usual message', (
+    tester,
+  ) async {
+    tickets.actionError = const ApiException(ApiErrorKind.conflict);
+    await pump(tester);
+    await fill(tester);
+
+    await tapSubmit(tester);
+    await tester.pump();
+
+    expect(
+      find.text('O ticket mudou de situação. A tela foi atualizada.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('an error keeps what was typed and attached', (tester) async {

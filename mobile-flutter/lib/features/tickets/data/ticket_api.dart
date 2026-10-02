@@ -14,10 +14,12 @@ abstract interface class TicketRepository {
 
   Future<List<TicketMessage>> messages(int id);
 
+  /// [chatbotConversationId] liga a conversa com o Mentor Edu ao ticket.
   Future<TicketDetail> open({
     required String segment,
     required String description,
     required List<PickedAttachment> files,
+    int? chatbotConversationId,
   });
 
   Future<TicketMessage> sendMessage(
@@ -61,10 +63,16 @@ class HttpTicketRepository implements TicketRepository {
     required String segment,
     required String description,
     required List<PickedAttachment> files,
+    int? chatbotConversationId,
   }) async => decodeObject(
     await _api.postMultipart(
       '/tickets',
-      fields: {'segment': segment, 'description': description},
+      fields: {
+        'segment': segment,
+        'description': description,
+        if (chatbotConversationId != null)
+          'chatbotConversationId': '$chatbotConversationId',
+      },
       files: files,
     ),
     TicketDetail.fromJson,
