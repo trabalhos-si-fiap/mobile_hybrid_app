@@ -94,3 +94,12 @@ Os caminhos desta seção são relativos à raiz do repositório.
 | P4-05 | Faltam testes: o limiar de anomalia no z arredondado perto de 2 (ex.: 1,996); `p_dias` e `p_referencia` nulos; colunas dos índices do `V8` (o IT confere só os nomes); mapeamento não nulo de média/desvio/z no IT do gateway; a página do dashboard confere só o título da visão; "sem cache" com duas chamadas seguidas no serviço web. | `api/src/test/java/com/edu/api/dashboard/`, `web-angular/src/app/pages/dashboard/`, `web-angular/src/app/core/services/omnichannel-dashboard.service.spec.ts` | Acrescentar os testes. |
 | P4-06 | Defesas que o contrato da procedure torna inalcançáveis: `BACKLOG` ausente daria NPE no service; `ANOMALIA` sem direção cairia no chip "Normal"; variação minúscula (0,04) mostraria "▲ 0%" colorido; lista de destaques ou de anomalias vazia mostraria o título sozinho. | `api/src/main/java/com/edu/api/dashboard/service/OmnichannelDashboardService.java`, `web-angular/src/app/pages/dashboard/omnichannel-overview/` | Tratar cada caso, se o contrato mudar. |
 | P4-07 | O seed filtra seus clientes com `LIKE 'cliente_@edu.com'` (o `_` é curinga) e usa e-mails fixos, que poderiam colidir com contas reais numa base existente. | `api/src/main/resources/db/seed/V9__seed_dashboard_historico.sql` | Lista explícita de e-mails (`IN (...)`). |
+
+## Sub-projeto 5A — Modelo de dados
+
+Os caminhos desta seção são relativos à raiz do repositório.
+
+| ID | Situação | Onde | Correção sugerida |
+|---|---|---|---|
+| P5A-01 | A importação no SQL Developer Data Modeler e a montagem no brModelo não foram testadas aqui (ferramentas gráficas, fora do container). O guia tem o plano B pelo dicionário de dados. | `docs/banco-de-dados/README.md` | Smoke do autor da entrega; corrigir o guia ou o DDL com o que falhar. |
+| P5A-02 | O `conferir-ddl.sh` não roda em nenhum teste automático: uma migration nova sem atualização do DDL só é percebida quando alguém roda o script. | `docs/banco-de-dados/conferir-ddl.sh` | Rodar o script num job de CI, ou num teste de integração que compare os schemas. |
