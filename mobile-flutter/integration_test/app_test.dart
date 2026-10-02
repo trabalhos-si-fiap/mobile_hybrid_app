@@ -9,6 +9,8 @@ import 'support/e2e_api.dart';
 import 'support/e2e_fakes.dart';
 import 'support/helpers.dart';
 
+Key _option(String id) => Key('assistant-option-$id');
+
 Finder _bubble(String text) =>
     find.descendant(of: find.byType(MessageBubble), matching: find.text(text));
 
@@ -68,17 +70,36 @@ void main() {
     await waitFor(tester, find.text('Painel Administrativo'));
   });
 
-  testWidgets('full flow: open with a photo, talk with a PDF, confirm', (
-    tester,
-  ) async {
+  testWidgets('full flow: the bot hands over, open with a photo, talk with '
+      'a PDF, confirm', (tester) async {
     await dev.setPresence('ONLINE');
     await startApp(tester);
     await login(tester, userEmail, userPassword);
-    await waitFor(tester, find.byKey(const Key('new-ticket-button')));
+    await waitFor(tester, find.byKey(const Key('need-help-button')));
 
-    await tester.tap(find.byKey(const Key('new-ticket-button')));
-    await waitFor(tester, find.byKey(const Key('segment-DEFEITO_APP')));
-    await tester.tap(find.byKey(const Key('segment-DEFEITO_APP')));
+    await tester.tap(find.byKey(const Key('need-help-button')));
+    await waitFor(tester, find.byKey(_option('segment:DEFEITO_APP')));
+    await tapVisible(tester, find.byKey(_option('segment:DEFEITO_APP')));
+    // "menu" só existe no turno do segmento: garante que o turno chegou
+    // antes de tocar em "human", que também está na saudação.
+    await waitFor(tester, find.byKey(_option('menu')));
+    expect(find.byKey(_option('faq:9001')), findsOneWidget);
+    await tapVisible(tester, find.byKey(_option('human')));
+    await waitFor(tester, find.byKey(const Key('assistant-continue')));
+    await tester.tap(find.byKey(const Key('assistant-continue')));
+
+    await waitFor(
+      tester,
+      find.text('Sua conversa com o Mentor Edu vai junto com o ticket.'),
+    );
+    await waitFor(
+      tester,
+      find.descendant(
+        of: find.byKey(const Key('segment-DEFEITO_APP')),
+        matching: find.byIcon(Icons.radio_button_checked),
+      ),
+    );
+    // Sem texto livre na conversa, a descrição vem vazia.
     await tester.enterText(
       find.byKey(const Key('description-input')),
       'E2E: o app fecha ao abrir o carrinho.',
@@ -88,6 +109,18 @@ void main() {
     await tapVisible(tester, find.byKey(const Key('submit-ticket')));
 
     final id = await ticketIdOnScreen(tester);
+    expect((await user.ticket(id))['channel'], 'CHATBOT_IA');
+    final transcript = await user.chatbotConversation(id);
+    expect(
+      [
+        for (final message in transcript['messages'] as List<dynamic>)
+          (message as Map<String, dynamic>)['body'],
+      ],
+      containsAllInOrder(<String>[
+        'Defeito no App / Problemas com App',
+        'Falar com atendente',
+      ]),
+    );
     await waitFor(tester, find.text('Atendente: E2E Atendente'));
     await waitFor(tester, _imageTile('tela.png'));
 
@@ -132,6 +165,40 @@ void main() {
 
     await waitFor(tester, find.text('Fechado'));
     expect((await user.ticket(id))['status'], 'FECHADO');
+  });
+
+  testWidgets('bot resolves: a typed question gets the FAQ answer', (
+    tester,
+  ) async {
+    await startApp(tester);
+    await login(tester, userEmail, userPassword);
+    await waitFor(tester, find.byKey(const Key('need-help-button')));
+
+    await tester.tap(find.byKey(const Key('need-help-button')));
+    await waitFor(tester, find.textContaining('Sou o Mentor Edu'));
+    await tester.enterText(
+      find.byKey(const Key('assistant-input')),
+      'Esqueci a senha e não consigo entrar',
+    );
+    await tester.tap(find.byKey(const Key('assistant-send')));
+
+    await waitFor(
+      tester,
+      find.text('E2E: confira o e-mail e a senha na tela de entrada.'),
+    );
+    await waitFor(tester, find.byKey(_option('resolved')));
+    expect(find.text('Isso resolveu sua dúvida?'), findsOneWidget);
+    await tapVisible(tester, find.byKey(_option('resolved')));
+
+    await waitFor(tester, find.byKey(const Key('assistant-done')));
+    expect(find.text('Que bom! Se precisar, é só chamar.'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('assistant-done')));
+    await waitUntil(
+      tester,
+      () => find.byKey(const Key('assistant-done')).evaluate().isEmpty,
+      description: 'assistente fechado',
+    );
+    expect(find.text('Meus tickets'), findsOneWidget);
   });
 
   testWidgets('reopen: a resolved ticket goes back to the attendant', (

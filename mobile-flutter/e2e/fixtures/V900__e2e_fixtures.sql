@@ -19,3 +19,21 @@ SELECT e.id, s.id
   JOIN admin_users u ON u.id = e.user_id
   JOIN skills s ON s.code = 'DESENVOLVEDOR'
  WHERE u.email = 'e2e.dev@edu.com';
+
+-- FAQ do Mentor Edu: 2 itens (os 12 do seed de demonstração não entram aqui).
+-- Ids fixos para o teste achar a opção "faq:9001". Palavras-chave como na V5:
+-- minúsculas, sem acento, radicais. "Esqueci a senha e não consigo entrar"
+-- casa só com o 9001 (senha, entrar).
+INSERT INTO chatbot_faq (id, segment, question, answer, sort_order)
+VALUES (9001, 'DEFEITO_APP', 'Não consigo entrar no app',
+        'E2E: confira o e-mail e a senha na tela de entrada.', 1);
+INSERT INTO chatbot_faq_keywords (faq_id, keyword) VALUES (9001, 'entrar');
+INSERT INTO chatbot_faq_keywords (faq_id, keyword) VALUES (9001, 'senha');
+INSERT INTO chatbot_faq_keywords (faq_id, keyword) VALUES (9001, 'login');
+
+INSERT INTO chatbot_faq (id, segment, question, answer, sort_order)
+VALUES (9002, 'PROBLEMA_PEDIDO', 'Qual o prazo de entrega?',
+        'E2E: o prazo de entrega aparece no resumo do pedido.', 1);
+INSERT INTO chatbot_faq_keywords (faq_id, keyword) VALUES (9002, 'prazo');
+INSERT INTO chatbot_faq_keywords (faq_id, keyword) VALUES (9002, 'entreg');
+INSERT INTO chatbot_faq_keywords (faq_id, keyword) VALUES (9002, 'demor');

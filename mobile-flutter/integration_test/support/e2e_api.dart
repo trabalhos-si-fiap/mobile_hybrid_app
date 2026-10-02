@@ -77,6 +77,15 @@ class E2eApi {
           )
           as List<dynamic>;
 
+  Future<Map<String, dynamic>> chatbotConversation(int ticketId) async =>
+      _check(
+            await http.get(
+              Uri.parse('$_base/tickets/$ticketId/chatbot-conversation'),
+              headers: _auth,
+            ),
+          )
+          as Map<String, dynamic>;
+
   Future<List<dynamic>> unreadNotifications() async =>
       _check(
             await http.get(
