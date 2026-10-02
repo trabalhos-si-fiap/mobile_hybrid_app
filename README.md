@@ -249,6 +249,48 @@ Do `edu` foram reusados o formato da conversa em balões, o nome do
 assistente (Mentor Edu) e as dúvidas da base de conhecimento dele (prazo de
 entrega, trocas, rastreio), como semente do FAQ.
 
+## 📊 Dashboard do atendimento
+
+O topo do dashboard web (`/dashboard`) mostra o atendimento omnichannel nos
+últimos 7, 30 ou 90 dias, cada indicador comparado ao período anterior de mesmo
+tamanho: tickets abertos (no total e por canal, App ou Chatbot), resolvidos,
+backlog, SLA cumprido, escalados, tempo médio até assumir e tempo médio de
+resolução, também por segmento. Abaixo, a detecção de anomalias marca picos e
+quedas no volume de cada segmento nas últimas 24 horas, e uma lista de
+destaques resume o que mudou.
+
+Todo o cálculo fica no Oracle; a API (`GET /api/v1/dashboard/omnichannel?days=7`)
+só lê o resultado e monta as frases de destaque.
+
+| Objeto PL/SQL | Papel |
+|---|---|
+| `PR_RESUMO_DASHBOARD(p_dias, p_referencia, p_kpis, p_segmentos, p_anomalias)` | Agrega `tickets` e `ticket_events` e devolve três cursores: indicadores, segmentos e anomalias |
+| `FN_CALC_TAXA_VARIACAO(p_atual, p_anterior)` | Variação percentual com 1 casa decimal; nula sem base de comparação (anterior 0) |
+
+**Anomalias.** Para cada segmento, o volume das últimas 24 horas é comparado
+com as janelas de 24 horas dos 28 dias anteriores por z-score: |z| ≥ 2 é
+anomalia, e com menos de 7 janelas de histórico o segmento fica "sem
+histórico". É estatística simples, como a do `analytics-service` do `edu`, sem
+machine learning. Janelas de 24 horas contadas a partir de agora evitam
+comparar o dia de hoje pela metade com dias cheios.
+
+**Por que estas assinaturas.** A divisão da Fase 6 nomeia
+`PR_RESUMO_DASHBOARD` e `FN_CALC_TAXA_VARIACAO`, mas nenhum material da FIAP
+define parâmetros nem comportamento. As assinaturas acima foram definidas neste
+repositório: a procedure devolve cursores para que o Java não repita a regra de
+negócio, e a função é pura (`DETERMINISTIC`) para ser usada dentro das
+consultas da procedure.
+
+**Dados da demonstração.** O seed `V9` cria 180 dias de tickets já fechados, de
+cinco clientes fictícios, e um pico de "Problemas com pedido" nas últimas 24
+horas. Como tudo é relativo à hora da subida, o pico só aparece nas 24 horas
+seguintes. Para gravar a demonstração, suba a stack do zero:
+
+```bash
+# em api/ (apaga os volumes do Oracle e do MinIO)
+docker compose down -v && docker compose up -d --build
+```
+
 ## 📚 Documentação da API
 
 Com o backend em execução:

@@ -71,13 +71,15 @@ console assume ◄── notificação ◄──────────┘
 | `FN_STATUS_SLA_TICKET` | `NO_PRAZO`, `EM_RISCO`, `ESTOURADO`, `CUMPRIDO` ou `VIOLADO` |
 | `PR_ROTEAR_TICKET` | Aplica a matriz de triagem e atribui o ticket |
 | `PR_ESCALAR_TICKET_CRITICO` | Sobe a prioridade e reatribui tickets com SLA estourado |
+| `FN_CALC_TAXA_VARIACAO` | Variação percentual entre o período atual e o anterior (dashboard) |
+| `PR_RESUMO_DASHBOARD` | Indicadores, segmentos e anomalias do dashboard do atendimento, em três cursores |
 
 Estados: `ABERTO → EM_FILA → EM_ATENDIMENTO → RESOLVIDO → FECHADO`, com
 `ESCALADO` quando o SLA estoura. Papéis: `USER` (app), `EMPLOYEE`
 (atendente), `ADMIN` (atendente com visão total).
 
 Numeração Flyway: a próxima versão é o maior `V` entre `migration/` e
-`seed/` + 1 (hoje: `V3` migration, `V4` seed).
+`seed/` + 1 (hoje: `V8` migration, `V9` seed).
 
 ## Domínios persistidos
 
