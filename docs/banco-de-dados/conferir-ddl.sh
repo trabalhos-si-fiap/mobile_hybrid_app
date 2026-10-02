@@ -3,12 +3,14 @@
 #
 # Sobe um Oracle efêmero, roda os V*.sql de api/src/main/resources/db/migration/
 # no schema MIGRACOES e o DDL consolidado no schema CONSOLIDADO, e compara os
-# dois pelo dicionário do Oracle: tabelas, colunas, identidades, constraints
-# com nome e índices. Só precisa de Docker.
+# dois pelo dicionário do Oracle: tabelas, colunas, identidades, constraints e
+# índices. Só precisa de Docker.
 #
-# Índices em colunas TIMESTAMP WITH TIME ZONE são do tipo FUNCTION-BASED: o
-# Oracle indexa SYS_EXTRACT_UTC(coluna) numa coluna oculta SYS_NC...$, e é esse
-# nome que aparece numa diferença.
+# Constraints e índices sem nome (o Oracle dá um SYS_C...) entram como
+# "(sem nome)", comparados pelo resto da assinatura; as NOT NULL ficam de fora,
+# porque a nulidade já é comparada nas colunas. Índices em colunas TIMESTAMP
+# WITH TIME ZONE são FUNCTION-BASED: aparecem com a expressão que o Oracle
+# indexa (SYS_EXTRACT_UTC("COLUNA")).
 #
 # Uso: docs/banco-de-dados/conferir-ddl.sh [arquivo-ddl]
 #      (padrão: docs/banco-de-dados/ddl-consolidado.sql)
@@ -109,7 +111,8 @@ WITH assinatura AS (
      WHERE owner IN ('MIGRACOES', 'CONSOLIDADO')
     UNION ALL
     SELECT c.owner,
-           'CONSTRAINT ' || c.table_name || '.' || c.constraint_name
+           'CONSTRAINT ' || c.table_name || '.'
+           || CASE WHEN c.generated = 'USER NAME' THEN c.constraint_name ELSE '(sem nome)' END
            || ' tipo=' || c.constraint_type
            || ' condicao=' || REGEXP_REPLACE(c.search_condition_vc, '\s+', ' ')
            || ' referencia=' || c.r_constraint_name
@@ -120,19 +123,27 @@ WITH assinatura AS (
                                  AND cc.constraint_name = c.constraint_name)
       FROM all_constraints c
      WHERE c.owner IN ('MIGRACOES', 'CONSOLIDADO')
-       AND c.generated = 'USER NAME'
+       AND NOT (c.generated = 'GENERATED NAME' AND c.constraint_type = 'C'
+                AND REGEXP_LIKE(c.search_condition_vc, '^"[^"]+" IS NOT NULL$'))
     UNION ALL
     SELECT i.owner,
-           'INDICE ' || i.table_name || '.' || i.index_name
+           'INDICE ' || i.table_name || '.'
+           || CASE WHEN i.generated = 'N' THEN i.index_name ELSE '(sem nome)' END
            || ' ' || i.uniqueness || ' ' || i.index_type
-           || ' colunas=' || (SELECT LISTAGG(ic.column_name || ' ' || ic.descend, ',')
+           || ' colunas=' || (SELECT LISTAGG(CASE WHEN tc.hidden_column = 'YES'
+                                                  THEN tc.data_default_vc
+                                                  ELSE ic.column_name END
+                                             || ' ' || ic.descend, ',')
                                      WITHIN GROUP (ORDER BY ic.column_position)
                                 FROM all_ind_columns ic
+                                JOIN all_tab_cols tc
+                                  ON tc.owner = ic.table_owner
+                                 AND tc.table_name = ic.table_name
+                                 AND tc.column_name = ic.column_name
                                WHERE ic.index_owner = i.owner
                                  AND ic.index_name = i.index_name)
       FROM all_indexes i
      WHERE i.owner IN ('MIGRACOES', 'CONSOLIDADO')
-       AND i.generated = 'N'
 )
 SELECT 'só nas migrations: ' || linha
   FROM (SELECT linha FROM assinatura WHERE owner = 'MIGRACOES'
@@ -159,7 +170,7 @@ SELECT (SELECT COUNT(*) FROM all_tables WHERE owner = 'CONSOLIDADO') || ' tabela
     || (SELECT COUNT(*) FROM all_tab_columns WHERE owner = 'CONSOLIDADO') || ' colunas, '
     || (SELECT COUNT(*) FROM all_constraints WHERE owner = 'CONSOLIDADO' AND constraint_type = 'R') || ' FKs, '
     || (SELECT COUNT(*) FROM all_constraints WHERE owner = 'CONSOLIDADO' AND generated = 'USER NAME') || ' constraints com nome, '
-    || (SELECT COUNT(*) FROM all_indexes WHERE owner = 'CONSOLIDADO' AND generated = 'N') || ' índices'
+    || (SELECT COUNT(*) FROM all_indexes WHERE owner = 'CONSOLIDADO') || ' índices'
   FROM dual;
 SQL
 )"
