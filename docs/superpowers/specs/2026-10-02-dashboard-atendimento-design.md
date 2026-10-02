@@ -2,8 +2,8 @@
 
 Data: 2026-10-02
 Sub-projeto 4 de 5 da Fase 6 (FIAP). Depende do sub-projeto 2 (tickets na API
-e console web, já em `main`). É desenvolvido em paralelo com o sub-projeto 3
-(chatbot, branch `feat/chatbot`) e não depende dele. Mexe na API (banco,
+e console web, já em `main`). Foi desenhado em paralelo com o sub-projeto 3
+(chatbot), que já está em `main`, e não depende dele. Mexe na API (banco,
 PL/SQL e um endpoint) e no console Angular.
 
 ## Contexto
@@ -37,8 +37,8 @@ Hoje:
 - Objetos novos usam os nomes da FIAP e as convenções da base
   (`VARCHAR2(n CHAR)`, `TIMESTAMP(6) WITH TIME ZONE`, prefixos `PK_`, `FK_`,
   `UQ_`, `CK_`, `IX_`).
-- O chatbot (sub-projeto 3) usa `V5` e `V6`. Este sub-projeto usa `V7` e
-  `V8`.
+- O chatbot (sub-projeto 3) usa `V5`, `V6` e `V7`. Este sub-projeto usa `V8`
+  e `V9`.
 
 ## Objetivo
 
@@ -53,9 +53,8 @@ segmento nas últimas 24 horas. Todo o cálculo fica na procedure
 
 - Flutter: o Painel Administrativo continua como está (o endpoint atual não
   muda).
-- Métricas do chatbot (`state`, `faq_id`). Podem entrar depois do merge do
-  sub-projeto 3. O canal `CHATBOT_IA` já existe em `tickets` e entra na
-  contagem por canal.
+- Métricas do chatbot (`state`, `faq_id`). Ficam para depois. O canal
+  `CHATBOT_IA` já existe em `tickets` e entra na contagem por canal.
 - Mudanças em `GET /dashboard`, no bloco operacional, no
   `EducationalMetricsProvider` e no `RuleBasedInsightGenerator`.
 - Gráfico de série diária, exportação, filtro por atendente.
@@ -122,7 +121,7 @@ metade" com dias cheios.
 
 ## Banco
 
-### Migration `V7__dashboard.sql`
+### Migration `V8__dashboard.sql`
 
 Só índices para as agregações:
 
@@ -164,7 +163,7 @@ Cursores:
 | `p_segmentos` | `segment`, `label`, `abertos`, `abertos_anterior`, `abertos_variacao`, `resolvidos`, `resolvidos_anterior`, `resolvidos_variacao`, `sla_pct`, `sla_pct_anterior`, `sla_pct_variacao`, `backlog` | uma por segmento, na ordem do enum |
 | `p_anomalias` | `segment`, `label`, `atual`, `media`, `desvio`, `z_score`, `situacao`, `janelas` | uma por segmento, na ordem do enum |
 
-### Seed `V8__seed_dashboard_historico.sql`
+### Seed `V9__seed_dashboard_historico.sql`
 
 Histórico para a demonstração, gerado no SQL e sem `DBMS_RANDOM` (mesma
 massa a cada subida):
@@ -183,7 +182,7 @@ massa a cada subida):
   - cerca de 5% com evento `ESCALADO`;
   - eventos `ABERTO`, `ESCALADO` (quando houver), `RESOLVIDO` e `FECHADO`.
 - Pico: **Problemas com pedido** fecha as últimas 24 horas com pelo menos 10
-  tickets abertos (contando os do `V4`); os outros segmentos ficam na faixa
+  tickets abertos (contando os do `V4` e do `V6`); os outros segmentos ficam na faixa
   normal.
 - Atribuídos aos atendentes do `V4` pela skill do segmento.
 
@@ -381,26 +380,19 @@ Estilo do componente abaixo de 4 kB, sem aviso novo de budget no build.
   staff, confere "Visão do atendimento" com os 3 segmentos, troca para "30
   dias" e confere "vs. 30 dias anteriores". Não depende de números.
 
-## Execução em paralelo com o chatbot
+## Ambiente de trabalho
 
 - Worktree `../mobile_hybrid_app-dashboard`, branch `feat/dashboard`, criado
-  de `main`. O diretório do chatbot não é tocado.
-- Testes (`docker compose run --rm maven|node`) rodam em paralelo com os do
-  chatbot: esses serviços não têm `container_name`. Os dois dividem o volume
-  `maven-repo`.
-- O smoke não usa a stack de demonstração (os volumes do Oracle receberiam
-  `V7`/`V8` sem `V5`/`V6`, e a API do chatbot não subiria mais). Ele roda numa
-  stack isolada: `COMPOSE_PROJECT_NAME=edu-dashboard`, um override no
-  scratchpad que troca os `container_name` (`edu-dash-*`) e portas próprias
-  (Oracle 11521, MinIO 19000/19001, API 18090, web 14290). O web chega à API
-  pela rede do Compose (`API_URL=http://api:8080`). No fim, `down -v` só desse
-  projeto.
-- Merge: de preferência o chatbot entra em `main` primeiro; depois,
-  `feat/dashboard` é atualizado com `main` e o `verify` roda de novo.
-  Conflitos esperados (de texto): `openapi.yaml`, `OpenApiContractTest`,
-  `PlsqlObjectsIT`, README, `api/ARCHITECTURE.md`, `docs/pendencias.md`.
-- Se este sub-projeto entrar primeiro, a stack de demonstração precisa de
-  `docker compose down -v` depois do merge do chatbot.
+  de `main` depois do merge do chatbot.
+- O smoke não usa a stack de demonstração (`edu-admin-*`), para não mexer nos
+  dados dela. Ele roda numa stack isolada: `COMPOSE_PROJECT_NAME=edu-dashboard`,
+  um override no scratchpad que troca os `container_name` (`edu-dash-*`) e
+  portas próprias (Oracle 11521, MinIO 19000/19001, API 18090, web 14290). O
+  web chega à API pela rede do Compose (`API_URL=http://api:8080`). No fim,
+  `down -v` só desse projeto.
+- Uma stack de demonstração que já exista recebe o `V8` e o `V9` na próxima
+  subida; para ver o pico do seed, ela precisa subir do zero
+  (`docker compose down -v`).
 
 ## Documentação
 
