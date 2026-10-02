@@ -49,7 +49,8 @@ class FlywayMigrationIT extends OracleIntegrationTest {
                 "products", "inventories", "inventory_adjustments",
                 "carriers", "carrier_occurrences", "admin_users",
                 "skills", "employees", "employee_skills", "ticket_tipo_config",
-                "tickets", "ticket_messages", "ticket_attachments", "ticket_events", "notifications");
+                "tickets", "ticket_messages", "ticket_attachments", "ticket_events", "notifications",
+                "chatbot_faq", "chatbot_faq_keywords", "chatbot_conversations", "chatbot_messages");
         assertThat(tables).doesNotContain("student_metrics");
     }
 
