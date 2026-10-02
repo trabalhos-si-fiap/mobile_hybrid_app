@@ -45,7 +45,7 @@ class TicketServiceIT extends FullStackIntegration {
         long agent = fx.employee("ONLINE", "DESENVOLVEDOR");
 
         TicketDetailResponse opened = tickets.open(login(requester, "USER"), Segment.DEFEITO_APP,
-                "  O app fecha no carrinho  ", List.of(png("print.png")));
+                "  O app fecha no carrinho  ", List.of(png("print.png")), null);
 
         assertThat(opened.status()).isEqualTo(TicketStatus.EM_FILA);
         assertThat(opened.priority()).isEqualTo(TicketPriority.ALTA);
@@ -70,7 +70,8 @@ class TicketServiceIT extends FullStackIntegration {
         long requester = fx.user("USER");
         MultipartFile exe = new MockMultipartFile("files", "x.exe", "application/octet-stream", new byte[] {1});
 
-        assertThatThrownBy(() -> tickets.open(login(requester, "USER"), Segment.DEFEITO_APP, "Anexo inválido", List.of(exe)))
+        assertThatThrownBy(() -> tickets.open(login(requester, "USER"), Segment.DEFEITO_APP, "Anexo inválido", List.of(exe),
+                null))
                 .isInstanceOf(ValidationException.class);
         assertThat(fx.count("SELECT COUNT(*) FROM tickets WHERE user_id = ?", requester)).isZero();
     }

@@ -1,5 +1,8 @@
 package com.edu.api.ticket.service;
 
+import com.edu.api.chatbot.dto.ChatbotTranscriptResponse;
+import com.edu.api.chatbot.entity.ChatbotConversation;
+import com.edu.api.chatbot.service.ChatbotService;
 import com.edu.api.employee.entity.Employee;
 import com.edu.api.security.AuthenticatedUser;
 import com.edu.api.ticket.dto.*;
@@ -33,6 +36,7 @@ public class TicketService {
     private final TicketActivityRecorder activity;
     private final TicketViews views;
     private final TicketAccessResolver access;
+    private final ChatbotService chatbot;
     private final EntityManager entityManager;
     private final Clock clock;
 
@@ -40,7 +44,7 @@ public class TicketService {
                          TicketMessageRepository messages, AdminUserRepository users,
                          TicketAttachmentService attachments, TicketProcedures procedures,
                          TicketActivityRecorder activity, TicketViews views, TicketAccessResolver access,
-                         EntityManager entityManager, Clock clock) {
+                         ChatbotService chatbot, EntityManager entityManager, Clock clock) {
         this.tickets = tickets;
         this.configs = configs;
         this.messages = messages;
@@ -50,6 +54,7 @@ public class TicketService {
         this.activity = activity;
         this.views = views;
         this.access = access;
+        this.chatbot = chatbot;
         this.entityManager = entityManager;
         this.clock = clock;
     }
@@ -59,14 +64,21 @@ public class TicketService {
         return configs.findActive().stream().map(TicketViews::segment).toList();
     }
 
+    /** Com chatbotConversationId, o ticket nasce CHATBOT_IA e a conversa fica ligada a ele. */
     @Transactional
     public TicketDetailResponse open(AuthenticatedUser user, Segment segment, String description,
-                                     List<MultipartFile> files) {
+                                     List<MultipartFile> files, Long chatbotConversationId) {
         String text = TicketTexts.require(description, "description");
         List<MultipartFile> valid = attachments.validate(files);
+        ChatbotConversation conversation = chatbotConversationId == null ? null
+                : chatbot.claimForTicket(user, chatbotConversationId);
         AdminUser requester = users.getReferenceById(user.id());
+        TicketChannel channel = conversation == null ? TicketChannel.APP : TicketChannel.CHATBOT_IA;
 
-        Ticket ticket = tickets.save(Ticket.open(requester, segment, text, TicketChannel.APP, clock.instant()));
+        Ticket ticket = tickets.save(Ticket.open(requester, segment, text, channel, clock.instant()));
+        if (conversation != null) {
+            chatbot.linkTicket(conversation, ticket);
+        }
         attachments.store(ticket, null, requester, valid);
         activity.record(ticket, TicketEventType.ABERTO, null, null, null);
 
@@ -84,6 +96,11 @@ public class TicketService {
     @Transactional(readOnly = true)
     public TicketDetailResponse detail(AuthenticatedUser user, long ticketId) {
         return views.detail(access.visibleTicket(user, ticketId));
+    }
+
+    @Transactional(readOnly = true)
+    public ChatbotTranscriptResponse chatbotConversation(AuthenticatedUser user, long ticketId) {
+        return chatbot.transcript(access.visibleTicket(user, ticketId));
     }
 
     @Transactional(readOnly = true)

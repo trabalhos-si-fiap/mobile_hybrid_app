@@ -29,4 +29,9 @@ public final class ChatbotFixtures {
     public void deactivate(long faqId) {
         jdbc.update("UPDATE chatbot_faq SET active = FALSE WHERE id = ?", faqId);
     }
+
+    /** Conversa sem mensagens, direto num estado. */
+    public long conversation(long userId, String state) {
+        return rows.insert("INSERT INTO chatbot_conversations (user_id, state) VALUES (?, ?)", userId, state);
+    }
 }

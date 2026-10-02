@@ -1,5 +1,8 @@
 package com.edu.api.ticket.controller;
 
+import com.edu.api.chatbot.dto.ChatbotMessageResponse;
+import com.edu.api.chatbot.dto.ChatbotTranscriptResponse;
+import com.edu.api.chatbot.entity.ChatbotSender;
 import com.edu.api.security.AuthenticatedUser;
 import com.edu.api.shared.exception.ConflictException;
 import com.edu.api.shared.exception.NotFoundException;
@@ -56,7 +59,7 @@ class TicketControllerTest {
 
     @Test
     void opensATicketWithAttachments() throws Exception {
-        when(tickets.open(eq(USER), eq(Segment.DEFEITO_APP), eq("O app fecha"), anyList()))
+        when(tickets.open(eq(USER), eq(Segment.DEFEITO_APP), eq("O app fecha"), anyList(), isNull()))
                 .thenReturn(detail(TicketStatus.EM_FILA));
 
         mockMvc.perform(multipart("/tickets")
@@ -67,7 +70,35 @@ class TicketControllerTest {
                 .andExpect(jsonPath("$.id").value(7))
                 .andExpect(jsonPath("$.status").value("EM_FILA"));
 
-        verify(tickets).open(eq(USER), eq(Segment.DEFEITO_APP), eq("O app fecha"), argThat(files -> files.size() == 1));
+        verify(tickets).open(eq(USER), eq(Segment.DEFEITO_APP), eq("O app fecha"), argThat(files -> files.size() == 1),
+                isNull());
+    }
+
+    @Test
+    void opensATicketFromAChatbotConversation() throws Exception {
+        when(tickets.open(eq(USER), eq(Segment.PROBLEMA_PEDIDO), eq("Pedido incompleto"), isNull(), eq(42L)))
+                .thenReturn(detail(TicketStatus.EM_FILA));
+
+        mockMvc.perform(multipart("/tickets")
+                        .param("segment", "PROBLEMA_PEDIDO")
+                        .param("description", "Pedido incompleto")
+                        .param("chatbotConversationId", "42"))
+                .andExpect(status().isCreated());
+
+        verify(tickets).open(eq(USER), eq(Segment.PROBLEMA_PEDIDO), eq("Pedido incompleto"), isNull(), eq(42L));
+    }
+
+    @Test
+    void returnsTheChatbotTranscript() throws Exception {
+        when(tickets.chatbotConversation(USER, 7L)).thenReturn(new ChatbotTranscriptResponse(42L, AT,
+                List.of(new ChatbotMessageResponse(1L, ChatbotSender.BOT, "Olá, Usuário!", AT))));
+
+        mockMvc.perform(get("/tickets/7/chatbot-conversation"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.conversationId").value(42))
+                .andExpect(jsonPath("$.startedAt").value("2030-01-01T12:00:00Z"))
+                .andExpect(jsonPath("$.messages[0].sender").value("BOT"))
+                .andExpect(jsonPath("$.messages[0].body").value("Olá, Usuário!"));
     }
 
     @Test

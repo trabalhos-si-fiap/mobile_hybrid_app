@@ -32,7 +32,7 @@ class OpenApiContractTest {
 
         assertThat(paths).containsKeys(
                 "/segments", "/tickets", "/tickets/mine", "/tickets/queue",
-                "/tickets/{ticketId}", "/tickets/{ticketId}/messages",
+                "/tickets/{ticketId}", "/tickets/{ticketId}/messages", "/tickets/{ticketId}/chatbot-conversation",
                 "/tickets/{ticketId}/attachments/{attachmentId}",
                 "/tickets/{ticketId}/confirm", "/tickets/{ticketId}/reopen", "/tickets/{ticketId}/events",
                 "/tickets/{ticketId}/assume", "/tickets/{ticketId}/resolve", "/tickets/{ticketId}/transfer",

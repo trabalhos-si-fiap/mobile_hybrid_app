@@ -478,6 +478,10 @@ paths:
                 description:
                   type: string
                   maxLength: 2000
+                chatbotConversationId:
+                  type: integer
+                  format: int64
+                  description: Conversa do Mentor Edu em ENCAMINHAMENTO; o ticket nasce com o canal CHATBOT_IA e a conversa fica ligada a ele
                 files:
                   type: array
                   maxItems: 5
@@ -496,6 +500,10 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/Unprocessable'
 
@@ -624,6 +632,25 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+
+  /tickets/{ticketId}/chatbot-conversation:
+    parameters:
+      - $ref: '#/components/parameters/TicketId'
+    get:
+      tags: [Tickets]
+      summary: Conversa com o Mentor Edu que originou o ticket (mesma visibilidade do detalhe)
+      operationId: getTicketChatbotConversation
+      responses:
+        '200':
+          description: Transcrição em ordem cronológica
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatbotTranscriptResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /tickets/{ticketId}/attachments/{attachmentId}:
     parameters:
@@ -2047,3 +2074,17 @@ components:
         optionId:
           type: string
           example: human
+
+    ChatbotTranscriptResponse:
+      type: object
+      properties:
+        conversationId:
+          type: integer
+          format: int64
+        startedAt:
+          type: string
+          format: date-time
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatbotMessageResponse'

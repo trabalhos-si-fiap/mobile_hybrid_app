@@ -1,5 +1,6 @@
 package com.edu.api.ticket.controller;
 
+import com.edu.api.chatbot.dto.ChatbotTranscriptResponse;
 import com.edu.api.security.AuthenticatedUser;
 import com.edu.api.ticket.dto.*;
 import com.edu.api.ticket.entity.Segment;
@@ -32,9 +33,11 @@ public class TicketController {
             @AuthenticationPrincipal AuthenticatedUser user,
             @RequestParam Segment segment,
             @RequestParam String description,
-            @RequestParam(name = "files", required = false) List<MultipartFile> files
+            @RequestParam(name = "files", required = false) List<MultipartFile> files,
+            @RequestParam(name = "chatbotConversationId", required = false) Long chatbotConversationId
     ) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(tickets.open(user, segment, description, files));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(tickets.open(user, segment, description, files, chatbotConversationId));
     }
 
     @GetMapping("/mine")
@@ -46,6 +49,12 @@ public class TicketController {
     public TicketDetailResponse detail(@AuthenticationPrincipal AuthenticatedUser user,
                                        @PathVariable long ticketId) {
         return tickets.detail(user, ticketId);
+    }
+
+    @GetMapping("/{ticketId}/chatbot-conversation")
+    public ChatbotTranscriptResponse chatbotConversation(@AuthenticationPrincipal AuthenticatedUser user,
+                                                         @PathVariable long ticketId) {
+        return tickets.chatbotConversation(user, ticketId);
     }
 
     @GetMapping("/{ticketId}/messages")

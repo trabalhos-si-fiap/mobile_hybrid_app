@@ -4,6 +4,7 @@ import com.edu.api.chatbot.dto.ChatbotHandoffResponse;
 import com.edu.api.chatbot.dto.ChatbotMessageResponse;
 import com.edu.api.chatbot.dto.ChatbotOptionResponse;
 import com.edu.api.chatbot.dto.ChatbotReplyRequest;
+import com.edu.api.chatbot.dto.ChatbotTranscriptResponse;
 import com.edu.api.chatbot.dto.ChatbotTurnResponse;
 import com.edu.api.chatbot.entity.ChatbotConversation;
 import com.edu.api.chatbot.entity.ChatbotFaq;
@@ -15,9 +16,11 @@ import com.edu.api.chatbot.repository.ChatbotConversationRepository;
 import com.edu.api.chatbot.repository.ChatbotFaqRepository;
 import com.edu.api.chatbot.repository.ChatbotMessageRepository;
 import com.edu.api.security.AuthenticatedUser;
+import com.edu.api.shared.exception.ConflictException;
 import com.edu.api.shared.exception.NotFoundException;
 import com.edu.api.shared.exception.ValidationException;
 import com.edu.api.ticket.entity.Segment;
+import com.edu.api.ticket.entity.Ticket;
 import com.edu.api.ticket.entity.TicketTypeConfig;
 import com.edu.api.ticket.repository.TicketTypeConfigRepository;
 import com.edu.api.user.entity.AdminUser;
@@ -109,6 +112,36 @@ public class ChatbotService {
             handOff(conversation, ChatbotTexts.HANDOFF, turn, now);
         }
         return response(conversation, turn);
+    }
+
+    /**
+     * Trava a conversa que vai virar ticket, na transação da abertura: ela tem
+     * de ser do solicitante (senão 404) e estar em ENCAMINHAMENTO (senão 409).
+     */
+    @Transactional
+    public ChatbotConversation claimForTicket(AuthenticatedUser user, long conversationId) {
+        ChatbotConversation conversation = ownForUpdate(user, conversationId);
+        if (conversation.getState() != ChatbotState.ENCAMINHAMENTO) {
+            throw new ConflictException("Conversa " + conversationId + " não está aguardando a abertura de um ticket");
+        }
+        return conversation;
+    }
+
+    /** Liga o ticket recém-aberto à conversa travada por {@link #claimForTicket} e a encerra. */
+    @Transactional
+    public void linkTicket(ChatbotConversation conversation, Ticket ticket) {
+        conversation.linkTicket(ticket, clock.instant());
+    }
+
+    /** A conversa que originou o ticket; quem chama já conferiu a visibilidade do ticket. */
+    @Transactional(readOnly = true)
+    public ChatbotTranscriptResponse transcript(Ticket ticket) {
+        ChatbotConversation conversation = conversations.findByTicketId(ticket.getId())
+                .orElseThrow(() -> new NotFoundException("Ticket " + ticket.getId() + " não veio do chatbot"));
+        List<ChatbotMessageResponse> lines = messages.findByConversation(conversation.getId()).stream()
+                .map(ChatbotService::message)
+                .toList();
+        return new ChatbotTranscriptResponse(conversation.getId(), conversation.getCreatedAt(), lines);
     }
 
     /** Trava a conversa; a de outro usuário responde 404, como a inexistente. */
