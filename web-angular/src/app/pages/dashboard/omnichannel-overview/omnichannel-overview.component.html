@@ -1,0 +1,99 @@
+<section class="overview" aria-labelledby="overview-title">
+  <header class="overview-head">
+    <h2 id="overview-title">Visão do atendimento</h2>
+    <div class="periods" role="group" aria-label="Período">
+      @for (days of periods; track days) {
+        <button type="button" [attr.aria-pressed]="period() === days" (click)="choose(days)">
+          {{ days }} dias
+        </button>
+      }
+    </div>
+  </header>
+
+  @if (loading()) {
+    <p class="state">Carregando atendimento...</p>
+  } @else if (failed()) {
+    <div class="state">
+      <p role="alert">Não foi possível carregar o atendimento.</p>
+      <button type="button" (click)="retry()">Tentar de novo</button>
+    </div>
+  } @else {
+    @if (data(); as data) {
+      <p class="legend">vs. {{ data.days }} dias anteriores</p>
+
+      <div class="kpis">
+        @for (card of cards(); track card.key) {
+          <article class="kpi" [attr.data-kpi]="card.key">
+            <span>{{ card.label }}</span>
+            <strong>{{ card.value }}</strong>
+            @if (card.badge; as badge) {
+              <small class="badge" [attr.data-tone]="badge.tone">{{ badge.text }}</small>
+            }
+          </article>
+        }
+      </div>
+
+      <p class="channels">
+        @for (channel of channels(); track channel.key) {
+          <span [attr.data-channel]="channel.key">
+            {{ channel.label }} <b>{{ channel.value }}</b>
+            @if (channel.badge; as badge) {
+              <small class="badge" [attr.data-tone]="badge.tone">{{ badge.text }}</small>
+            }
+          </span>
+        }
+      </p>
+
+      <h3>Anomalias (últimas 24h)</h3>
+      <ul class="anomalies" aria-label="Anomalias das últimas 24 horas">
+        @for (anomaly of anomalies(); track anomaly.segment) {
+          <li [attr.data-segment]="anomaly.segment" [attr.data-status]="anomaly.chip">
+            <strong>{{ anomaly.label }}</strong>
+            <span>{{ anomaly.summary }}</span>
+            <em>{{ anomaly.chipLabel }}</em>
+          </li>
+        }
+      </ul>
+
+      <div class="table-wrap">
+        <table class="segments">
+          <caption>
+            Por segmento
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Segmento</th>
+              <th scope="col">Abertos</th>
+              <th scope="col">Resolvidos</th>
+              <th scope="col">SLA cumprido</th>
+              <th scope="col">Backlog</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of segments(); track row.segment) {
+              <tr [attr.data-segment]="row.segment">
+                <th scope="row">{{ row.label }}</th>
+                @for (cell of row.cells; track cell.key) {
+                  <td>
+                    {{ cell.value }}
+                    @if (cell.badge; as badge) {
+                      <small class="badge" [attr.data-tone]="badge.tone">{{ badge.text }}</small>
+                    }
+                  </td>
+                }
+                <td>{{ row.backlog }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Destaques</h3>
+      <ul class="highlights">
+        @for (line of data.highlights; track $index) {
+          <li>{{ line }}</li>
+        }
+      </ul>
+    }
+  }
+</section>
