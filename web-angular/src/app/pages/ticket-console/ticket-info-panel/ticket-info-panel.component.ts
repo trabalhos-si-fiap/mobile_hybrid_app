@@ -10,12 +10,13 @@ import {
 } from '../../../core/utils/ticket-labels';
 import { formatDateTime, slaDueLabel } from '../../../core/utils/time-format';
 import { AttachmentViewComponent } from '../../../shared/attachment-view/attachment-view.component';
+import { TicketChatbotTranscriptComponent } from '../ticket-chatbot-transcript/ticket-chatbot-transcript.component';
 import { TicketTimelineComponent } from '../ticket-timeline/ticket-timeline.component';
 
 @Component({
   selector: 'app-ticket-info-panel',
   standalone: true,
-  imports: [AttachmentViewComponent, TicketTimelineComponent],
+  imports: [AttachmentViewComponent, TicketChatbotTranscriptComponent, TicketTimelineComponent],
   templateUrl: './ticket-info-panel.component.html',
   styleUrl: './ticket-info-panel.component.scss',
 })

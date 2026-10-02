@@ -1,0 +1,73 @@
+// Sem caixa própria: com o bloco escondido (404), a grade do painel não ganha um vão a mais.
+:host {
+  display: contents;
+}
+
+.transcript {
+  padding: 16px;
+  border-radius: 10px;
+  background: #fff;
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+
+  h2 {
+    margin: 0 0 4px;
+    color: #535961;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+  }
+
+  .btn {
+    justify-self: start;
+  }
+}
+
+.muted,
+.failed {
+  margin: 0;
+  color: #667085;
+  font-size: 13px;
+}
+
+.failed {
+  color: #b42318;
+}
+
+.lines {
+  max-height: 320px;
+  margin: 0;
+  padding: 0 4px 0 0;
+  overflow-y: auto;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+
+  li {
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #f2f4f7;
+    display: grid;
+    gap: 2px;
+
+    &[data-sender='BOT'] {
+      background: #e6f4fb;
+    }
+  }
+
+  p {
+    margin: 0;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+  }
+}
+
+.line-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #535961;
+  font-size: 12px;
+}

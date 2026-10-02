@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 
+import { ChatbotMessage, ChatbotTranscript } from '../core/models/chatbot.model';
 import {
   AppNotification,
   Attachment,
@@ -103,6 +104,40 @@ export function aNotification(overrides: Partial<AppNotification> = {}): AppNoti
     body: 'O usuário respondeu no ticket #12.',
     read: false,
     createdAt: '2026-09-29T11:55:00Z',
+    ...overrides,
+  };
+}
+
+/** Fala do bot (a saudação), às 09:50 UTC do dia do aTicket(). */
+export function aChatbotMessage(overrides: Partial<ChatbotMessage> = {}): ChatbotMessage {
+  return {
+    id: 1,
+    sender: 'BOT',
+    body: 'Olá, Ana! Sou o Mentor Edu, o assistente do Edu. Sobre o que você precisa de ajuda?',
+    createdAt: '2026-09-29T09:50:00Z',
+    ...overrides,
+  };
+}
+
+/** Conversa 42, que abriu o aTicket(): saudação, "Falar com atendente" e a passagem. */
+export function aChatbotTranscript(overrides: Partial<ChatbotTranscript> = {}): ChatbotTranscript {
+  return {
+    conversationId: 42,
+    startedAt: '2026-09-29T09:50:00Z',
+    messages: [
+      aChatbotMessage(),
+      aChatbotMessage({
+        id: 2,
+        sender: 'USER',
+        body: 'Falar com atendente',
+        createdAt: '2026-09-29T09:51:00Z',
+      }),
+      aChatbotMessage({
+        id: 3,
+        body: 'Vou te passar para um atendente. Revise o pedido, anexe evidências se tiver e envie.',
+        createdAt: '2026-09-29T09:51:00Z',
+      }),
+    ],
     ...overrides,
   };
 }

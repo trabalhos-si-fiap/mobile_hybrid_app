@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
+import { ChatbotTranscript } from '../models/chatbot.model';
 import {
   Attachment,
   QueueScope,
@@ -39,6 +40,11 @@ export class TicketService {
 
   events(id: number): Observable<TicketEvent[]> {
     return this.http.get<TicketEvent[]>(`${this.apiUrl}/tickets/${id}/events`);
+  }
+
+  /** 404 quando o ticket não veio do chatbot. */
+  chatbotConversation(id: number): Observable<ChatbotTranscript> {
+    return this.http.get<ChatbotTranscript>(`${this.apiUrl}/tickets/${id}/chatbot-conversation`);
   }
 
   sendMessage(id: number, body: string, files: File[]): Observable<TicketMessage> {

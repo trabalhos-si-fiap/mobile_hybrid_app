@@ -1,0 +1,28 @@
+@if (state() !== 'missing') {
+  <section class="transcript">
+    <h2>Conversa com o chatbot</h2>
+
+    @switch (state()) {
+      @case ('loading') {
+        <p class="muted">Carregando conversa...</p>
+      }
+      @case ('failed') {
+        <p class="failed" role="alert">Não foi possível carregar a conversa.</p>
+        <button class="btn" type="button" (click)="retry()">Tentar de novo</button>
+      }
+      @default {
+        <ol class="lines" aria-label="Conversa com o chatbot">
+          @for (message of messages(); track message.id) {
+            <li [attr.data-sender]="message.sender">
+              <div class="line-head">
+                <strong>{{ sender(message) }}</strong>
+                <time>{{ time(message.createdAt) }}</time>
+              </div>
+              <p>{{ message.body }}</p>
+            </li>
+          }
+        </ol>
+      }
+    }
+  </section>
+}

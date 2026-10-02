@@ -39,7 +39,7 @@ export const PRESENCE_LABELS: Record<Presence, string> = {
 
 export const CHANNEL_LABELS: Record<TicketChannel, string> = {
   APP: 'App',
-  CHATBOT_IA: 'Chatbot IA',
+  CHATBOT_IA: 'Chatbot',
 };
 
 export const QUEUE_LABELS: Record<TicketQueue, string> = {

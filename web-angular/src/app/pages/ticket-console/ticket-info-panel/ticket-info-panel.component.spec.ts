@@ -1,17 +1,25 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, Mock, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { NEVER } from 'rxjs';
+import { NEVER, of } from 'rxjs';
 
 import { TicketDetail } from '../../../core/models/ticket.model';
 import { TicketService } from '../../../core/services/ticket.service';
 import { formatDateTime } from '../../../core/utils/time-format';
-import { anAttachment, aTicket, NOW } from '../../../testing/test-data';
+import { aChatbotTranscript, anAttachment, aTicket, NOW } from '../../../testing/test-data';
 import { TicketInfoPanelComponent } from './ticket-info-panel.component';
 
 describe('TicketInfoPanelComponent', () => {
+  let chatbotConversation: Mock;
+
   beforeEach(() => {
+    chatbotConversation = vi.fn(() => of(aChatbotTranscript()));
     TestBed.configureTestingModule({
-      providers: [{ provide: TicketService, useValue: { downloadAttachment: () => NEVER } }],
+      providers: [
+        {
+          provide: TicketService,
+          useValue: { downloadAttachment: () => NEVER, chatbotConversation },
+        },
+      ],
     });
   });
 
@@ -28,6 +36,12 @@ describe('TicketInfoPanelComponent', () => {
     return fixture.nativeElement.textContent;
   }
 
+  function headings(fixture: ComponentFixture<TicketInfoPanelComponent>): string[] {
+    return Array.from<HTMLElement>(fixture.nativeElement.querySelectorAll('h2')).map((heading) =>
+      heading.textContent!.trim(),
+    );
+  }
+
   it('shows the requester and the service data', async () => {
     const fixture = await render(aTicket());
 
@@ -37,6 +51,13 @@ describe('TicketInfoPanelComponent', () => {
     expect(text(fixture)).toContain('Tecnologia');
     expect(text(fixture)).toContain('App');
     expect(text(fixture)).toContain('Diego Dev');
+  });
+
+  it('labels the bot channel as Chatbot', async () => {
+    const fixture = await render(aTicket({ channel: 'CHATBOT_IA' }));
+
+    const channel = fixture.nativeElement.querySelector('[data-field="channel"]');
+    expect(channel.textContent.trim()).toBe('Chatbot');
   });
 
   it('shows only the dates that exist', async () => {
@@ -98,5 +119,40 @@ describe('TicketInfoPanelComponent', () => {
     );
 
     expect(fixture.nativeElement.querySelectorAll('app-attachment-view')).toHaveLength(2);
+  });
+
+  it('shows the chatbot conversation between the service data and the description', async () => {
+    const fixture = await render(aTicket({ channel: 'CHATBOT_IA' }));
+
+    const order = headings(fixture);
+    const transcript = order.indexOf('Conversa com o chatbot');
+    expect(transcript).toBeGreaterThan(order.indexOf('Atendimento'));
+    expect(transcript).toBe(order.indexOf('Descrição') - 1);
+    expect(chatbotConversation).toHaveBeenCalledWith(12);
+    const userLine: HTMLElement = fixture.nativeElement.querySelector('li[data-sender="USER"]');
+    expect(userLine.querySelector('strong')!.textContent).toBe('Ana Usuária');
+  });
+
+  it('has no chatbot block, and asks for nothing, on an APP ticket', async () => {
+    const fixture = await render(aTicket());
+
+    expect(fixture.nativeElement.querySelector('app-ticket-chatbot-transcript')).toBeNull();
+    expect(headings(fixture)).not.toContain('Conversa com o chatbot');
+    expect(chatbotConversation).not.toHaveBeenCalled();
+  });
+
+  it('loads the conversation once while the detail polling replaces the ticket', async () => {
+    const fixture = await render(aTicket({ channel: 'CHATBOT_IA' }));
+
+    fixture.componentRef.setInput(
+      'ticket',
+      aTicket({ channel: 'CHATBOT_IA', status: 'RESOLVIDO' }),
+    );
+    await fixture.whenStable();
+    fixture.componentRef.setInput('ticket', aTicket({ channel: 'CHATBOT_IA', status: 'FECHADO' }));
+    await fixture.whenStable();
+
+    expect(chatbotConversation).toHaveBeenCalledTimes(1);
+    expect(fixture.nativeElement.querySelectorAll('li[data-sender]')).toHaveLength(3);
   });
 });

@@ -13,7 +13,7 @@
       <dt>Fila</dt>
       <dd>{{ queueLabels[ticket().queue] }}</dd>
       <dt>Canal</dt>
-      <dd>{{ channelLabels[ticket().channel] }}</dd>
+      <dd data-field="channel">{{ channelLabels[ticket().channel] }}</dd>
       <dt>Atendente</dt>
       <dd data-field="assignee">{{ ticket().assignee?.name ?? '—' }}</dd>
       @for (date of dates(); track date.label) {
@@ -41,6 +41,13 @@
       <h2>Alerta de engenharia</h2>
       <p>{{ ticket().engineeringAlertReason }}</p>
     </section>
+  }
+
+  @if (ticket().channel === 'CHATBOT_IA') {
+    <app-ticket-chatbot-transcript
+      [ticketId]="ticket().id"
+      [requesterName]="ticket().requester.name"
+    />
   }
 
   <section class="block">

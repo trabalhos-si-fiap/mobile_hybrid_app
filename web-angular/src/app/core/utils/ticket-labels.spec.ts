@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { badgeClass, isSlaRunning, STATUS_LABELS } from './ticket-labels';
+import { badgeClass, CHANNEL_LABELS, isSlaRunning, STATUS_LABELS } from './ticket-labels';
 
 describe('ticket-labels', () => {
   it('builds the badge class from kind and value', () => {
@@ -11,6 +11,11 @@ describe('ticket-labels', () => {
   it('labels every status in Portuguese', () => {
     expect(STATUS_LABELS.EM_FILA).toBe('Em fila');
     expect(STATUS_LABELS.RESOLVIDO).toBe('Resolvido');
+  });
+
+  it('labels the bot channel as "Chatbot", without IA', () => {
+    expect(CHANNEL_LABELS.APP).toBe('App');
+    expect(CHANNEL_LABELS.CHATBOT_IA).toBe('Chatbot');
   });
 
   it('knows when the SLA clock is still running', () => {

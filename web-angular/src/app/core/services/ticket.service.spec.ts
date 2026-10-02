@@ -3,7 +3,8 @@ import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 
-import { anAttachment, fakeFile } from '../../testing/test-data';
+import { ChatbotTranscript } from '../models/chatbot.model';
+import { aChatbotTranscript, anAttachment, fakeFile } from '../../testing/test-data';
 import { TicketService } from './ticket.service';
 
 describe('TicketService', () => {
@@ -42,6 +43,17 @@ describe('TicketService', () => {
     expect(http.expectOne('/api/v1/tickets/12').request.method).toBe('GET');
     expect(http.expectOne('/api/v1/tickets/12/messages').request.method).toBe('GET');
     expect(http.expectOne('/api/v1/tickets/12/events').request.method).toBe('GET');
+  });
+
+  it('reads the chatbot conversation that opened the ticket', () => {
+    let transcript: ChatbotTranscript | undefined;
+    service.chatbotConversation(12).subscribe((value) => (transcript = value));
+
+    const request = http.expectOne('/api/v1/tickets/12/chatbot-conversation');
+    expect(request.request.method).toBe('GET');
+    request.flush(aChatbotTranscript());
+
+    expect(transcript).toEqual(aChatbotTranscript());
   });
 
   it('sends a message as multipart with every file under "files"', () => {
