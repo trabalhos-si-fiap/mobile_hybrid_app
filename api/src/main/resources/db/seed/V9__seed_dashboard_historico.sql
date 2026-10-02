@@ -29,13 +29,19 @@ WITH dia AS (
 seq AS (
     SELECT LEVEL AS n FROM dual CONNECT BY LEVEL <= 12
 ),
+-- Segmentos com atendente não-admin: admin tem todas as skills, então é excluído;
+-- cada segmento fica com seu atendente especializado (dev, logística, produto).
 segmento AS (
     SELECT c.segment,
            c.label,
            c.default_priority,
            c.sla_minutes,
            DECODE(c.segment, 'DEFEITO_APP', 1, 'PROBLEMA_PEDIDO', 2, 3) AS s,
-           (SELECT MIN(es.employee_id) FROM employee_skills es WHERE es.skill_id = c.skill_id) AS employee_id
+           (SELECT MIN(es.employee_id) FROM employee_skills es
+              JOIN employees e ON e.id = es.employee_id
+              JOIN admin_users u ON u.id = e.user_id
+             WHERE es.skill_id = c.skill_id
+               AND u.email <> 'admin@edu.com') AS employee_id
       FROM ticket_tipo_config c
 ),
 cliente AS (
