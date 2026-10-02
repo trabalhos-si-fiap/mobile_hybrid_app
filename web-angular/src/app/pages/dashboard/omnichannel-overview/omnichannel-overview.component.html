@@ -11,7 +11,7 @@
   </header>
 
   @if (loading()) {
-    <p class="state">Carregando atendimento...</p>
+    <p class="state" role="status">Carregando atendimento...</p>
   } @else if (failed()) {
     <div class="state">
       <p role="alert">Não foi possível carregar o atendimento.</p>

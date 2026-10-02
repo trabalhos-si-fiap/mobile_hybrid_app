@@ -255,12 +255,14 @@ O topo do dashboard web (`/dashboard`) mostra o atendimento omnichannel nos
 últimos 7, 30 ou 90 dias, cada indicador comparado ao período anterior de mesmo
 tamanho: tickets abertos (no total e por canal, App ou Chatbot), resolvidos,
 backlog, SLA cumprido, escalados, tempo médio até assumir e tempo médio de
-resolução, também por segmento. Abaixo, a detecção de anomalias marca picos e
+resolução; abertos, resolvidos, SLA e backlog aparecem também por segmento.
+Abaixo, a detecção de anomalias marca picos e
 quedas no volume de cada segmento nas últimas 24 horas, e uma lista de
 destaques resume o que mudou.
 
-Todo o cálculo fica no Oracle; a API (`GET /api/v1/dashboard/omnichannel?days=7`)
-só lê o resultado e monta as frases de destaque.
+Indicadores, segmentos e anomalias são calculados no Oracle; a API
+(`GET /api/v1/dashboard/omnichannel?days=7`) só lê o resultado, marca cada
+anomalia como pico ou queda e monta as frases de destaque.
 
 | Objeto PL/SQL | Papel |
 |---|---|
@@ -270,7 +272,8 @@ só lê o resultado e monta as frases de destaque.
 **Anomalias.** Para cada segmento, o volume das últimas 24 horas é comparado
 com as janelas de 24 horas dos 28 dias anteriores por z-score: |z| ≥ 2 é
 anomalia, e com menos de 7 janelas de histórico o segmento fica "sem
-histórico". É estatística simples, como a do `analytics-service` do `edu`, sem
+histórico". Se o histórico não varia (desvio 0), qualquer volume diferente da
+média já é anomalia. É estatística simples, como a do `analytics-service` do `edu`, sem
 machine learning. Janelas de 24 horas contadas a partir de agora evitam
 comparar o dia de hoje pela metade com dias cheios.
 
@@ -284,7 +287,8 @@ consultas da procedure.
 **Dados da demonstração.** O seed `V9` cria 180 dias de tickets já fechados, de
 cinco clientes fictícios, e um pico de "Problemas com pedido" nas últimas 24
 horas. Como tudo é relativo à hora da subida, o pico só aparece nas 24 horas
-seguintes. Para gravar a demonstração, suba a stack do zero:
+seguintes; depois delas, sem tickets novos, os três segmentos aparecem com
+"Queda", o que é esperado. Para gravar a demonstração, suba a stack do zero:
 
 ```bash
 # em api/ (apaga os volumes do Oracle e do MinIO)

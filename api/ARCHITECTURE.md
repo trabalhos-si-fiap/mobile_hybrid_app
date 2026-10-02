@@ -3,7 +3,7 @@
 ```text
 src/main/java/com/edu/api/
 ├── auth/                 # Login e JWT
-├── dashboard/            # Métricas agregadas e resumo executivo
+├── dashboard/            # Métricas agregadas, resumo executivo e resumo do atendimento (PL/SQL)
 ├── product/              # Cadastro e edição de produtos
 ├── inventory/            # Consulta e ajuste de estoque
 ├── carrier/              # Cadastro, edição e status de transportadoras
