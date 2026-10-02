@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:mobile_flutter/core/attachments/picked_attachment.dart';
+import 'package:mobile_flutter/features/chatbot/domain/chatbot_models.dart';
 import 'package:mobile_flutter/features/notifications/domain/app_notification.dart';
 import 'package:mobile_flutter/features/tickets/domain/ticket_models.dart';
 
@@ -135,3 +136,104 @@ String fakeJwt({String role = 'USER', DateTime? expiresAt}) {
   return '${part({'alg': 'HS256'})}.'
       '${part({'sub': 'ana@edu.com', 'role': role, 'exp': exp})}.assinatura';
 }
+
+const greetingText =
+    'Olá, Ana! Sou o Mentor Edu, o assistente do Edu. '
+    'Sobre o que você precisa de ajuda?';
+const faqAnswerText =
+    'Confira o e-mail e a senha. Se esqueceu a senha, use '
+    '"Esqueci minha senha" na tela de entrada.';
+
+ChatbotMessage testBotMessage(int id, String body) => ChatbotMessage(
+  id: id,
+  sender: ChatbotSender.bot,
+  body: body,
+  createdAt: DateTime.utc(2026, 9, 30, 12, 59),
+);
+
+ChatbotMessage testUserMessage(int id, String body) => ChatbotMessage(
+  id: id,
+  sender: ChatbotSender.user,
+  body: body,
+  createdAt: DateTime.utc(2026, 9, 30, 12, 59),
+);
+
+/// Saudação (INICIO): segmentos e "Falar com atendente".
+ChatbotTurn greetingTurn() => ChatbotTurn(
+  conversationId: 42,
+  state: ChatbotState.inicio,
+  messages: [testBotMessage(1, greetingText)],
+  options: const [
+    ChatbotOption(id: 'segment:DEFEITO_APP', label: 'Defeito no App'),
+    ChatbotOption(id: 'segment:PROBLEMA_PEDIDO', label: 'Problemas com pedido'),
+    ChatbotOption(id: 'human', label: 'Falar com atendente'),
+  ],
+  handoff: null,
+);
+
+/// Segmento escolhido (SEGMENTO): perguntas do FAQ, "Outro assunto" e
+/// "Falar com atendente".
+ChatbotTurn segmentTurn() => ChatbotTurn(
+  conversationId: 42,
+  state: ChatbotState.segmento,
+  messages: [
+    testUserMessage(2, 'Defeito no App'),
+    testBotMessage(
+      3,
+      'Estas são as dúvidas mais comuns sobre Defeito no App. '
+      'Escolha uma ou escreva a sua.',
+    ),
+  ],
+  options: const [
+    ChatbotOption(id: 'faq:9', label: 'Não consigo entrar'),
+    ChatbotOption(id: 'menu', label: 'Outro assunto'),
+    ChatbotOption(id: 'human', label: 'Falar com atendente'),
+  ],
+  handoff: null,
+);
+
+/// Resposta do FAQ a uma dúvida digitada (CONFIRMACAO).
+ChatbotTurn faqTurn({String question = 'Não consigo entrar'}) => ChatbotTurn(
+  conversationId: 42,
+  state: ChatbotState.confirmacao,
+  messages: [
+    testUserMessage(4, question),
+    testBotMessage(5, faqAnswerText),
+    testBotMessage(6, 'Isso resolveu sua dúvida?'),
+  ],
+  options: const [
+    ChatbotOption(id: 'resolved', label: 'Resolveu'),
+    ChatbotOption(id: 'not_resolved', label: 'Não resolveu'),
+  ],
+  handoff: null,
+);
+
+ChatbotTurn resolvedTurn() => ChatbotTurn(
+  conversationId: 42,
+  state: ChatbotState.resolvida,
+  messages: [
+    testUserMessage(7, 'Resolveu'),
+    testBotMessage(8, 'Que bom! Se precisar, é só chamar.'),
+  ],
+  options: const [],
+  handoff: null,
+);
+
+/// Passagem para o atendente (ENCAMINHAMENTO).
+ChatbotTurn handoffTurn({
+  String? segment = 'DEFEITO_APP',
+  String description = 'O app fecha sozinho.',
+}) => ChatbotTurn(
+  conversationId: 42,
+  state: ChatbotState.encaminhamento,
+  messages: [
+    testUserMessage(9, 'Falar com atendente'),
+    testBotMessage(
+      10,
+      'Vou te passar para um atendente. Revise o pedido, anexe evidências '
+      'se tiver e envie.',
+    ),
+  ],
+  options: const [],
+  handoff: ChatbotHandoff(segment: segment, description: description),
+);

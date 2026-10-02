@@ -108,3 +108,31 @@ Map<String, dynamic> notificationJson({
   'read': read,
   'createdAt': '2026-09-30T12:50:00Z',
 };
+
+Map<String, dynamic> chatbotMessageJson({
+  int id = 1,
+  String sender = 'BOT',
+  String body =
+      'Olá, Ana! Sou o Mentor Edu, o assistente do Edu. '
+      'Sobre o que você precisa de ajuda?',
+  String createdAt = '2026-09-30T12:59:00Z',
+}) => {'id': id, 'sender': sender, 'body': body, 'createdAt': createdAt};
+
+Map<String, dynamic> chatbotTurnJson({
+  int conversationId = 42,
+  String state = 'INICIO',
+  List<Map<String, dynamic>>? messages,
+  List<Map<String, dynamic>>? options,
+  Map<String, dynamic>? handoff,
+}) => {
+  'conversationId': conversationId,
+  'state': state,
+  'messages': messages ?? [chatbotMessageJson()],
+  'options':
+      options ??
+      [
+        {'id': 'segment:DEFEITO_APP', 'label': 'Defeito no App'},
+        {'id': 'human', 'label': 'Falar com atendente'},
+      ],
+  'handoff': handoff,
+};

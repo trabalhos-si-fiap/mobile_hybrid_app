@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:http/http.dart' as http;
 
 import '../features/auth/data/auth_api.dart';
+import '../features/chatbot/data/chatbot_api.dart';
 import '../features/notifications/data/notification_api.dart';
 import '../features/notifications/local_notifier.dart';
 import '../features/notifications/notification_center.dart';
@@ -26,6 +27,7 @@ class AppServices {
     required this.sessionStore,
     required this.authApi,
     required this.tickets,
+    required this.chatbot,
     required this.notifications,
     required this.notificationCenter,
     required this.picker,
@@ -60,6 +62,7 @@ class AppServices {
       sessionStore: sessionStore,
       authApi: AuthApi(tokenStore: tokenStore, sessionStore: sessionStore),
       tickets: tickets,
+      chatbot: HttpChatbotRepository(api),
       notifications: notifications,
       notificationCenter: NotificationCenter(
         repository: notifications,
@@ -79,6 +82,7 @@ class AppServices {
   final SessionStore sessionStore;
   final AuthApi authApi;
   final TicketRepository tickets;
+  final ChatbotRepository chatbot;
   final NotificationRepository notifications;
   final NotificationCenter notificationCenter;
   final AttachmentPicker picker;

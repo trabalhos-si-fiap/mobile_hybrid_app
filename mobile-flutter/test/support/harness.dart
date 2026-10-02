@@ -20,6 +20,7 @@ import 'test_data.dart';
 /// falha com timer pendente, e addTearDown roda tarde demais para isso.
 AppServices testServices({
   FakeTicketRepository? tickets,
+  FakeChatbotRepository? chatbot,
   FakeNotificationRepository? notifications,
   FakeLocalNotifier? notifier,
   FakeAttachmentPicker? picker,
@@ -43,6 +44,7 @@ AppServices testServices({
       sessionStore: sessionStore,
     ),
     tickets: ticketRepository,
+    chatbot: chatbot ?? FakeChatbotRepository(),
     notifications: notificationRepository,
     notificationCenter: NotificationCenter(
       repository: notificationRepository,

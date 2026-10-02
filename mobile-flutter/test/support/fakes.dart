@@ -4,6 +4,8 @@ import 'dart:typed_data';
 import 'package:mobile_flutter/core/attachments/attachment_picker.dart';
 import 'package:mobile_flutter/core/attachments/file_opener.dart';
 import 'package:mobile_flutter/core/attachments/picked_attachment.dart';
+import 'package:mobile_flutter/features/chatbot/data/chatbot_api.dart';
+import 'package:mobile_flutter/features/chatbot/domain/chatbot_models.dart';
 import 'package:mobile_flutter/features/notifications/data/notification_api.dart';
 import 'package:mobile_flutter/features/notifications/domain/app_notification.dart';
 import 'package:mobile_flutter/features/notifications/local_notifier.dart';
@@ -244,5 +246,41 @@ class FakeFileOpener implements FileOpener {
     opened.add(fileName);
     final failure = error;
     if (failure != null) throw failure;
+  }
+}
+
+class FakeChatbotRepository implements ChatbotRepository {
+  ChatbotTurn startResult = greetingTurn();
+  Object? startError;
+
+  /// Respostas de send(), uma por chamada; a última se repete.
+  final sendResults = <ChatbotTurn>[];
+  Object? sendError;
+
+  /// Quando não nulo, start e send esperam por ele (requisição lenta).
+  Completer<void>? gate;
+
+  final calls = <String>[];
+  final sent = <ChatbotReply>[];
+
+  @override
+  Future<ChatbotTurn> start() async {
+    calls.add('start');
+    await gate?.future;
+    final error = startError;
+    if (error != null) throw error;
+    return startResult;
+  }
+
+  @override
+  Future<ChatbotTurn> send(int conversationId, ChatbotReply reply) async {
+    calls.add('send $conversationId');
+    sent.add(reply);
+    await gate?.future;
+    final error = sendError;
+    if (error != null) throw error;
+    return sendResults.length == 1
+        ? sendResults.first
+        : sendResults.removeAt(0);
   }
 }
