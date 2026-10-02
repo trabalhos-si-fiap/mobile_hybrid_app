@@ -256,9 +256,8 @@ O topo do dashboard web (`/dashboard`) mostra o atendimento omnichannel nos
 tamanho: tickets abertos (no total e por canal, App ou Chatbot), resolvidos,
 backlog, SLA cumprido, escalados, tempo médio até assumir e tempo médio de
 resolução; abertos, resolvidos, SLA e backlog aparecem também por segmento.
-Abaixo, a detecção de anomalias marca picos e
-quedas no volume de cada segmento nas últimas 24 horas, e uma lista de
-destaques resume o que mudou.
+Abaixo, a detecção de anomalias marca picos e quedas no volume de cada segmento
+nas últimas 24 horas, e uma lista de destaques resume o que mudou.
 
 Indicadores, segmentos e anomalias são calculados no Oracle; a API
 (`GET /api/v1/dashboard/omnichannel?days=7`) só lê o resultado, marca cada
@@ -273,9 +272,9 @@ anomalia como pico ou queda e monta as frases de destaque.
 com as janelas de 24 horas dos 28 dias anteriores por z-score: |z| ≥ 2 é
 anomalia, e com menos de 7 janelas de histórico o segmento fica "sem
 histórico". Se o histórico não varia (desvio 0), qualquer volume diferente da
-média já é anomalia. É estatística simples, como a do `analytics-service` do `edu`, sem
-machine learning. Janelas de 24 horas contadas a partir de agora evitam
-comparar o dia de hoje pela metade com dias cheios.
+média já é anomalia. É estatística simples, como a do `analytics-service` do
+`edu`, sem machine learning. Janelas de 24 horas contadas a partir de agora
+evitam comparar o dia de hoje pela metade com dias cheios.
 
 **Por que estas assinaturas.** A divisão da Fase 6 nomeia
 `PR_RESUMO_DASHBOARD` e `FN_CALC_TAXA_VARIACAO`, mas nenhum material da FIAP
