@@ -210,7 +210,7 @@ O atendimento no app começa pelo **Mentor Edu**, um bot de regras que
 responde às dúvidas comuns antes de envolver um atendente.
 
 1. Em "Meus tickets", o usuário toca em **Preciso de ajuda**.
-2. O bot oferece os três segmentos (Defeito no App, Problemas com pedido,
+2. O bot oferece os três segmentos (Defeito no App / Problemas com App, Problemas com pedido,
    Feedback / Sugestões) e "Falar com atendente". Cada segmento mostra as
    perguntas mais comuns do FAQ; o usuário também pode digitar a dúvida.
 3. Depois de cada resposta, o bot pergunta se resolveu. "Resolveu" encerra a
@@ -227,7 +227,7 @@ responde às dúvidas comuns antes de envolver um atendente.
 
 | Parte | Onde |
 |---|---|
-| FAQ e conversas | tabelas `chatbot_faq`, `chatbot_faq_keywords`, `chatbot_conversations` e `chatbot_messages` (`V5__chatbot.sql`; FAQ de demonstração em `V6__seed_chatbot.sql`) |
+| FAQ e conversas | tabelas `chatbot_faq`, `chatbot_faq_keywords`, `chatbot_conversations` e `chatbot_messages` (`V5__chatbot.sql`; FAQ de demonstração em `V6__seed_chatbot.sql`, com o ajuste de palavras-chave do `V7__seed_chatbot_keywords.sql`) |
 | Casamento do texto livre | function PL/SQL `FN_CHATBOT_RESPOSTA` (`db/plsql/R__fn_chatbot_resposta.sql`): normaliza o texto (minúsculas, sem acento) e escolhe o item do FAQ com mais palavras-chave em comum |
 | Fluxo da conversa | `ChatbotService` na API; `POST /chatbot/conversations` e `POST /chatbot/conversations/{id}/messages` |
 | Passagem para o ticket | campo `chatbotConversationId` em `POST /tickets`; transcrição em `GET /tickets/{id}/chatbot-conversation` |
