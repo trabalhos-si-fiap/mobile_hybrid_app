@@ -55,6 +55,6 @@ public class OmnichannelHighlights {
 
     /** 3,4 · 29,2 · 20: vírgula decimal, sem zeros sobrando. */
     private static String decimal(BigDecimal value) {
-        return new DecimalFormat("0.##", PT_BR).format(value);
+        return new DecimalFormat("#,##0.##", PT_BR).format(value);
     }
 }

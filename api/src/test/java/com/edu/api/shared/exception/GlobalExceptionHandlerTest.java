@@ -2,6 +2,7 @@ package com.edu.api.shared.exception;
 
 import com.edu.api.shared.response.ApiErrorResponse;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 
@@ -35,5 +36,16 @@ class GlobalExceptionHandlerTest {
 
         assertThat(response.getStatusCode().value()).isEqualTo(403);
         assertThat(response.getBody().error()).isEqualTo("FORBIDDEN");
+    }
+
+    @Test
+    void dataAccessFailureBecomes500WithoutLeakingTheCause() {
+        ResponseEntity<ApiErrorResponse> response = handler.handleDataAccess(
+                new DataAccessResourceFailureException("ORA-04063: package body has errors"), request);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(500);
+        assertThat(response.getBody().error()).isEqualTo("INTERNAL_ERROR");
+        assertThat(response.getBody().message()).isEqualTo("Erro ao consultar o banco de dados.");
+        assertThat(response.getBody().message()).doesNotContain("ORA-");
     }
 }

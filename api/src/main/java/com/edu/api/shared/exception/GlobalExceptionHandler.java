@@ -2,6 +2,9 @@ package com.edu.api.shared.exception;
 
 import com.edu.api.shared.response.ApiErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -16,6 +19,8 @@ import java.time.Instant;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleNotFound(
@@ -93,6 +98,18 @@ public class GlobalExceptionHandler {
 
         return buildResponse(HttpStatus.BAD_REQUEST, "VALIDATION_ERROR",
                 "Arquivo maior que o permitido (5 MB por arquivo)", request);
+    }
+
+    @ExceptionHandler(DataAccessException.class)
+    public ResponseEntity<ApiErrorResponse> handleDataAccess(
+            DataAccessException exception,
+            HttpServletRequest request
+    ) {
+
+        log.error("Falha de acesso ao banco em {}", request.getRequestURI(), exception);
+
+        return buildResponse(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR",
+                "Erro ao consultar o banco de dados.", request);
     }
 
     private static String badRequestMessage(Exception exception) {

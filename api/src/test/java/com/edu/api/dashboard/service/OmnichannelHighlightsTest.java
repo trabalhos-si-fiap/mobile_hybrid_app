@@ -104,4 +104,10 @@ class OmnichannelHighlightsTest {
                 "Pico de tickets em Feedback / Sugestões: 8 nas últimas 24h, contra média de 2,25.",
                 "Tickets abertos subiram 45,5% em relação aos 7 dias anteriores.");
     }
+
+    @Test
+    void groupsThousandsInHighlightNumbers() {
+        assertThat(highlights.of(7, kpis("2400.5", null), normal())).containsExactly(
+                "Tickets abertos subiram 2.400,5% em relação aos 7 dias anteriores.");
+    }
 }

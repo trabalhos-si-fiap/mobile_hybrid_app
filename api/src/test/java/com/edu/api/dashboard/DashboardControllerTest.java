@@ -26,6 +26,7 @@ import com.edu.api.ticket.entity.Segment;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -264,5 +265,16 @@ class DashboardControllerTest {
                 .andExpect(status().isOk());
 
         verify(omnichannelDashboardService).summary(7);
+    }
+
+    @Test
+    void anOracleFailureBecomesA500InTheApiErrorFormat() throws Exception {
+        when(omnichannelDashboardService.summary(7))
+                .thenThrow(new DataAccessResourceFailureException("ORA-06550"));
+
+        mockMvc.perform(get("/dashboard/omnichannel"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.error").value("INTERNAL_ERROR"))
+                .andExpect(jsonPath("$.message").value("Erro ao consultar o banco de dados."));
     }
 }
