@@ -3,7 +3,8 @@
 Os 7 objetos ficam em `api/src/main/resources/db/plsql/`, um por arquivo,
 como scripts `R__` (repeatable) do Flyway, aplicados depois de todos os
 `V__`. Nenhum faz `COMMIT`: a transação é sempre da API, que confirma ou
-desfaz tudo junto. Os nomes seguem a especificação da FIAP.
+desfaz tudo junto. Os nomes seguem o padrão da especificação da FIAP
+(`FN_` e `PR_`, em português).
 
 ## Resumo
 

@@ -74,8 +74,8 @@ sempre 0, porque o banco não obriga um usuário a ter ticket.
 | 14 | Ticket | (0,1) | origina | (0,N) | Notificação | `FK_NOTIF_TICKET` | Cada notificação fala de no máximo 1 ticket; um ticket origina de 0 a N notificações. |
 | 15 | Segmento | (1,1) | agrupa | (0,N) | Pergunta do FAQ | `FK_CHATBOT_FAQ_SEGMENT` | Cada pergunta é de exatamente 1 segmento; um segmento agrupa de 0 a N perguntas. |
 | 16 | Usuário | (1,1) | inicia | (0,N) | Conversa do chatbot | `FK_CHATBOT_CONV_USER` | Cada conversa é de exatamente 1 usuário; um usuário inicia de 0 a N conversas. |
-| 17 | Segmento | (0,1) | é escolhido em | (0,N) | Conversa do chatbot | `FK_CHATBOT_CONV_SEGMENT` | Cada conversa tem no máximo 1 segmento (nenhum até o usuário escolher); um segmento é escolhido em 0 a N conversas. |
-| 18 | Pergunta do FAQ | (0,1) | está em pauta em | (0,N) | Conversa do chatbot | `FK_CHATBOT_CONV_FAQ` | Cada conversa espera a confirmação de no máximo 1 pergunta ("Isso resolveu?"); uma pergunta está em pauta em 0 a N conversas. |
+| 17 | Segmento | (0,1) | é escolhido em | (0,N) | Conversa do chatbot | `FK_CHATBOT_CONV_SEGMENT` | Cada conversa tem no máximo 1 segmento (o escolhido pelo usuário ou o da pergunta casada pelo texto; nenhum antes disso); um segmento está em 0 a N conversas. |
+| 18 | Pergunta do FAQ | (0,1) | foi respondida em | (0,N) | Conversa do chatbot | `FK_CHATBOT_CONV_FAQ` | Cada conversa guarda no máximo 1 pergunta: a última respondida (nenhuma até a primeira resposta); uma pergunta foi a última respondida em 0 a N conversas. |
 | 19 | Conversa do chatbot | (0,1) | gera | (0,1) | Ticket | `FK_CHATBOT_CONV_TICKET`, `UQ_CHATBOT_CONV_TICKET` | Cada ticket vem de no máximo 1 conversa; cada conversa gera no máximo 1 ticket (a passagem para o atendente). |
 | 20 | Conversa do chatbot | (1,1) | contém | (0,N) | Mensagem do chatbot | `FK_CHATBOT_MSG_CONVERSATION` | Cada mensagem é de exatamente 1 conversa; uma conversa tem de 0 a N mensagens. |
 | 21 | Pergunta do FAQ | (0,1) | é citada em | (0,N) | Mensagem do chatbot | `FK_CHATBOT_MSG_FAQ` | Cada mensagem cita no máximo 1 pergunta; uma pergunta é citada em 0 a N mensagens. |

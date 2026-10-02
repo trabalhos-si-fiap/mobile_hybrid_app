@@ -48,9 +48,10 @@ Saldo em estoque de cada produto: no máximo uma linha por produto. Origem:
 
 **Índices:**
 
-- `IX_INVENTORIES_QUANTITY` (`quantity`): consultas de estoque por
-  quantidade, como a lista de produtos com estoque baixo. A FK `product_id`
-  já é coberta pelo índice de `UQ_INVENTORIES_PRODUCT`.
+- `IX_INVENTORIES_QUANTITY` (`quantity`): herdado da baseline do Edu
+  Admin; hoje nenhuma consulta filtra só por `quantity` (o estoque baixo
+  compara `quantity` com `products.minimum_stock`). A FK `product_id` já é
+  coberta pelo índice de `UQ_INVENTORIES_PRODUCT`.
 
 ### `inventory_adjustments`
 
@@ -149,7 +150,7 @@ skill (ver `ticket_tipo_config`). Origem: `V3`.
 | Coluna | Tipo | Nulo | Padrão | Chave | Descrição |
 |---|---|---|---|---|---|
 | `id` | `NUMBER(19)`, identidade | não | — | PK (`PK_SKILLS`) | Identificador da skill. |
-| `code` | `VARCHAR2(40 CHAR)` | não | — | UQ (`UQ_SKILLS_CODE`) | Código estável da skill, usado nos seeds e na matriz de triagem. |
+| `code` | `VARCHAR2(40 CHAR)` | não | — | UQ (`UQ_SKILLS_CODE`) | Código estável da skill, usado pela API (os destinatários do alerta de engenharia saem da skill `DESENVOLVEDOR`) e devolvido em `GET /api/v1/employees/me`. A matriz de triagem guarda o `skill_id`. |
 | `name` | `VARCHAR2(100 CHAR)` | não | — | — | Nome mostrado no console. |
 
 **Dados de referência** (gravados pela `V3`):
@@ -330,8 +331,8 @@ dashboard. Origem: `V3`.
 | `id` | `NUMBER(19)`, identidade | não | — | PK (`PK_TICKET_EVENTS`) | Identificador do evento. |
 | `ticket_id` | `NUMBER(19)` | não | — | FK → `tickets` (`FK_TICKET_EVT_TICKET`) | Ticket do evento. |
 | `type` | `VARCHAR2(30 CHAR)` | não | — | — | Tipo do evento (`CK_TICKET_EVT_TYPE`); ver valores abaixo. |
-| `from_status` | `VARCHAR2(20 CHAR)` | sim | — | — | Estado antes do evento. Nulo quando o evento não muda estado (ex.: `ABERTO`, `ERRO_ESCALONAMENTO`). |
-| `to_status` | `VARCHAR2(20 CHAR)` | sim | — | — | Estado depois do evento; nulo nos mesmos casos. |
+| `from_status` | `VARCHAR2(20 CHAR)` | sim | — | — | Estado antes do evento. Nulo no `ABERTO` (não há estado anterior) e no `ERRO_ESCALONAMENTO`. Em eventos que não mudam o estado, como `ALERTA_ENGENHARIA`, é igual a `to_status`. |
+| `to_status` | `VARCHAR2(20 CHAR)` | sim | — | — | Estado depois do evento (no `ABERTO`, o próprio `ABERTO`). Nulo só no `ERRO_ESCALONAMENTO`. |
 | `employee_id` | `NUMBER(19)` | sim | — | FK → `employees` (`FK_TICKET_EVT_EMPLOYEE`) | Atendente envolvido (quem recebeu, assumiu, transferiu...); nulo quando não há. |
 | `detail` | `VARCHAR2(500 CHAR)` | sim | — | — | Complemento em texto, como a fila do roteamento, a mudança de prioridade ou a mensagem de erro. |
 | `created_at` | `TIMESTAMP(6) WITH TIME ZONE` | não | `SYSTIMESTAMP` | — | Quando aconteceu. |
@@ -386,7 +387,7 @@ push). Origem: `V3`.
 | `TICKET_RESOLVIDO` | Para o usuário: o atendente encerrou o ticket. |
 | `TICKET_ESCALADO` | Para o atendente que recebeu o ticket escalado. |
 | `ALERTA_ENGENHARIA` | Para cada atendente com a skill `DESENVOLVEDOR`: um atendente gerou alerta. |
-| `TICKET_FECHADO` | Para o atendente: o usuário confirmou a resolução. |
+| `TICKET_FECHADO` | Para o atendente: o usuário confirmou a resolução, ou o job fechou o ticket 72 h depois de resolvido. |
 
 **Índices:**
 
@@ -440,10 +441,10 @@ Origem: `V5`.
 |---|---|---|---|---|---|
 | `id` | `NUMBER(19)`, identidade | não | — | PK (`PK_CHATBOT_CONVERSATIONS`) | Identificador da conversa. |
 | `user_id` | `NUMBER(19)` | não | — | FK → `admin_users` (`FK_CHATBOT_CONV_USER`) | Usuário que conversa com o bot. |
-| `segment` | `VARCHAR2(30 CHAR)` | sim | — | FK → `ticket_tipo_config` (`FK_CHATBOT_CONV_SEGMENT`) | Segmento da conversa; nulo até o usuário escolher um (ou depois de "Outro assunto"). |
+| `segment` | `VARCHAR2(30 CHAR)` | sim | — | FK → `ticket_tipo_config` (`FK_CHATBOT_CONV_SEGMENT`) | Segmento da conversa: o que o usuário escolheu ou, se ele não escolheu nenhum, o da pergunta do FAQ casada pelo texto livre. Nulo antes disso e depois de "Outro assunto". |
 | `state` | `VARCHAR2(20 CHAR)` | não | `'INICIO'` | — | Estado da conversa (`CK_CHATBOT_CONV_STATE`); ver valores abaixo. |
 | `misses` | `NUMBER(3)` | não | `0` | — | Textos livres sem casamento na conversa inteira. Na 2ª vez, o bot passa para o atendente. Não pode ser negativo (`CK_CHATBOT_CONV_MISSES`). |
-| `current_faq_id` | `NUMBER(19)` | sim | — | FK → `chatbot_faq` (`FK_CHATBOT_CONV_FAQ`) | Pergunta cuja resposta aguarda "Isso resolveu?"; nula fora da confirmação. |
+| `current_faq_id` | `NUMBER(19)` | sim | — | FK → `chatbot_faq` (`FK_CHATBOT_CONV_FAQ`) | Última pergunta do FAQ respondida na conversa; nula até a primeira resposta. Não é limpa depois: na passagem para o atendente, ela vira "Dúvida: ..." na descrição do ticket quando o usuário não digitou nada. |
 | `ticket_id` | `NUMBER(19)` | sim | — | FK → `tickets` (`FK_CHATBOT_CONV_TICKET`), UQ (`UQ_CHATBOT_CONV_TICKET`) | Ticket aberto na passagem para o atendente. A UQ garante no máximo uma conversa por ticket. |
 | `created_at` | `TIMESTAMP(6) WITH TIME ZONE` | não | `SYSTIMESTAMP` | — | Início da conversa. |
 | `updated_at` | `TIMESTAMP(6) WITH TIME ZONE` | não | `SYSTIMESTAMP` | — | Último turno. |

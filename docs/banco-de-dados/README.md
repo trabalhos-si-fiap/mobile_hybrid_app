@@ -83,7 +83,7 @@ nomes do domínio:
 |---|---|---|
 | `Occurrence` (ID, User_ID, Segment, Description, Status, Created_At) | `tickets` | Mesmos campos (`id`, `user_id`, `segment`, `description`, `status`, `created_at`), com o segmento como FK para `ticket_tipo_config`. Acrescenta canal, prioridade, atendente responsável, prazos de SLA, alerta de engenharia e as datas de cada etapa. |
 | `Occurrence_Attachment` (ID, Occurrence_ID, File_URL) | `ticket_attachments` | Em vez da URL, guarda a chave do objeto no MinIO (`object_key`); o arquivo é servido por `GET /api/v1/tickets/{ticketId}/attachments/{attachmentId}`. Acrescenta nome, tipo, tamanho, quem enviou e a mensagem a que o anexo pertence. |
-| `Skill` (ID, Name) | `skills` | Acrescenta o código (`code`), usado nos seeds e na matriz. |
+| `Skill` (ID, Name) | `skills` | Acrescenta o código (`code`), que a API usa para achar os desenvolvedores do alerta de engenharia. |
 | `Employee_Skill` | `employee_skills` | Igual, mas liga `employees` (o atendente), e não o usuário. |
 | `Occurrence_Message` (ID, Occurrence_ID, Sender_Type, Message_Body, Timestamp) | `ticket_messages` | Mesmos campos (`id`, `ticket_id`, `sender_type`, `body`, `created_at`), mais o autor (`sender_user_id`) e o tipo `SYSTEM` para avisos automáticos. |
 
