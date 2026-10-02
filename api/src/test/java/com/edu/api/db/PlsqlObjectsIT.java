@@ -32,6 +32,7 @@ class PlsqlObjectsIT extends OracleIntegrationTest {
                 "SELECT object_name FROM user_objects WHERE object_type IN ('FUNCTION', 'PROCEDURE')", String.class);
 
         assertThat(invalid).isEmpty();
-        assertThat(objects).contains("FN_PROXIMO_ATENDENTE", "FN_STATUS_SLA_TICKET", "PR_ROTEAR_TICKET", "PR_ESCALAR_TICKET_CRITICO");
+        assertThat(objects).contains("FN_PROXIMO_ATENDENTE", "FN_STATUS_SLA_TICKET", "PR_ROTEAR_TICKET",
+                "PR_ESCALAR_TICKET_CRITICO", "FN_CHATBOT_RESPOSTA");
     }
 }
