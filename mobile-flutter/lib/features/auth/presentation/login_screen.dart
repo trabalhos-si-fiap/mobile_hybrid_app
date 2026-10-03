@@ -20,7 +20,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _submitting = false;
   String? _erro;
-  final int _currentTabIndex = 0;
 
   @override
   void dispose() {
@@ -29,26 +28,16 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  bool _checkedResetFlag = false;
+  bool _checkedArguments = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_checkedResetFlag) return;
-    _checkedResetFlag = true;
+    if (_checkedArguments) return;
+    _checkedArguments = true;
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is Map && args['sessionExpired'] == true) {
       _erro = 'Sua sessão expirou. Entre de novo.';
-    }
-    if (args is Map && args['passwordReset'] == true) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Senha redefinida! Faça login com a nova senha.'),
-          ),
-        );
-      });
     }
   }
 
@@ -95,77 +84,27 @@ class _LoginScreenState extends State<LoginScreen> {
           child: Column(
             children: [
               _Header(),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: _LoginCard(
-                formKey: _formKey,
-                emailController: _emailController,
-                passwordController: _passwordController,
-                obscurePassword: _obscurePassword,
-                submitting: _submitting,
-                erro: _erro,
-                onToggleObscure: () {
-                  setState(() => _obscurePassword = !_obscurePassword);
-                },
-                onLogin: _handleLogin,
-                onForgotPassword: () =>
-                    Navigator.pushNamed(context, '/forgot-password'),
-              ),
-            ),
-            const SizedBox(height: 16),
-            GestureDetector(
-              onTap: () => Navigator.pushReplacementNamed(context, '/register'),
-              child: Text.rich(
-                TextSpan(
-                  text: 'Não tem uma conta? ',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.textSecondary,
-                  ),
-                  children: [
-                    TextSpan(
-                      text: 'Inscreva-se no Edu IA',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.purple,
-                      ),
-                    ),
-                  ],
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _LoginCard(
+                  formKey: _formKey,
+                  emailController: _emailController,
+                  passwordController: _passwordController,
+                  obscurePassword: _obscurePassword,
+                  submitting: _submitting,
+                  erro: _erro,
+                  onToggleObscure: () {
+                    setState(() => _obscurePassword = !_obscurePassword);
+                  },
+                  onLogin: _handleLogin,
                 ),
-                textAlign: TextAlign.center,
               ),
-            ),
-            const SizedBox(height: 24),
-            // Todos os papéis entram por este formulário; _handleLogin
-            // decide a tela (USER: tickets; staff: dashboard).
-          ],
+              // Todos os papéis entram por este formulário; _handleLogin
+              // decide a tela (USER: tickets; staff: dashboard).
+              const SizedBox(height: 24),
+            ],
           ),
         ),
-      bottomNavigationBar: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        child: BottomNavigationBar(
-          currentIndex: _currentTabIndex,
-          onTap: (index) {
-            if (index == 1) {
-              Navigator.pushReplacementNamed(context, '/register');
-            }
-          },
-          backgroundColor: AppColors.white,
-          selectedItemColor: AppColors.purple,
-          unselectedItemColor: AppColors.textSecondary,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.login),
-              label: 'Entrar',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_add_outlined),
-              label: 'Cadastro',
-            ),
-          ],
-        ),
-      ),
       ),
     );
   }
@@ -229,7 +168,6 @@ class _LoginCard extends StatelessWidget {
     required this.erro,
     required this.onToggleObscure,
     required this.onLogin,
-    required this.onForgotPassword,
   });
 
   final GlobalKey<FormState> formKey;
@@ -240,7 +178,6 @@ class _LoginCard extends StatelessWidget {
   final String? erro;
   final VoidCallback onToggleObscure;
   final VoidCallback onLogin;
-  final VoidCallback onForgotPassword;
 
   @override
   Widget build(BuildContext context) {
@@ -314,21 +251,6 @@ class _LoginCard extends StatelessWidget {
               validator: (v) =>
                   (v == null || v.isEmpty) ? 'Informe a senha' : null,
             ),
-            const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: GestureDetector(
-                onTap: onForgotPassword,
-                child: const Text(
-                  'Esqueceu sua senha?',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.purple,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
             if (erro != null) ...[
               const SizedBox(height: 14),
               Container(
@@ -367,95 +289,9 @@ class _LoginCard extends StatelessWidget {
                     )
                   : const Text('Entrar'),
             ),
-            const SizedBox(height: 24),
-            const _Divider(),
-            const SizedBox(height: 24),
-            const _SocialButtons(),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _Divider extends StatelessWidget {
-  const _Divider();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Row(
-      children: [
-        Expanded(child: Divider(color: AppColors.inputBorder)),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            'Ou entre com',
-            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-          ),
-        ),
-        Expanded(child: Divider(color: AppColors.inputBorder)),
-      ],
-    );
-  }
-}
-
-class _SocialButtons extends StatelessWidget {
-  const _SocialButtons();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () {},
-            icon: const Text(
-              'G',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            label: const Text(
-              'Google',
-              style: TextStyle(color: AppColors.textPrimary),
-            ),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              side: const BorderSide(color: AppColors.inputBorder),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () {},
-            icon: const Text(
-              'iOS',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            label: const Text(
-              'Apple',
-              style: TextStyle(color: AppColors.textPrimary),
-            ),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              side: const BorderSide(color: AppColors.inputBorder),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

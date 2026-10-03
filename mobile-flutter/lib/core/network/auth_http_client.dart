@@ -12,7 +12,7 @@ import 'token_store.dart';
 /// request with the new token. If the refresh fails, it clears the session and
 /// invokes [onSessionExpired] so the app can route back to login.
 ///
-/// [AuthApi] (login/register/reset) must NOT use this client: those calls have
+/// [AuthApi] (login) must NOT use this client: that call has
 /// no token yet and a `401` there means bad credentials, not expiry.
 class AuthHttpClient extends http.BaseClient {
   AuthHttpClient({

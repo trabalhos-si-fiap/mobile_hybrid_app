@@ -64,26 +64,6 @@ class AuthApi {
     return (body['user'] as Map<String, dynamic>?)?['role'] as String?;
   }
 
-  /// Solicita redefinição de senha via `POST /auth/password-reset/request`.
-  /// Endpoint ainda não disponível na API — lança [AuthException] informativo.
-  Future<void> requestPasswordReset({required String email}) async {
-    throw AuthException(
-      'Redefinição de senha indisponível. Entre em contato com o administrador.',
-    );
-  }
-
-  /// Confirma o código e redefine a senha via `POST /auth/password-reset/confirm`.
-  /// Endpoint ainda não disponível na API — lança [AuthException] informativo.
-  Future<void> confirmPasswordReset({
-    required String email,
-    required String code,
-    required String newPassword,
-  }) async {
-    throw AuthException(
-      'Redefinição de senha indisponível. Entre em contato com o administrador.',
-    );
-  }
-
   /// Ends the session locally: drops the JWT pair and the cached profile data.
   Future<void> logout() async {
     await _tokenStore.clear();
@@ -97,10 +77,7 @@ class AuthApi {
   /// placeholder para manter a interface estável.
   Future<void> _persistAuth(Map<String, dynamic> body) async {
     final accessToken = body['accessToken'] as String;
-    await _tokenStore.save(
-      accessToken: accessToken,
-      refreshToken: '',
-    );
+    await _tokenStore.save(accessToken: accessToken, refreshToken: '');
     final user = body['user'] as Map<String, dynamic>?;
     final name = user?['name'] as String?;
     if (name != null && name.isNotEmpty) {

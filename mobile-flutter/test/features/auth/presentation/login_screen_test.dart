@@ -123,4 +123,23 @@ void main() {
 
     expect(find.text('Sua sessão expirou. Entre de novo.'), findsOneWidget);
   });
+
+  testWidgets('offers only e-mail and password: no sign-up, reset or social login', (
+    tester,
+  ) async {
+    await pumpScreen(tester, testServices(), const LoginScreen());
+
+    expect(find.byKey(const Key('login-submit')), findsOneWidget);
+    for (final text in [
+      'Esqueceu sua senha?',
+      'Cadastro',
+      'Ou entre com',
+      'Google',
+      'Apple',
+    ]) {
+      expect(find.text(text), findsNothing, reason: text);
+    }
+    expect(find.textContaining('Inscreva-se', findRichText: true), findsNothing);
+    expect(find.byType(BottomNavigationBar), findsNothing);
+  });
 }

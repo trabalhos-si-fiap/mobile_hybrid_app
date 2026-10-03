@@ -4,10 +4,7 @@ import 'core/app_services.dart';
 import 'core/session/session_gate.dart';
 import 'core/theme/app_theme.dart';
 import 'features/admin/presentation/admin_dashboard_screen.dart';
-import 'features/auth/presentation/forgot_password_screen.dart';
 import 'features/auth/presentation/login_screen.dart';
-import 'features/auth/presentation/register_screen.dart';
-import 'features/auth/presentation/reset_password_screen.dart';
 import 'features/chatbot/presentation/assistant_screen.dart';
 import 'features/notifications/presentation/notifications_screen.dart';
 import 'features/tickets/domain/new_ticket_prefill.dart';
@@ -53,9 +50,6 @@ class EduApp extends StatelessWidget {
       routes: {
         '/': (_) => const SessionGate(),
         '/login': (_) => const LoginScreen(),
-        '/register': (_) => const RegisterScreen(),
-        '/forgot-password': (_) => ForgotPasswordScreen(),
-        '/reset-password': (_) => ResetPasswordScreen(),
         '/home': (_) => const AdminDashboardScreen(),
         '/tickets': (_) => const MyTicketsScreen(),
         '/assistant': (_) => const AssistantScreen(),
