@@ -44,6 +44,8 @@ class AdminUserRepositoryIT extends OracleIntegrationTest {
 
         assertThatThrownBy(() -> users.saveAndFlush(
                 new AdminUser("Ana Clara", "ana@edu.com", "hash", "USER")))
-                .isInstanceOf(DataIntegrityViolationException.class);
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .rootCause()
+                .hasMessageContaining("UQ_ADMIN_USERS_EMAIL");
     }
 }
