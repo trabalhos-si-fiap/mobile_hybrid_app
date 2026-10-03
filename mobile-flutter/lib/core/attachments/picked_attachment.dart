@@ -30,7 +30,17 @@ String? resolveContentType(String fileName, String? mimeType) {
 /// Arquivo escolhido no aparelho, ainda não enviado.
 class PickedAttachment {
   PickedAttachment({required this.name, required this.bytes, String? mimeType})
-    : contentType = resolveContentType(name, mimeType);
+    : contentType = resolveContentType(name, mimeType),
+      size = bytes.length;
+
+  /// Arquivo acima do limite: o seletor não chega a ler os bytes, e
+  /// fileProblem o recusa pelo tamanho.
+  PickedAttachment.tooLarge({
+    required this.name,
+    required this.size,
+    String? mimeType,
+  }) : bytes = Uint8List(0),
+       contentType = resolveContentType(name, mimeType);
 
   final String name;
   final Uint8List bytes;
@@ -38,7 +48,7 @@ class PickedAttachment {
   /// Nulo quando o tipo não é aceito.
   final String? contentType;
 
-  int get size => bytes.length;
+  final int size;
 
   bool get isImage => contentType?.startsWith('image/') ?? false;
 }

@@ -2,6 +2,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'attachment_rules.dart';
 import 'picked_attachment.dart';
 
 enum AttachmentSource { camera, gallery, pdf }
@@ -90,9 +91,21 @@ class DeviceAttachmentPicker implements AttachmentPicker {
     return photo == null ? const [] : [await _fromXFile(photo)];
   }
 
-  Future<PickedAttachment> _fromXFile(XFile file) async => PickedAttachment(
-    name: file.name,
-    bytes: await file.readAsBytes(),
-    mimeType: file.mimeType,
-  );
+  Future<PickedAttachment> _fromXFile(XFile file) async {
+    // Acima do limite o tamanho basta para recusar: um PDF enorme não é
+    // carregado na memória só para ser recusado.
+    final size = await file.length();
+    if (size > maxFileBytes) {
+      return PickedAttachment.tooLarge(
+        name: file.name,
+        size: size,
+        mimeType: file.mimeType,
+      );
+    }
+    return PickedAttachment(
+      name: file.name,
+      bytes: await file.readAsBytes(),
+      mimeType: file.mimeType,
+    );
+  }
 }

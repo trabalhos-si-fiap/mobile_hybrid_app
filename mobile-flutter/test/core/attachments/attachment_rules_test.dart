@@ -77,4 +77,22 @@ void main() {
     expect(formatBytes(2048), '2 KB');
     expect(formatBytes(1536 * 1024), '1,5 MB');
   });
+
+  test('a file refused by its size does not stop the others', () {
+    final huge = PickedAttachment.tooLarge(
+      name: 'enorme.pdf',
+      size: maxFileBytes + 1,
+      mimeType: 'application/pdf',
+    );
+    final small = PickedAttachment(
+      name: 'nota.pdf',
+      bytes: Uint8List(10),
+      mimeType: 'application/pdf',
+    );
+
+    final result = addFiles(const [], [huge, small]);
+
+    expect(result.files, [small]);
+    expect(result.problems, ['enorme.pdf: maior que 5 MB.']);
+  });
 }
