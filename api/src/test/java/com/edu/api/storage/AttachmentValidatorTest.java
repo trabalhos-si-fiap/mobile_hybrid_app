@@ -56,4 +56,12 @@ class AttachmentValidatorTest {
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("vazio.png");
     }
+
+    @Test
+    void rejectsAFileWithoutContentTypeInsteadOfFailing() {
+        assertThatThrownBy(() -> validator.validate(List.of(file("semtipo.png", null, 10))))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("semtipo.png")
+                .hasMessageContaining("sem tipo");
+    }
 }

@@ -27,9 +27,10 @@ public class AttachmentValidator {
             if (file.isEmpty()) {
                 throw new ValidationException("Arquivo vazio: " + name);
             }
-            if (!ALLOWED_TYPES.contains(file.getContentType())) {
+            String type = file.getContentType();
+            if (type == null || !ALLOWED_TYPES.contains(type)) {
                 throw new ValidationException("Tipo de arquivo não permitido: " + name
-                        + " (" + file.getContentType() + "). Use PNG, JPEG, WEBP ou PDF");
+                        + " (" + (type == null ? "sem tipo" : type) + "). Use PNG, JPEG, WEBP ou PDF");
             }
             if (file.getSize() > MAX_BYTES) {
                 throw new ValidationException("Arquivo maior que 5 MB: " + name);
