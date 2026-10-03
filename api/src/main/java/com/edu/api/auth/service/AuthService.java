@@ -10,12 +10,20 @@ import com.edu.api.shared.exception.UnauthorizedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.UUID;
+
 @Service
 public class AuthService {
 
     private final AdminUserRepository adminUserRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    /**
+     * Hash de uma senha que ninguém tem. Com e-mail desconhecido o login compara
+     * a senha contra ele e leva o mesmo tempo de um e-mail cadastrado: o tempo
+     * de resposta não revela quais e-mails existem.
+     */
+    private final String unknownUserHash;
 
     public AuthService(
             AdminUserRepository adminUserRepository,
@@ -25,20 +33,21 @@ public class AuthService {
         this.adminUserRepository = adminUserRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.unknownUserHash = passwordEncoder.encode(UUID.randomUUID().toString());
     }
 
     public AuthResponse login(LoginRequest request) {
 
         AdminUser user = adminUserRepository
                 .findByEmail(request.email())
-                .orElseThrow(() ->
-                        new UnauthorizedException("Email ou senha inválidos")
-                );
+                .orElse(null);
 
-        if (!passwordEncoder.matches(
+        boolean passwordMatches = passwordEncoder.matches(
                 request.password(),
-                user.getPassword()
-        )) {
+                user == null ? unknownUserHash : user.getPassword()
+        );
+
+        if (user == null || !passwordMatches) {
             throw new UnauthorizedException("Email ou senha inválidos");
         }
 

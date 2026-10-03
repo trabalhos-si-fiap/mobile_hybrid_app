@@ -16,6 +16,8 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -62,12 +64,15 @@ class AuthServiceTest {
     }
 
     @Test
-    void rejectsUnknownEmailTheSameWayAsWrongPassword() {
+    void comparesThePasswordEvenWhenTheEmailIsUnknown() {
+        when(passwordEncoder.encode(anyString())).thenReturn("hash-de-ninguem");
+        AuthService service = new AuthService(adminUserRepository, passwordEncoder, jwtService);
         when(adminUserRepository.findByEmail("nobody@edu.com")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> authService.login(new LoginRequest("nobody@edu.com", "any")))
+        assertThatThrownBy(() -> service.login(new LoginRequest("nobody@edu.com", "any")))
                 .isInstanceOf(UnauthorizedException.class)
                 .hasMessage("Email ou senha inválidos");
-        verifyNoInteractions(passwordEncoder, jwtService);
+        verify(passwordEncoder).matches("any", "hash-de-ninguem");
+        verifyNoInteractions(jwtService);
     }
 }
