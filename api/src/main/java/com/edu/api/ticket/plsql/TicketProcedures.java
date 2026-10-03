@@ -1,5 +1,10 @@
 package com.edu.api.ticket.plsql;
 
+import com.edu.api.shared.exception.ConflictException;
+import com.edu.api.shared.exception.NotFoundException;
+import com.edu.api.shared.exception.UnprocessableException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.ResultSetExtractor;
@@ -24,6 +29,8 @@ import java.util.function.Supplier;
 @Component
 public class TicketProcedures {
 
+    private static final Logger log = LoggerFactory.getLogger(TicketProcedures.class);
+
     private final JdbcTemplate jdbc;
     private final NamedParameterJdbcTemplate named;
 
@@ -43,6 +50,27 @@ public class TicketProcedures {
                 return call.wasNull() ? null : employeeId;
             }
         })));
+    }
+
+    /**
+     * Roteia os tickets um a um e devolve quantos ganharam atendente. Um ticket
+     * que não pode ser roteado (sumiu, mudou de estado ou o segmento foi
+     * desativado) fica de fora e o lote segue. Pegar a exceção aqui não estraga
+     * a transação de quem chama: o Oracle desfaz só a chamada que falhou, e a
+     * exceção não atravessa nenhum @Transactional.
+     */
+    public int routeEach(Collection<Long> ticketIds) {
+        int assigned = 0;
+        for (Long ticketId : ticketIds) {
+            try {
+                if (route(ticketId).isPresent()) {
+                    assigned++;
+                }
+            } catch (NotFoundException | ConflictException | UnprocessableException e) {
+                log.warn("Ticket {} não foi roteado: {}", ticketId, e.getMessage());
+            }
+        }
+        return assigned;
     }
 
     /** PR_ESCALAR_TICKET_CRITICO: quantos tickets foram escalados. */

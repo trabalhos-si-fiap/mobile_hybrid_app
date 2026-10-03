@@ -1,7 +1,5 @@
 package com.edu.api.ticket.service;
 
-import com.edu.api.shared.exception.ConflictException;
-import com.edu.api.shared.exception.NotFoundException;
 import com.edu.api.ticket.entity.Ticket;
 import com.edu.api.ticket.entity.TicketEventType;
 import com.edu.api.ticket.entity.TicketStatus;
@@ -47,17 +45,7 @@ public class TicketMaintenanceService {
     @Transactional
     public int routeUnassigned() {
         entityManager.flush();
-        int assigned = 0;
-        for (Long ticketId : tickets.findRoutableUnassignedIds()) {
-            try {
-                if (procedures.route(ticketId).isPresent()) {
-                    assigned++;
-                }
-            } catch (ConflictException | NotFoundException ignored) {
-                // O ticket mudou desde a consulta; a próxima rodada reavalia.
-            }
-        }
-        return assigned;
+        return procedures.routeEach(tickets.findRoutableUnassignedIds());
     }
 
     @Transactional

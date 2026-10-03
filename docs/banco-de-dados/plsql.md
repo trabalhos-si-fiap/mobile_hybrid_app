@@ -198,8 +198,16 @@ roteamentos do mesmo ticket não se atropelarem. Não faz `COMMIT`.
 - job `TicketSlaJob`, a cada 60 s: reroteia os tickets sem dono
   (`TicketMaintenanceService.routeUnassigned`).
 
+Na presença e no job, os tickets passam um a um por
+`TicketProcedures.routeEach`: um ticket que falha com -20001, -20002 ou
+-20003 vai para o log e fica de fora, e os demais seguem. O Oracle desfaz só
+a chamada que falhou, não a transação, então a mudança de presença e os
+outros roteamentos são confirmados.
+
 **Testes:** `RoutingProcedureIT` (casos da regra), `TicketProceduresIT`
-(tradução dos erros) e `PlsqlObjectsIT` (objeto existe e está válido).
+(tradução dos erros e lote que segue depois de uma falha),
+`ConcurrentTicketUpdatesIT` (presença confirmada mesmo com um ticket que
+falha) e `PlsqlObjectsIT` (objeto existe e está válido).
 
 ## `PR_ESCALAR_TICKET_CRITICO`
 

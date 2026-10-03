@@ -30,7 +30,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Duas transações reais sobre o mesmo ticket: uma segura a linha e muda o
  * estado; a outra roda a ação do serviço ao mesmo tempo. A ação não pode
- * desfazer o que a primeira gravou.
+ * desfazer o que a primeira gravou. Aqui também fica a mudança de presença
+ * com um ticket que não pode ser roteado: só um commit real mostra que ela
+ * não foi desfeita.
  *
  * Sem transação de teste: cada lado faz commit na própria conexão, e os dados
  * criados são apagados ao final de cada teste.
@@ -62,8 +64,8 @@ class ConcurrentTicketUpdatesIT extends FullStackIntegration {
         return id;
     }
 
-    private long employee(String presence, String skill) {
-        long id = fx.employee(presence, skill);
+    private long employee(String presence, String... skills) {
+        long id = fx.employee(presence, skills);
         createdUsers.add(fx.userOf(id));
         return id;
     }
@@ -160,5 +162,44 @@ class ConcurrentTicketUpdatesIT extends FullStackIntegration {
                 () -> employees.changePresence(login(fx.userOf(leaving), "EMPLOYEE"), Presence.OFFLINE));
 
         assertThat(fx.state(ticket)).isEqualTo(new TicketState("ESCALADO", "CRITICA", other));
+    }
+
+    @Test
+    void goingOnlineKeepsThePresenceWhenAnotherAgentClaimsATicketFirst() throws Exception {
+        long requester = user("USER");
+        long first = employee("ONLINE", "DESENVOLVEDOR");
+        long arriving = employee("OFFLINE", "DESENVOLVEDOR");
+        long claimed = fx.ticketFor(requester, "DEFEITO_APP").status("EM_FILA").insert();
+        long waiting = fx.ticketFor(requester, "DEFEITO_APP").status("EM_FILA").insert();
+
+        whileAnotherTransactionChanges(claimed,
+                "UPDATE tickets SET assigned_employee_id = ? WHERE id = ?",
+                new Object[] {first, claimed},
+                () -> employees.changePresence(login(fx.userOf(arriving), "EMPLOYEE"), Presence.ONLINE));
+
+        assertThat(fx.count("SELECT COUNT(*) FROM employees WHERE id = ? AND presence = 'ONLINE'", arriving))
+                .isEqualTo(1);
+        assertThat(fx.state(claimed).assignedEmployeeId()).isEqualTo(first);
+        assertThat(fx.state(waiting).assignedEmployeeId()).isEqualTo(arriving);
+    }
+
+    @Test
+    void goingOnlineKeepsThePresenceWhenATicketOfAnInactiveSegmentCannotBeRouted() {
+        long requester = user("USER");
+        long arriving = employee("OFFLINE", "PRODUTO_MELHORIAS", "DESENVOLVEDOR");
+        long inactive = fx.ticketFor(requester, "FEEDBACK_SUGESTAO").status("EM_FILA").insert();
+        long waiting = fx.ticketFor(requester, "DEFEITO_APP").status("EM_FILA").insert();
+
+        jdbc.update("UPDATE ticket_tipo_config SET active = FALSE WHERE segment = 'FEEDBACK_SUGESTAO'");
+        try {
+            employees.changePresence(login(fx.userOf(arriving), "EMPLOYEE"), Presence.ONLINE);
+        } finally {
+            jdbc.update("UPDATE ticket_tipo_config SET active = TRUE WHERE segment = 'FEEDBACK_SUGESTAO'");
+        }
+
+        assertThat(fx.count("SELECT COUNT(*) FROM employees WHERE id = ? AND presence = 'ONLINE'", arriving))
+                .isEqualTo(1);
+        assertThat(fx.state(inactive)).isEqualTo(new TicketState("EM_FILA", "NORMAL", null));
+        assertThat(fx.state(waiting).assignedEmployeeId()).isEqualTo(arriving);
     }
 }

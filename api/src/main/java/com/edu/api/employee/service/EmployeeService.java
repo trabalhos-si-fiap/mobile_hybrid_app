@@ -63,7 +63,7 @@ public class EmployeeService {
         }
 
         entityManager.flush();
-        toRoute.forEach(procedures::route);
+        procedures.routeEach(toRoute);
         return view(me);
     }
 

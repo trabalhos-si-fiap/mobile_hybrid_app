@@ -65,6 +65,21 @@ class TicketProceduresIT extends OracleIntegrationTest {
     }
 
     @Test
+    void routeEachSkipsTheTicketsThatCannotBeRoutedAndRoutesTheRest() {
+        jdbc.update("UPDATE ticket_tipo_config SET active = FALSE WHERE segment = 'FEEDBACK_SUGESTAO'");
+        long agent = fx.employee("ONLINE", "GESTAO_ENTREGAS");
+        long closed = fx.ticketFor(requester, "PROBLEMA_PEDIDO").status("FECHADO").insert();
+        long inactive = fx.ticket(requester, "FEEDBACK_SUGESTAO");
+        long routable = fx.ticket(requester, "PROBLEMA_PEDIDO");
+
+        assertThat(procedures.routeEach(List.of(-1L, closed, inactive, routable))).isEqualTo(1);
+
+        assertThat(fx.state(routable).assignedEmployeeId()).isEqualTo(agent);
+        assertThat(fx.state(closed).status()).isEqualTo("FECHADO");
+        assertThat(fx.state(inactive).status()).isEqualTo("ABERTO");
+    }
+
+    @Test
     void escalateOverdueReturnsHowManyWereEscalated() {
         fx.ticketFor(requester, "DEFEITO_APP").status("EM_FILA").slaStartedAt(T0).slaDueAt(T0.plusMinutes(10)).insert();
 
