@@ -68,6 +68,7 @@ class AuthServiceTest {
         when(passwordEncoder.encode(anyString())).thenReturn("hash-de-ninguem");
         AuthService service = new AuthService(adminUserRepository, passwordEncoder, jwtService);
         when(adminUserRepository.findByEmail("nobody@edu.com")).thenReturn(Optional.empty());
+        when(passwordEncoder.matches("any", "hash-de-ninguem")).thenReturn(true);
 
         assertThatThrownBy(() -> service.login(new LoginRequest("nobody@edu.com", "any")))
                 .isInstanceOf(UnauthorizedException.class)
