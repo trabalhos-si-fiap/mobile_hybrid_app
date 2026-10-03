@@ -134,6 +134,8 @@ class AppServices {
     _sessionEnded = true;
     notificationCenter.stop();
     attachments.clear();
+    // Apagar os PDFs abertos na sessão não pode travar a saída.
+    unawaited(opener.clear().catchError((Object _) {}));
   }
 }
 

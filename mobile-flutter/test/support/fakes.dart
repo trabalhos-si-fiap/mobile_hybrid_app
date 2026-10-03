@@ -252,6 +252,16 @@ class FakeFileOpener implements FileOpener {
     final failure = error;
     if (failure != null) throw failure;
   }
+
+  var clearCalls = 0;
+  Object? clearError;
+
+  @override
+  Future<void> clear() async {
+    clearCalls++;
+    final failure = clearError;
+    if (failure != null) throw failure;
+  }
 }
 
 class FakeChatbotRepository implements ChatbotRepository {

@@ -19,7 +19,8 @@ void main() {
     tester,
   ) async {
     final tickets = FakeTicketRepository();
-    final services = testServices(tickets: tickets);
+    final opener = FakeFileOpener();
+    final services = testServices(tickets: tickets, opener: opener);
     await services.tokenStore.save(accessToken: 'token', refreshToken: '');
     await services.sessionStore.saveName('Ana');
     await pumpScreen(tester, services, const Text('home'));
@@ -35,6 +36,7 @@ void main() {
     expect(services.notificationCenter.isRunning, isFalse);
     await services.attachments.load(testAttachment());
     expect(tickets.calls.where((c) => c.startsWith('download')), hasLength(2));
+    expect(opener.clearCalls, 1);
   });
 
   testWidgets('sessionExpired after a voluntary logout shows no notice', (
@@ -72,7 +74,8 @@ void main() {
   testWidgets('sessionExpired goes to login with the notice argument', (
     tester,
   ) async {
-    final services = testServices();
+    final opener = FakeFileOpener();
+    final services = testServices(opener: opener);
     RouteSettings? login;
     await tester.pumpWidget(
       AppScope(
@@ -99,6 +102,21 @@ void main() {
     expect(find.text('home'), findsNothing);
     expect(login!.arguments, {'sessionExpired': true});
     expect(services.notificationCenter.isRunning, isFalse);
+    expect(opener.clearCalls, 1);
+  });
+
+  testWidgets('a failure deleting the PDFs does not block the logout', (
+    tester,
+  ) async {
+    final opener = FakeFileOpener()..clearError = StateError('ocupado');
+    final services = testServices(opener: opener);
+    await pumpScreen(tester, services, const Text('home'));
+
+    await services.logout();
+    await tester.pumpAndSettle();
+
+    expect(find.text('route:/login'), findsOneWidget);
+    expect(opener.clearCalls, 1);
   });
 
   testWidgets('AppScope.of finds the services', (tester) async {
