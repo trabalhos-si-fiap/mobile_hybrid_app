@@ -24,6 +24,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
   late final AssistantController _controller;
   final _input = TextEditingController();
   final _scroll = ScrollController();
+  double _keyboardHeight = 0;
 
   @override
   void initState() {
@@ -31,6 +32,15 @@ class _AssistantScreenState extends State<AssistantScreen> {
     _controller = AssistantController(repository: AppScope.of(context).chatbot)
       ..addListener(_scrollToEnd);
     unawaited(_controller.start());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // O teclado encolhe a lista; sem rolar, a última mensagem fica atrás dele.
+    final keyboardHeight = MediaQuery.viewInsetsOf(context).bottom;
+    if (keyboardHeight > _keyboardHeight) _scrollToEnd();
+    _keyboardHeight = keyboardHeight;
   }
 
   @override

@@ -282,6 +282,45 @@ void main() {
     expect(position.pixels, position.maxScrollExtent);
   });
 
+  testWidgets('scrolls to the last message when the keyboard opens', (
+    tester,
+  ) async {
+    addTearDown(tester.view.resetViewInsets);
+    chatbot.sendResults.add(
+      ChatbotTurn(
+        conversationId: 42,
+        state: ChatbotState.inicio,
+        messages: [
+          testUserMessage(2, 'Oi'),
+          for (var i = 0; i < 20; i++) testBotMessage(10 + i, 'Linha $i'),
+        ],
+        options: const [
+          ChatbotOption(id: 'human', label: 'Falar com atendente'),
+        ],
+        handoff: null,
+      ),
+    );
+    await open(tester);
+    await typeAndSend(tester, 'Oi');
+    await tester.pump();
+    await tester.pump();
+
+    tester.view.viewInsets = const FakeViewPadding(bottom: 900);
+    await tester.pump();
+    await tester.pump();
+
+    final position = tester
+        .state<ScrollableState>(
+          find.descendant(
+            of: find.byType(SingleChildScrollView),
+            matching: find.byType(Scrollable),
+          ),
+        )
+        .position;
+    expect(position.maxScrollExtent, greaterThan(0));
+    expect(position.pixels, position.maxScrollExtent);
+  });
+
   testWidgets('leaving during a send does not throw', (tester) async {
     chatbot.sendResults.add(segmentTurn());
     await open(tester);
