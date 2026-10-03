@@ -1,14 +1,15 @@
 -- Escala os tickets com SLA estourado: sobe a prioridade, reatribui a outro
--- atendente ONLINE da skill (ou mantém o dono, se não houver outro), marca
--- ESCALADO e renova o prazo. Cada ticket roda isolado por SAVEPOINT: se um
--- falhar, é desfeito e registrado, e os demais seguem. Não faz COMMIT.
+-- atendente ONLINE da skill que não seja quem abriu o ticket (ou mantém o
+-- dono, se não houver outro), marca ESCALADO e renova o prazo. Cada ticket
+-- roda isolado por SAVEPOINT: se um falhar, é desfeito e registrado, e os
+-- demais seguem. Não faz COMMIT.
 CREATE OR REPLACE PROCEDURE PR_ESCALAR_TICKET_CRITICO (
     p_referencia    IN  TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP,
     p_qtd_escalados OUT NUMBER
 )
 IS
     CURSOR c_vencidos IS
-        SELECT t.id, t.status, t.priority, t.assigned_employee_id,
+        SELECT t.id, t.status, t.priority, t.assigned_employee_id, t.user_id,
                c.skill_id, c.escalation_minutes, c.label
           FROM tickets t
           JOIN ticket_tipo_config c ON c.segment = t.segment
@@ -27,7 +28,7 @@ BEGIN
         SAVEPOINT sp_ticket;
         BEGIN
             v_nova_prio := CASE r.priority WHEN 'NORMAL' THEN 'ALTA' ELSE 'CRITICA' END;
-            v_novo_dono := NVL(FN_PROXIMO_ATENDENTE(r.skill_id, r.assigned_employee_id),
+            v_novo_dono := NVL(FN_PROXIMO_ATENDENTE(r.skill_id, r.assigned_employee_id, r.user_id),
                                r.assigned_employee_id);
 
             UPDATE tickets

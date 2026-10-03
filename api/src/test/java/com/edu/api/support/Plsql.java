@@ -29,6 +29,12 @@ public final class Plsql {
                 skillId, new SqlParameterValue(Types.NUMERIC, excludedEmployeeId));
     }
 
+    public Long nextAgent(long skillId, Long excludedEmployeeId, Long requesterUserId) {
+        return jdbc.queryForObject("SELECT FN_PROXIMO_ATENDENTE(?, ?, ?) FROM dual", Long.class,
+                skillId, new SqlParameterValue(Types.NUMERIC, excludedEmployeeId),
+                new SqlParameterValue(Types.NUMERIC, requesterUserId));
+    }
+
     public Long route(long ticketId) {
         return jdbc.execute((Connection con) -> {
             try (CallableStatement call = con.prepareCall("{call PR_ROTEAR_TICKET(?, ?)}")) {

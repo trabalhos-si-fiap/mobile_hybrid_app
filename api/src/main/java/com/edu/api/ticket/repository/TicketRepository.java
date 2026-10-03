@@ -47,14 +47,16 @@ public interface TicketRepository extends JpaRepository<Ticket, Long> {
 
     /**
      * Tickets EM_FILA/ESCALADO sem dono cujo segmento tem alguém ONLINE com a
-     * skill. Sem ninguém online, rotear só gravaria mais um evento ROTEADO.
+     * skill, fora quem abriu o ticket (que não pode recebê-lo). Sem esse
+     * alguém, rotear só gravaria mais um evento ROTEADO.
      */
     @Query(value = "SELECT t.id FROM tickets t"
             + " WHERE t.assigned_employee_id IS NULL AND t.status IN ('EM_FILA', 'ESCALADO')"
             + " AND EXISTS (SELECT 1 FROM ticket_tipo_config c"
             + "              JOIN employee_skills es ON es.skill_id = c.skill_id"
             + "              JOIN employees e ON e.id = es.employee_id"
-            + "             WHERE c.segment = t.segment AND c.active = TRUE AND e.presence = 'ONLINE')"
+            + "             WHERE c.segment = t.segment AND c.active = TRUE AND e.presence = 'ONLINE'"
+            + "               AND e.user_id <> t.user_id)"
             + " ORDER BY t.created_at, t.id", nativeQuery = true)
     List<Long> findRoutableUnassignedIds();
 

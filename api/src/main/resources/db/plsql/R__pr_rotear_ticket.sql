@@ -1,22 +1,24 @@
 -- Roteia um ticket pela matriz de triagem (TICKET_TIPO_CONFIG): define fila,
 -- prioridade padrão e prazo de SLA, e atribui ao próximo atendente ONLINE da
--- skill. Sem ninguém online, o ticket fica na fila sem dono. Não faz COMMIT.
+-- skill, nunca a quem abriu o ticket. Sem ninguém online, o ticket fica na
+-- fila sem dono. Não faz COMMIT.
 CREATE OR REPLACE PROCEDURE PR_ROTEAR_TICKET (
     p_ticket_id   IN  tickets.id%TYPE,
     p_employee_id OUT employees.id%TYPE
 )
 IS
-    v_status   tickets.status%TYPE;
-    v_assigned tickets.assigned_employee_id%TYPE;
-    v_segment  tickets.segment%TYPE;
-    v_config   ticket_tipo_config%ROWTYPE;
-    v_destino  tickets.status%TYPE;
+    v_status    tickets.status%TYPE;
+    v_assigned  tickets.assigned_employee_id%TYPE;
+    v_segment   tickets.segment%TYPE;
+    v_requester tickets.user_id%TYPE;
+    v_config    ticket_tipo_config%ROWTYPE;
+    v_destino   tickets.status%TYPE;
 BEGIN
     p_employee_id := NULL;
 
     BEGIN
-        SELECT status, assigned_employee_id, segment
-          INTO v_status, v_assigned, v_segment
+        SELECT status, assigned_employee_id, segment, user_id
+          INTO v_status, v_assigned, v_segment, v_requester
           FROM tickets
          WHERE id = p_ticket_id
            FOR UPDATE;
@@ -42,7 +44,7 @@ BEGIN
             RAISE_APPLICATION_ERROR(-20003, 'Segmento ' || v_segment || ' sem configuração ativa');
     END;
 
-    p_employee_id := FN_PROXIMO_ATENDENTE(v_config.skill_id);
+    p_employee_id := FN_PROXIMO_ATENDENTE(v_config.skill_id, p_solicitante_id => v_requester);
     v_destino := CASE WHEN v_status = 'ESCALADO' THEN 'ESCALADO' ELSE 'EM_FILA' END;
 
     UPDATE tickets

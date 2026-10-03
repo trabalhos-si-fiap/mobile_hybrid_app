@@ -52,6 +52,17 @@ class TicketMaintenanceIT extends FullStackIntegration {
     }
 
     @Test
+    void leavesTheTicketAloneWhenOnlyItsRequesterIsOnline() {
+        long opener = fx.employee("ONLINE", "GESTAO_ENTREGAS");
+        long ticket = fx.ticketFor(fx.userOf(opener), "PROBLEMA_PEDIDO").status("EM_FILA").insert();
+
+        assertThat(maintenance.routeUnassigned()).isZero();
+
+        assertThat(fx.state(ticket).assignedEmployeeId()).isNull();
+        assertThat(fx.count("SELECT COUNT(*) FROM ticket_events WHERE ticket_id = ?", ticket)).isZero();
+    }
+
+    @Test
     void closesTicketsResolvedMoreThan72HoursAgo() {
         long requester = fx.user("USER");
         long agent = fx.employee("ONLINE", "DESENVOLVEDOR");

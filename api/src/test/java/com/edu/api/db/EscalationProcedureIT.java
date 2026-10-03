@@ -72,6 +72,18 @@ class EscalationProcedureIT extends OracleIntegrationTest {
     }
 
     @Test
+    void neverHandsTheTicketToTheAgentWhoOpenedIt() {
+        long owner = fx.employee("ONLINE", "DESENVOLVEDOR");
+        long opener = fx.employee("ONLINE", "DESENVOLVEDOR");
+        long ticket = fx.ticketFor(fx.userOf(opener), "DEFEITO_APP").status("EM_ATENDIMENTO").priority("NORMAL")
+                .assignedTo(owner).slaStartedAt(T0).slaDueAt(T0.plusMinutes(60)).insert();
+
+        assertThat(plsql.escalate(NOW)).isEqualTo(1);
+
+        assertThat(fx.state(ticket)).isEqualTo(new TicketState("ESCALADO", "ALTA", owner));
+    }
+
+    @Test
     void neverGoesAboveCritical() {
         long ticket = overdueTicket("ESCALADO", "CRITICA", null);
 

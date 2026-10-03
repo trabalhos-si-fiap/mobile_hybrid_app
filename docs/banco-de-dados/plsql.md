@@ -45,8 +45,9 @@ Escolhe o próximo atendente de uma skill. Arquivo:
 
 ```sql
 CREATE OR REPLACE FUNCTION FN_PROXIMO_ATENDENTE (
-    p_skill_id   IN skills.id%TYPE,
-    p_excluir_id IN employees.id%TYPE DEFAULT NULL
+    p_skill_id       IN skills.id%TYPE,
+    p_excluir_id     IN employees.id%TYPE DEFAULT NULL,
+    p_solicitante_id IN admin_users.id%TYPE DEFAULT NULL
 ) RETURN employees.id%TYPE
 ```
 
@@ -54,14 +55,16 @@ CREATE OR REPLACE FUNCTION FN_PROXIMO_ATENDENTE (
 |---|---|---|
 | `p_skill_id` | `IN skills.id%TYPE` | Skill exigida pelo segmento do ticket. |
 | `p_excluir_id` | `IN employees.id%TYPE DEFAULT NULL` | Atendente que não pode ser escolhido (o dono atual, no escalonamento). Nulo não exclui ninguém. |
+| `p_solicitante_id` | `IN admin_users.id%TYPE DEFAULT NULL` | Quem abriu o ticket (`tickets.user_id`). Se essa pessoa também é atendente (`employees.user_id`), não pode ser escolhida: ninguém recebe o próprio ticket. Nulo não exclui ninguém. |
 
 **Retorno:** `employees.id%TYPE`, o atendente escolhido, ou nulo se nenhum
-atendente da skill estiver `ONLINE`.
+candidato estiver `ONLINE`.
 
 **Regra:**
 
 1. Candidatos: atendentes com a skill (`employee_skills`), presença
-   `ONLINE` e diferentes de `p_excluir_id`.
+   `ONLINE`, diferentes de `p_excluir_id` e cujo `user_id` não é
+   `p_solicitante_id`.
 2. Vence o que tem menos tickets ativos (`EM_FILA`, `EM_ATENDIMENTO` e
    `ESCALADO` atribuídos a ele).
 3. Empate: o que está há mais tempo sem receber ticket
@@ -75,9 +78,9 @@ atendente da skill estiver `ONLINE`.
 
 **Erros:** nenhum.
 
-**Quem chama:** só PL/SQL: o `PR_ROTEAR_TICKET` (atribuição) e o
-`PR_ESCALAR_TICKET_CRITICO` (novo dono, excluindo o atual). Nenhum código
-Java chama a função.
+**Quem chama:** só PL/SQL: o `PR_ROTEAR_TICKET` (atribuição, excluindo quem
+abriu o ticket) e o `PR_ESCALAR_TICKET_CRITICO` (novo dono, excluindo o
+atual e quem abriu o ticket). Nenhum código Java chama a função.
 
 **Testes:** `NextAgentFunctionIT` (casos da regra), `RoutingProcedureIT` e
 `EscalationProcedureIT` (pelas procedures) e `PlsqlObjectsIT` (objeto
@@ -143,7 +146,8 @@ de SLA cumprido.
 ## `PR_ROTEAR_TICKET`
 
 Roteia um ticket pela matriz de triagem: define fila, prioridade e prazo, e
-atribui ao próximo atendente ONLINE da skill. Arquivo:
+atribui ao próximo atendente ONLINE da skill, nunca a quem abriu o ticket.
+Arquivo:
 `api/src/main/resources/db/plsql/R__pr_rotear_ticket.sql`.
 
 ```sql
@@ -156,7 +160,7 @@ CREATE OR REPLACE PROCEDURE PR_ROTEAR_TICKET (
 | Parâmetro | Modo e tipo | Descrição |
 |---|---|---|
 | `p_ticket_id` | `IN tickets.id%TYPE` | Ticket a rotear. |
-| `p_employee_id` | `OUT employees.id%TYPE` | Atendente que recebeu o ticket; nulo se ninguém da skill estava `ONLINE`. |
+| `p_employee_id` | `OUT employees.id%TYPE` | Atendente que recebeu o ticket; nulo se ninguém da skill, fora quem abriu o ticket, estava `ONLINE`. |
 
 **Saída:** `p_employee_id`.
 
@@ -165,7 +169,9 @@ CREATE OR REPLACE PROCEDURE PR_ROTEAR_TICKET (
 1. Trava o ticket (`SELECT ... FOR UPDATE`).
 2. Só roteia ticket `ABERTO`, ou `EM_FILA` e `ESCALADO` sem dono.
 3. Lê a linha ativa de `ticket_tipo_config` do segmento do ticket.
-4. Escolhe o atendente com `FN_PROXIMO_ATENDENTE(skill)`.
+4. Escolhe o atendente com `FN_PROXIMO_ATENDENTE(skill, p_solicitante_id
+   => tickets.user_id)`: quem abriu o ticket nunca o recebe, mesmo sendo
+   atendente da skill.
 5. Atualiza o ticket: status `EM_FILA` (ou mantém `ESCALADO`), dono,
    prioridade padrão do segmento (só se estava `ABERTO`), início e fim do
    prazo (só se ainda não havia: fim = agora + `sla_minutes`).
@@ -212,8 +218,8 @@ falha) e `PlsqlObjectsIT` (objeto existe e está válido).
 ## `PR_ESCALAR_TICKET_CRITICO`
 
 Escala os tickets com SLA estourado: sobe a prioridade, passa para outro
-atendente ONLINE da skill (ou mantém o dono, se não houver outro), marca
-`ESCALADO` e renova o prazo. Arquivo:
+atendente ONLINE da skill que não seja quem abriu o ticket (ou mantém o
+dono, se não houver outro), marca `ESCALADO` e renova o prazo. Arquivo:
 `api/src/main/resources/db/plsql/R__pr_escalar_ticket_critico.sql`.
 
 ```sql
@@ -237,8 +243,8 @@ CREATE OR REPLACE PROCEDURE PR_ESCALAR_TICKET_CRITICO (
    novo.
 2. Para cada um, num `SAVEPOINT` próprio:
    1. prioridade `NORMAL` vira `ALTA`; `ALTA` e `CRITICA` viram `CRITICA`;
-   2. novo dono: `FN_PROXIMO_ATENDENTE(skill, dono atual)`, ou o dono atual
-      se não houver outro;
+   2. novo dono: `FN_PROXIMO_ATENDENTE(skill, dono atual, quem abriu o
+      ticket)`, ou o dono atual se não houver outro;
    3. ticket fica `ESCALADO`, com prazo novo: de `p_referencia` até
       `p_referencia` + `escalation_minutes`;
    4. se o dono mudou, grava `employees.last_assigned_at` dele;

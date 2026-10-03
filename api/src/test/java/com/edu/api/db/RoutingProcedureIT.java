@@ -65,6 +65,26 @@ class RoutingProcedureIT extends OracleIntegrationTest {
     }
 
     @Test
+    void neverAssignsTheTicketToTheAgentWhoOpenedIt() {
+        long opener = fx.employee("ONLINE", "DESENVOLVEDOR");
+        long other = fx.employee("ONLINE", "DESENVOLVEDOR");
+        fx.lastAssignedAt(other, T0);
+        long ticket = fx.ticket(fx.userOf(opener), "DEFEITO_APP");
+
+        assertThat(plsql.route(ticket)).isEqualTo(other);
+    }
+
+    @Test
+    void queuesWithoutOwnerWhenOnlyTheAgentWhoOpenedItIsOnline() {
+        long opener = fx.employee("ONLINE", "DESENVOLVEDOR");
+        long ticket = fx.ticket(fx.userOf(opener), "DEFEITO_APP");
+
+        assertThat(plsql.route(ticket)).isNull();
+
+        assertThat(fx.state(ticket)).isEqualTo(new TicketState("EM_FILA", "ALTA", null));
+    }
+
+    @Test
     void keepsTheSlaWindowWhenRoutingAnEscalatedTicket() {
         long ticket = fx.ticketFor(requester, "DEFEITO_APP").status("ESCALADO").priority("CRITICA")
                 .slaStartedAt(T0).slaDueAt(T0.plusMinutes(60)).insert();

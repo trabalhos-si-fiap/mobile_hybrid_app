@@ -72,6 +72,16 @@ class NextAgentFunctionIT extends OracleIntegrationTest {
     }
 
     @Test
+    void skipsTheAgentProfileOfTheRequester() {
+        long opener = fx.employee("ONLINE", "DESENVOLVEDOR");
+        long other = fx.employee("ONLINE", "DESENVOLVEDOR");
+        fx.lastAssignedAt(other, T0);
+
+        assertThat(plsql.nextAgent(devSkill, null, fx.userOf(opener))).isEqualTo(other);
+        assertThat(plsql.nextAgent(devSkill, other, fx.userOf(opener))).isNull();
+    }
+
+    @Test
     void countsOnlyActiveTickets() {
         long withResolvedWork = fx.employee("ONLINE", "DESENVOLVEDOR");
         long other = fx.employee("ONLINE", "DESENVOLVEDOR");
