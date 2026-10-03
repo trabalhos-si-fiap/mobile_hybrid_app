@@ -28,6 +28,7 @@ class _SessionGateState extends State<SessionGate> {
     if (role == null) {
       await services.tokenStore.clear();
       await services.sessionStore.clear();
+      unawaited(services.opener.clear().catchError((Object _) {}));
     } else if (role == UserRole.user) {
       unawaited(services.startUserSession());
     }

@@ -29,10 +29,7 @@ String tempFileName(int attachmentId, String fileName) =>
     '$attachmentId-${fileName.replaceAll(RegExp(r'[/\\]'), '_')}';
 
 class OpenFilexOpener implements FileOpener {
-  const OpenFilexOpener({
-    Future<Directory> Function() baseDirectory = getTemporaryDirectory,
-    // ignore: prefer_initializing_formals
-  }) : _baseDirectory = baseDirectory;
+  const OpenFilexOpener({this._baseDirectory = getTemporaryDirectory});
 
   final Future<Directory> Function() _baseDirectory;
 

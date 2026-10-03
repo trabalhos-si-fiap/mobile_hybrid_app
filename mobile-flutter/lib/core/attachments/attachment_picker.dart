@@ -92,8 +92,9 @@ class DeviceAttachmentPicker implements AttachmentPicker {
   }
 
   Future<PickedAttachment> _fromXFile(XFile file) async {
-    // Acima do limite o tamanho basta para recusar: um PDF enorme não é
-    // carregado na memória só para ser recusado.
+    // Para arquivo com caminho (câmera, galeria, PDF no iOS), o tamanho basta
+    // para recusar sem ler os bytes. No Android, o file_selector já entrega o
+    // PDF lido.
     final size = await file.length();
     if (size > maxFileBytes) {
       return PickedAttachment.tooLarge(
