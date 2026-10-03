@@ -1,4 +1,16 @@
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { DOCUMENT } from '@angular/common';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  Injector,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 import { Segment, SegmentOption, TicketDetail } from '../../core/models/ticket.model';
@@ -9,6 +21,7 @@ import {
   httpStatus,
   isTransientError,
 } from '../../core/utils/api-error';
+import { ModalDirective } from '../modal/modal.directive';
 
 export interface TransferResult {
   ticket: TicketDetail;
@@ -18,10 +31,14 @@ export interface TransferResult {
 @Component({
   selector: 'app-transfer-modal',
   standalone: true,
+  imports: [ModalDirective],
   templateUrl: './transfer-modal.component.html',
 })
 export class TransferModalComponent {
   private readonly tickets = inject(TicketService);
+  private readonly injector = inject(Injector);
+  private readonly document = inject(DOCUMENT);
+  private readonly segmentSelect = viewChild<ElementRef<HTMLSelectElement>>('segmentSelect');
 
   readonly ticket = input.required<TicketDetail>();
 
@@ -43,7 +60,11 @@ export class TransferModalComponent {
       .segments()
       .pipe(takeUntilDestroyed())
       .subscribe({
-        next: (segments) => this.segments.set(segments),
+        next: (segments) => {
+          this.segments.set(segments);
+          // O select nasce desabilitado: só depois da próxima renderização dá para focá-lo.
+          afterNextRender(() => this.focusSelect(), { injector: this.injector });
+        },
         error: () => {
           this.segments.set([]);
           this.error.set('Não foi possível carregar os segmentos.');
@@ -94,5 +115,16 @@ export class TransferModalComponent {
         }
       },
     });
+  }
+  /** Só puxa o foco se o usuário ainda não foi para outro controle do modal. */
+  private focusSelect(): void {
+    const select = this.segmentSelect()?.nativeElement;
+    if (!select || select.disabled) {
+      return;
+    }
+    const active = this.document.activeElement;
+    if (!active || active === this.document.body || active === select.closest('[role="dialog"]')) {
+      select.focus();
+    }
   }
 }

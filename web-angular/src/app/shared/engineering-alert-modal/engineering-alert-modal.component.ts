@@ -8,6 +8,7 @@ import {
   httpStatus,
   isTransientError,
 } from '../../core/utils/api-error';
+import { ModalDirective } from '../modal/modal.directive';
 
 /** Mesmo limite do EngineeringAlertRequest da API. */
 export const ALERT_REASON_MAX = 500;
@@ -15,6 +16,7 @@ export const ALERT_REASON_MAX = 500;
 @Component({
   selector: 'app-engineering-alert-modal',
   standalone: true,
+  imports: [ModalDirective],
   templateUrl: './engineering-alert-modal.component.html',
 })
 export class EngineeringAlertModalComponent {

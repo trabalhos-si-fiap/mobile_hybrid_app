@@ -50,4 +50,18 @@ describe('ConfirmDialogComponent', () => {
 
     expect(events).toEqual(['cancelled']);
   });
+
+  it('emits cancelled on Escape', async () => {
+    const { events } = await render();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    expect(events).toEqual(['cancelled']);
+  });
+
+  it('puts the focus on the dialog when it opens', async () => {
+    const { fixture } = await render();
+
+    expect(document.activeElement).toBe(fixture.nativeElement.querySelector('[role="dialog"]'));
+  });
 });

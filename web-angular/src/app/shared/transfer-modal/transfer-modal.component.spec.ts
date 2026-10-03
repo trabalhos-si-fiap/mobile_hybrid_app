@@ -2,19 +2,22 @@ import { beforeEach, describe, expect, it, Mock, vi } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { of, Subject, throwError } from 'rxjs';
 
+import { SegmentOption } from '../../core/models/ticket.model';
 import { TicketService } from '../../core/services/ticket.service';
 import { aTicket, httpError, SEGMENTS } from '../../testing/test-data';
 import { TransferModalComponent } from './transfer-modal.component';
 
 describe('TransferModalComponent', () => {
   let transfer: Mock;
+  let segments: Mock;
 
   beforeEach(() => {
+    segments = vi.fn(() => of(SEGMENTS));
     transfer = vi.fn(() =>
       of(aTicket({ segment: 'FEEDBACK_SUGESTAO', status: 'EM_FILA', assignee: null })),
     );
     TestBed.configureTestingModule({
-      providers: [{ provide: TicketService, useValue: { segments: () => of(SEGMENTS), transfer } }],
+      providers: [{ provide: TicketService, useValue: { segments, transfer } }],
     });
   });
 
@@ -115,5 +118,48 @@ describe('TransferModalComponent', () => {
     fixture.nativeElement.querySelector('button[type="submit"]').click();
 
     expect(transfer).toHaveBeenCalledTimes(1);
+  });
+
+  it('focuses the segment select when it opens', async () => {
+    const { fixture } = await render();
+
+    expect(document.activeElement).toBe(select(fixture));
+  });
+
+  it('moves the focus to the select once the segments arrive', async () => {
+    const loading = new Subject<SegmentOption[]>();
+    segments.mockReturnValue(loading);
+    const { fixture } = await render();
+    expect(select(fixture).disabled).toBe(true);
+    expect(document.activeElement).toBe(fixture.nativeElement.querySelector('[role="dialog"]'));
+
+    loading.next(SEGMENTS);
+    await fixture.whenStable();
+
+    expect(select(fixture).disabled).toBe(false);
+    expect(document.activeElement).toBe(select(fixture));
+  });
+
+  it('closes on Escape', async () => {
+    const { fixture } = await render();
+    const closed = vi.fn();
+    fixture.componentInstance.closed.subscribe(closed);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    expect(closed).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not close on Escape while transferring', async () => {
+    transfer.mockReturnValue(new Subject());
+    const { fixture } = await render();
+    await choose(fixture, 'FEEDBACK_SUGESTAO');
+    await submit(fixture);
+    const closed = vi.fn();
+    fixture.componentInstance.closed.subscribe(closed);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    expect(closed).not.toHaveBeenCalled();
   });
 });

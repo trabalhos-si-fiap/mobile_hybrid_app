@@ -1,5 +1,12 @@
 <div class="dialog-backdrop" (mousedown)="onBackdropMouseDown($event)">
-  <section class="dialog-card" role="dialog" aria-modal="true" [attr.aria-label]="heading()">
+  <section
+    class="dialog-card"
+    role="dialog"
+    aria-modal="true"
+    appModal
+    [attr.aria-label]="heading()"
+    (appModalDismiss)="cancelled.emit()"
+  >
     <header class="dialog-header">
       <h2>{{ heading() }}</h2>
       <button class="dialog-close" type="button" aria-label="Fechar" (click)="cancelled.emit()">

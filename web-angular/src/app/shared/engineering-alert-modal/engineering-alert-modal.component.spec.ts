@@ -92,4 +92,20 @@ describe('EngineeringAlertModalComponent', () => {
 
     expect(failed).toHaveBeenCalledWith(conflict);
   });
+
+  it('focuses the reason field when it opens', async () => {
+    const { fixture } = await render();
+
+    expect(document.activeElement).toBe(fixture.nativeElement.querySelector('textarea'));
+  });
+
+  it('closes on Escape', async () => {
+    const { fixture } = await render();
+    const closed = vi.fn();
+    fixture.componentInstance.closed.subscribe(closed);
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    expect(closed).toHaveBeenCalledTimes(1);
+  });
 });
