@@ -296,11 +296,16 @@ nenhuma palavra-chave casar ou se o texto estiver vazio.
 1. Texto vazio ou só com espaços: nulo.
 2. Normaliza o texto: minúsculas, sem acento (`TRANSLATE`) e tudo que não é
    letra ou número vira espaço.
-3. Cada pergunta ativa ganha um ponto por palavra-chave contida no texto
-   (`INSTR`; as palavras são radicais, como `entreg`).
-4. Vence a de mais pontos. Empate: a do segmento `p_segment`, depois o menor
+3. Uma palavra-chave casa quando alguma palavra do texto começa por ela. As
+   palavras-chave são radicais: `entreg` casa com "entregaram", mas `senha`
+   não casa com "resenha".
+4. Cada pergunta ativa soma o peso (`weight`) das palavras-chave que casaram:
+   2 para a que aponta a pergunta, 1 para a genérica, que aparece também em
+   frases de outras dúvidas. Em "entregaram faltando", `falt` (2) vence
+   `entreg` (1).
+5. Vence a de maior soma. Empate: a do segmento `p_segment`, depois o menor
    `sort_order`, depois o menor `id`.
-5. Nenhuma palavra casada: nulo.
+6. Nenhuma palavra casada: nulo.
 
 **Tabelas:** lê `chatbot_faq` e `chatbot_faq_keywords`; não grava.
 

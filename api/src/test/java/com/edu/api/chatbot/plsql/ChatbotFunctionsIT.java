@@ -44,7 +44,7 @@ class ChatbotFunctionsIT extends OracleIntegrationTest {
     }
 
     @Test
-    void matchesAStemInsideLongerWords() {
+    void matchesAStemAtTheStartOfALongerWord() {
         long tracking = bot.faq("PROBLEMA_PEDIDO", 3, "Como rastrear o meu pedido?", "Use o código de rastreio.",
                 "rastre");
 
@@ -102,5 +102,46 @@ class ChatbotFunctionsIT extends OracleIntegrationTest {
         bot.deactivate(inactive);
 
         assertThat(functions.answerFor("prazo de entrega", null)).contains(active);
+    }
+
+    @Test
+    void doesNotMatchAKeywordInsideAnotherWord() {
+        long login = bot.faq("DEFEITO_APP", 1, "Não consigo entrar no app", "R", "senha");
+        long answers = bot.faq("FEEDBACK_SUGESTAO", 3, "A equipe responde as sugestões?", "R", "respond");
+
+        assertThat(functions.answerFor("Escrevi uma resenha do app", null)).isEmpty();
+        assertThat(functions.answerFor("O produto não corresponde ao anúncio", null)).isEmpty();
+        assertThat(functions.answerFor("Esqueci a senha", null)).contains(login);
+        assertThat(functions.answerFor("Vocês respondem?", null)).contains(answers);
+    }
+
+    @Test
+    void aKeywordThatPointsToTheItemOutweighsAGenericOne() {
+        long deadline = bot.faq("PROBLEMA_PEDIDO", 1, "Qual o prazo de entrega?", "R");
+        bot.keyword(deadline, "entreg", 1);
+        long missingItem = bot.faq("PROBLEMA_PEDIDO", 4, "Meu pedido veio com item faltando ou errado", "R", "falt");
+
+        assertThat(functions.answerFor("Entregaram faltando", null)).contains(missingItem);
+        assertThat(functions.answerFor("Cadê a entrega?", null)).contains(deadline);
+    }
+
+    @Test
+    void sendsEachFormOfAVerbToItsOwnItem() {
+        long send = bot.faq("FEEDBACK_SUGESTAO", 1, "Como enviar uma sugestão?", "R", "sugerir");
+        bot.keyword(send, "suger", 1);
+        long follow = bot.faq("FEEDBACK_SUGESTAO", 2, "Onde acompanho o que sugeri?", "R", "sugeri");
+
+        assertThat(functions.answerFor("Onde vejo o que sugeri?", null)).contains(follow);
+        assertThat(functions.answerFor("Quero sugerir", null)).contains(send);
+    }
+
+    @Test
+    void aGenericKeywordAnswersAloneButLosesToASpecificOne() {
+        long login = bot.faq("DEFEITO_APP", 1, "Não consigo entrar no app", "R", "senha");
+        bot.keyword(login, "abre", 1);
+        long camera = bot.faq("DEFEITO_APP", 3, "A câmera ou o anexo não funciona", "R", "camera");
+
+        assertThat(functions.answerFor("O app não abre", null)).contains(login);
+        assertThat(functions.answerFor("A CÂMERA não abre", null)).contains(camera);
     }
 }

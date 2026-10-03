@@ -237,8 +237,8 @@ responde às dúvidas comuns antes de envolver um atendente.
 
 | Parte | Onde |
 |---|---|
-| FAQ e conversas | tabelas `chatbot_faq`, `chatbot_faq_keywords`, `chatbot_conversations` e `chatbot_messages` (`V5__chatbot.sql`; FAQ de demonstração em `V6__seed_chatbot.sql`, com o ajuste de palavras-chave do `V7__seed_chatbot_keywords.sql`) |
-| Casamento do texto livre | function PL/SQL `FN_CHATBOT_RESPOSTA` (`db/plsql/R__fn_chatbot_resposta.sql`): normaliza o texto (minúsculas, sem acento) e escolhe o item do FAQ com mais palavras-chave em comum |
+| FAQ e conversas | tabelas `chatbot_faq`, `chatbot_faq_keywords`, `chatbot_conversations` e `chatbot_messages` (`V5__chatbot.sql`, com o peso das palavras-chave da `V10__chatbot_keyword_weight.sql`; FAQ de demonstração em `V6__seed_chatbot.sql`, com o ajuste de palavras-chave do `V7__seed_chatbot_keywords.sql`) |
+| Casamento do texto livre | function PL/SQL `FN_CHATBOT_RESPOSTA` (`db/plsql/R__fn_chatbot_resposta.sql`): normaliza o texto (minúsculas, sem acento), casa cada palavra-chave com o começo das palavras do texto e escolhe o item do FAQ com a maior soma de pesos (palavra genérica vale 1, as outras 2) |
 | Fluxo da conversa | `ChatbotService` na API; `POST /chatbot/conversations` e `POST /chatbot/conversations/{id}/messages` |
 | Passagem para o ticket | campo `chatbotConversationId` em `POST /tickets`; transcrição em `GET /tickets/{id}/chatbot-conversation` |
 

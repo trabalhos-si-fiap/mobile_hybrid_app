@@ -16,7 +16,10 @@ public final class ChatbotFixtures {
         this.rows = new TicketFixtures(jdbc);
     }
 
-    /** Item ativo do FAQ; as palavras-chave já vão normalizadas (minúsculas, sem acento). */
+    /**
+     * Item ativo do FAQ; as palavras-chave já vão normalizadas (minúsculas, sem
+     * acento) e com o peso padrão da coluna (2).
+     */
     public long faq(String segment, int sortOrder, String question, String answer, String... keywords) {
         long faqId = rows.insert("INSERT INTO chatbot_faq (segment, question, answer, sort_order) VALUES (?, ?, ?, ?)",
                 segment, question, answer, sortOrder);
@@ -24,6 +27,12 @@ public final class ChatbotFixtures {
             jdbc.update("INSERT INTO chatbot_faq_keywords (faq_id, keyword) VALUES (?, ?)", faqId, keyword);
         }
         return faqId;
+    }
+
+    /** Palavra-chave com peso explícito: 1 para a genérica, 2 para a que aponta a pergunta. */
+    public void keyword(long faqId, String keyword, int weight) {
+        jdbc.update("INSERT INTO chatbot_faq_keywords (faq_id, keyword, weight) VALUES (?, ?, ?)",
+                faqId, keyword, weight);
     }
 
     public void deactivate(long faqId) {

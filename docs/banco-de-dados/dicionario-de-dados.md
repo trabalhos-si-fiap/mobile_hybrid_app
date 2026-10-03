@@ -420,13 +420,15 @@ que o bot mostra. Origem: `V5`.
 ### `chatbot_faq_keywords`
 
 Palavras-chave de cada pergunta do FAQ, com PK composta (`faq_id`,
-`keyword`). O `FN_CHATBOT_RESPOSTA` conta quantas delas aparecem no texto do
-usuário. Origem: `V5`.
+`keyword`). O `FN_CHATBOT_RESPOSTA` soma o peso das que aparecem no começo
+de alguma palavra do texto do usuário. Origem: `V5` (o `weight` veio na
+`V10`).
 
 | Coluna | Tipo | Nulo | Padrão | Chave | Descrição |
 |---|---|---|---|---|---|
 | `faq_id` | `NUMBER(19)` | não | — | PK (`PK_CHATBOT_FAQ_KEYWORDS`), FK → `chatbot_faq` (`FK_CHATBOT_KEYWORDS_FAQ`) | Pergunta da palavra-chave. |
 | `keyword` | `VARCHAR2(40 CHAR)` | não | — | PK (`PK_CHATBOT_FAQ_KEYWORDS`) | Palavra já normalizada (minúsculas, sem acento) e como radical (`entreg`, `rastre`). Uma palavra só, de letras e números (`CK_CHATBOT_KEYWORDS_NORMALIZED`). |
+| `weight` | `NUMBER(1)` | não | `2` | — | Peso da palavra no casamento do texto livre: 2 para a que aponta a pergunta, 1 para a genérica, que aparece também em frases de outras dúvidas (`entreg`, `abre`). Só 1 ou 2 (`CK_CHATBOT_KEYWORDS_WEIGHT`). |
 
 A FK `faq_id` é coberta pela PK, que começa por ela; a tabela não tem
 índice criado à mão.

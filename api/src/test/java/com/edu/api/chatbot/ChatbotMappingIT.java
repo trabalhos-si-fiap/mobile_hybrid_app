@@ -113,4 +113,16 @@ class ChatbotMappingIT extends OracleIntegrationTest {
                 .executeUpdate())
                 .hasStackTraceContaining("CK_CHATBOT_KEYWORDS_NORMALIZED");
     }
+
+    @Test
+    void rejectsAKeywordWeightOtherThanOneOrTwo() {
+        ChatbotFaq faq = em.persist(new ChatbotFaq(Segment.DEFEITO_APP, "Notificações", "R", 1));
+        em.flush();
+
+        assertThatThrownBy(() -> em.getEntityManager()
+                .createNativeQuery("INSERT INTO chatbot_faq_keywords (faq_id, keyword, weight) VALUES (?, 'notific', 3)")
+                .setParameter(1, faq.getId())
+                .executeUpdate())
+                .hasStackTraceContaining("CK_CHATBOT_KEYWORDS_WEIGHT");
+    }
 }

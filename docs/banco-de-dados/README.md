@@ -65,7 +65,7 @@ modelo da ferramenta, e anote isso na legenda do diagrama.
    e os atributos listados. Use os três grupos (atendimento, chatbot e Edu
    Admin) como regiões do desenho.
 3. Crie a especialização de Usuário em Atendente (parcial) e o atributo
-   multivalorado "palavras-chave" em Pergunta do FAQ.
+   multivalorado composto "palavras-chave" (palavra e peso) em Pergunta do FAQ.
 4. Crie os 24 relacionamentos da tabela "Relacionamentos". A cardinalidade
    da coluna "Junto de A" vai junto da entidade A, e a de "Junto de B" junto
    da entidade B. Na convenção do brModelo, o número junto de uma entidade

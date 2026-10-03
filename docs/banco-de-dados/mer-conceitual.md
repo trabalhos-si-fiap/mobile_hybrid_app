@@ -40,7 +40,7 @@ sempre 0, porque o banco não obriga um usuário a ter ticket.
 
 | Entidade | Tabela | Identificador | Atributos |
 |---|---|---|---|
-| Pergunta do FAQ | `chatbot_faq` | id | pergunta, resposta, ordem, ativa, palavras-chave (multivalorado) |
+| Pergunta do FAQ | `chatbot_faq` | id | pergunta, resposta, ordem, ativa, palavras-chave (multivalorado composto: palavra e peso) |
 | Conversa do chatbot | `chatbot_conversations` | id | estado, iniciada em, encerrada em |
 | Mensagem do chatbot | `chatbot_messages` | id | remetente (`BOT`, `USER`), texto, opção escolhida, enviada em |
 
@@ -88,10 +88,11 @@ sempre 0, porque o banco não obriga um usuário a ter ticket.
 - **Atendente é um Usuário** (especialização parcial): nem todo usuário é
   atendente. Constraints: `FK_EMPLOYEES_USER` e `UQ_EMPLOYEES_USER`. Os
   relacionamentos 1, 5 e 12 ligam-se ao Atendente; os demais, ao Usuário.
-- **Palavras-chave** é atributo multivalorado de Pergunta do FAQ: cada
-  pergunta tem várias, gravadas já normalizadas (minúsculas, sem acento, como
-  radical). Constraints: `FK_CHATBOT_KEYWORDS_FAQ` e `PK_CHATBOT_FAQ_KEYWORDS`
-  (tabela `chatbot_faq_keywords`).
+- **Palavras-chave** é atributo multivalorado composto de Pergunta do FAQ:
+  cada pergunta tem várias, gravadas já normalizadas (minúsculas, sem acento,
+  como radical), cada uma com o seu peso (1 ou 2). Constraints:
+  `FK_CHATBOT_KEYWORDS_FAQ`, `PK_CHATBOT_FAQ_KEYWORDS` e
+  `CK_CHATBOT_KEYWORDS_WEIGHT` (tabela `chatbot_faq_keywords`).
 
 ## Do MER para o DER
 

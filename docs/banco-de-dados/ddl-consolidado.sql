@@ -1,7 +1,7 @@
 -- DDL consolidado do Edu Admin (Oracle 23ai), para importar no SQL Developer
 -- Data Modeler (File > Import > DDL File) e montar o DER.
 --
--- Junta as migrations V1, V3, V5 e V8 de api/src/main/resources/db/migration/
+-- Junta as migrations V1, V3, V5, V8 e V10 de api/src/main/resources/db/migration/
 -- num só arquivo: 19 tabelas, com PK, FK, UQ e CHECK nomeadas, e os 29 índices
 -- explícitos. Não tem seed, dados de referência nem PL/SQL. Não substitui as
 -- migrations: o Flyway continua sendo o dono do schema.
@@ -292,13 +292,16 @@ CREATE TABLE chatbot_faq (
 CREATE INDEX IX_CHATBOT_FAQ_SEGMENT_ORDER ON chatbot_faq (segment, sort_order);
 
 -- A palavra é gravada já normalizada (minúsculas, sem acento) e como radical,
--- porque a FN_CHATBOT_RESPOSTA compara com INSTR no texto normalizado.
+-- porque a FN_CHATBOT_RESPOSTA a procura no começo das palavras do texto
+-- normalizado. weight (V10): 2 é o normal, 1 é a palavra genérica.
 CREATE TABLE chatbot_faq_keywords (
     faq_id  NUMBER(19)        NOT NULL,
     keyword VARCHAR2(40 CHAR) NOT NULL,
+    weight  NUMBER(1) DEFAULT 2 NOT NULL,
     CONSTRAINT PK_CHATBOT_FAQ_KEYWORDS PRIMARY KEY (faq_id, keyword),
     CONSTRAINT FK_CHATBOT_KEYWORDS_FAQ FOREIGN KEY (faq_id) REFERENCES chatbot_faq (id),
-    CONSTRAINT CK_CHATBOT_KEYWORDS_NORMALIZED CHECK (REGEXP_LIKE(keyword, '^[a-z0-9]+$'))
+    CONSTRAINT CK_CHATBOT_KEYWORDS_NORMALIZED CHECK (REGEXP_LIKE(keyword, '^[a-z0-9]+$')),
+    CONSTRAINT CK_CHATBOT_KEYWORDS_WEIGHT CHECK (weight IN (1, 2))
 );
 
 CREATE TABLE chatbot_conversations (
