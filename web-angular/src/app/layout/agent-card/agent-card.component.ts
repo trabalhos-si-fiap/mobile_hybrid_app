@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subject } from 'rxjs';
+import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { EMPTY, Subject, switchMap } from 'rxjs';
 
 import { Presence } from '../../core/models/ticket.model';
 import { AuthService } from '../../core/services/auth.service';
@@ -27,6 +27,7 @@ export class AgentCardComponent {
   private readonly unreadReload = new Subject<void>();
 
   readonly me = this.employees.me;
+  private readonly isAgent = computed(() => !!this.me());
   readonly userName = this.auth.currentUser()?.name ?? '';
   readonly saving = signal(false);
   readonly error = signal('');
@@ -36,8 +37,16 @@ export class AgentCardComponent {
   readonly unreadLabel = computed(() => unreadBadge(this.notifications.unreadCount()));
 
   constructor() {
-    poll(() => this.notifications.refreshUnread(), UNREAD_POLL_MS, this.unreadReload)
-      .pipe(takeUntilDestroyed())
+    // Staff sem cadastro de atendente não tem sino: nada a consultar.
+    toObservable(this.isAgent)
+      .pipe(
+        switchMap((agent) =>
+          agent
+            ? poll(() => this.notifications.refreshUnread(), UNREAD_POLL_MS, this.unreadReload)
+            : EMPTY,
+        ),
+        takeUntilDestroyed(),
+      )
       .subscribe();
   }
 

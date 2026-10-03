@@ -151,4 +151,22 @@ describe('AgentCardComponent', () => {
     await fixture.whenStable();
     expect(fixture.nativeElement.querySelector('app-notification-panel')).toBeNull();
   });
+
+  it('does not poll the unread count for staff without an attendant record', async () => {
+    me.set(null);
+    await render();
+
+    expect(refreshUnread).not.toHaveBeenCalled();
+  });
+
+  it('starts polling the unread count once the attendant loads', async () => {
+    me.set(undefined);
+    const fixture = await render();
+    expect(refreshUnread).not.toHaveBeenCalled();
+
+    me.set(anEmployee({ presence: 'OFFLINE' }));
+    await fixture.whenStable();
+
+    expect(refreshUnread).toHaveBeenCalledTimes(1);
+  });
 });
