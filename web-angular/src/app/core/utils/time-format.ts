@@ -34,6 +34,21 @@ export function formatDateTime(iso: string | null | undefined, timeZone?: string
   return `${part('day')}/${part('month')}/${part('year')} ${part('hour')}:${part('minute')}`;
 }
 
+/** 29/09/2026, para saber quando uma conversa muda de dia. */
+export function formatDate(iso: string | null | undefined, timeZone?: string): string {
+  const time = parse(iso);
+  if (time === null) {
+    return '';
+  }
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(time);
+}
+
 /** 14:05, para o horário das mensagens e da presença. */
 export function formatTime(iso: string | null | undefined, timeZone?: string): string {
   const time = parse(iso);

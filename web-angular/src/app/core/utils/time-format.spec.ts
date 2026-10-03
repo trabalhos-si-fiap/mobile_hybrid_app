@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { NOW } from '../../testing/test-data';
-import { formatDateTime, formatTime, relativeTime, slaDueLabel } from './time-format';
+import { formatDate, formatDateTime, formatTime, relativeTime, slaDueLabel } from './time-format';
 
 describe('time-format', () => {
   it('formats an absolute date as dd/mm/aaaa hh:mm in the given time zone', () => {
@@ -16,6 +16,13 @@ describe('time-format', () => {
 
   it('formats the time of a chat message', () => {
     expect(formatTime('2026-09-29T15:04:00Z', 'America/Sao_Paulo')).toBe('12:04');
+  });
+
+  it('formats only the date, in the given time zone', () => {
+    expect(formatDate('2026-09-29T15:04:00Z', 'America/Sao_Paulo')).toBe('29/09/2026');
+    expect(formatDate('2026-09-30T02:00:00Z', 'America/Sao_Paulo')).toBe('29/09/2026');
+    expect(formatDate(null)).toBe('');
+    expect(formatDate('não é data')).toBe('');
   });
 
   it('tells past and future times relative to a fixed clock', () => {

@@ -4,7 +4,7 @@
 
     @switch (state()) {
       @case ('loading') {
-        <p class="muted">Carregando conversa...</p>
+        <p class="muted" role="status">Carregando conversa...</p>
       }
       @case ('failed') {
         <p class="failed" role="alert">Não foi possível carregar a conversa.</p>
@@ -12,13 +12,13 @@
       }
       @default {
         <ol class="lines" aria-label="Conversa com o chatbot">
-          @for (message of messages(); track message.id) {
-            <li [attr.data-sender]="message.sender">
+          @for (line of lines(); track line.message.id) {
+            <li [attr.data-sender]="line.message.sender">
               <div class="line-head">
-                <strong>{{ sender(message) }}</strong>
-                <time>{{ time(message.createdAt) }}</time>
+                <strong>{{ sender(line.message) }}</strong>
+                <time [attr.datetime]="line.message.createdAt">{{ line.stamp }}</time>
               </div>
-              <p>{{ message.body }}</p>
+              <p>{{ line.message.body }}</p>
             </li>
           }
         </ol>

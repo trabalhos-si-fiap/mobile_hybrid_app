@@ -1,11 +1,11 @@
-import { Component, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { catchError, EMPTY, Observable, startWith, Subject, switchMap, tap } from 'rxjs';
 
 import { ChatbotMessage } from '../../../core/models/chatbot.model';
 import { TicketService } from '../../../core/services/ticket.service';
 import { httpStatus } from '../../../core/utils/api-error';
-import { formatTime } from '../../../core/utils/time-format';
+import { formatDate, formatDateTime, formatTime } from '../../../core/utils/time-format';
 
 const BOT_NAME = 'Mentor Edu';
 
@@ -26,6 +26,17 @@ export class TicketChatbotTranscriptComponent {
 
   readonly state = signal<LoadState>('loading');
   readonly messages = signal<ChatbotMessage[]>([]);
+
+  /** A primeira fala e a primeira de cada dia mostram data e hora; as outras, só a hora. */
+  readonly lines = computed(() =>
+    this.messages().map((message, index, all) => ({
+      message,
+      stamp:
+        index === 0 || formatDate(message.createdAt) !== formatDate(all[index - 1].createdAt)
+          ? formatDateTime(message.createdAt)
+          : formatTime(message.createdAt),
+    })),
+  );
 
   constructor() {
     // A conversa não muda depois da passagem: carrega uma vez por id. O polling do detalhe
@@ -49,10 +60,6 @@ export class TicketChatbotTranscriptComponent {
 
   sender(message: ChatbotMessage): string {
     return message.sender === 'BOT' ? BOT_NAME : this.requesterName();
-  }
-
-  time(iso: string): string {
-    return formatTime(iso);
   }
 
   private load(id: number): Observable<unknown> {

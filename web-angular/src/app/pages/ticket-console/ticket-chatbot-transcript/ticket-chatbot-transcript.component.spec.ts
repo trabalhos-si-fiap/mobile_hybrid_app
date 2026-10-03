@@ -3,7 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NEVER, of, throwError } from 'rxjs';
 
 import { TicketService } from '../../../core/services/ticket.service';
-import { formatTime } from '../../../core/utils/time-format';
+import { formatDateTime, formatTime } from '../../../core/utils/time-format';
 import { aChatbotMessage, aChatbotTranscript, httpError } from '../../../testing/test-data';
 import { TicketChatbotTranscriptComponent } from './ticket-chatbot-transcript.component';
 
@@ -55,7 +55,7 @@ describe('TicketChatbotTranscriptComponent', () => {
     const [greeting, choice, handoff] = lines(fixture);
     expect(lines(fixture)).toHaveLength(3);
     expect(part(greeting, 'strong')).toBe('Mentor Edu');
-    expect(part(greeting, 'time')).toBe(formatTime('2026-09-29T09:50:00Z'));
+    expect(part(greeting, 'time')).toBe(formatDateTime('2026-09-29T09:50:00Z'));
     expect(part(greeting, 'p')).toBe(
       'Olá, Ana! Sou o Mentor Edu, o assistente do Edu. Sobre o que você precisa de ajuda?',
     );
@@ -71,6 +71,42 @@ describe('TicketChatbotTranscriptComponent', () => {
 
     expect(fixture.nativeElement.textContent).toContain('Conversa com o chatbot');
     expect(fixture.nativeElement.textContent).toContain('Carregando conversa...');
+  });
+
+  it('announces the loading state to assistive technology', async () => {
+    chatbotConversation.mockReturnValue(NEVER);
+    const fixture = await render();
+
+    const status = fixture.nativeElement.querySelector('[role="status"]');
+    expect(status.textContent.trim()).toBe('Carregando conversa...');
+  });
+
+  it('gives each time the exact instant in datetime', async () => {
+    const fixture = await render();
+
+    const [greeting, choice] = lines(fixture);
+    expect(greeting.querySelector('time')!.getAttribute('datetime')).toBe('2026-09-29T09:50:00Z');
+    expect(choice.querySelector('time')!.getAttribute('datetime')).toBe('2026-09-29T09:51:00Z');
+  });
+
+  it('shows the date on the first line of each day and only the time on the others', async () => {
+    chatbotConversation.mockReturnValue(
+      of(
+        aChatbotTranscript({
+          messages: [
+            aChatbotMessage({ id: 1, createdAt: '2026-09-29T12:00:00Z' }),
+            aChatbotMessage({ id: 2, sender: 'USER', createdAt: '2026-09-29T12:05:00Z' }),
+            aChatbotMessage({ id: 3, createdAt: '2026-09-30T12:00:00Z' }),
+          ],
+        }),
+      ),
+    );
+    const fixture = await render();
+
+    const [first, sameDay, nextDay] = lines(fixture);
+    expect(part(first, 'time')).toBe(formatDateTime('2026-09-29T12:00:00Z'));
+    expect(part(sameDay, 'time')).toBe(formatTime('2026-09-29T12:05:00Z'));
+    expect(part(nextDay, 'time')).toBe(formatDateTime('2026-09-30T12:00:00Z'));
   });
 
   it('hides the whole block when the ticket has no conversation (404)', async () => {
