@@ -99,7 +99,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/OmnichannelDashboardResponse'
         '400':
-          $ref: '#/components/responses/ValidationError'
+          description: >-
+            `days` fora de 7, 30 ou 90 (error `VALIDATION_ERROR`) ou não numérico
+            (error `BAD_REQUEST`)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -654,6 +660,12 @@ paths:
           $ref: '#/components/responses/ValidationError'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Staff sem cadastro de atendente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
@@ -2089,9 +2101,15 @@ components:
           type: string
           enum: [ABERTO, ROTEADO, ASSUMIDO, TRANSFERIDO, ESCALADO, RESOLVIDO, REABERTO, FECHADO, ALERTA_ENGENHARIA, ERRO_ESCALONAMENTO]
         fromStatus:
-          $ref: '#/components/schemas/TicketStatus'
+          description: Nulo nos eventos ABERTO e ERRO_ESCALONAMENTO
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/TicketStatus'
         toStatus:
-          $ref: '#/components/schemas/TicketStatus'
+          description: Nulo nos eventos ABERTO e ERRO_ESCALONAMENTO
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/TicketStatus'
         employeeName:
           type: string
           nullable: true

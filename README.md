@@ -101,6 +101,14 @@ fica em `http://localhost:9001` (usuário `edu_admin`, senha `edu_admin_minio`).
 Os valores padrão (portas, senhas, JWT) estão em `docker-compose.yml`. Para
 mudar algum, copie `.env.example` para `.env` e edite.
 
+Para voltar ao estado inicial, por exemplo antes de gravar uma demonstração,
+apague os volumes e suba de novo. Isso apaga os dados do Oracle e os anexos do
+MinIO:
+
+```bash
+docker compose down -v && docker compose up -d --build   # em api/
+```
+
 #### Testes
 
 ```bash
