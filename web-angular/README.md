@@ -2,7 +2,7 @@
 
 Painel administrativo e console de atendimento, em Angular 22. O Node roda só
 em container; veja a seção "Painel web" do [README da raiz](../README.md) e,
-se algo não funcionar, a seção "Problemas comuns" logo depois.
+se algo não funcionar, a seção "Problemas comuns" do mesmo README.
 
 ```bash
 # em api/
