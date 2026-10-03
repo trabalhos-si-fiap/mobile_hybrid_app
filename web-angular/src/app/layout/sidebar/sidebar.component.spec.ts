@@ -60,7 +60,6 @@ describe('SidebarComponent', () => {
       'Atendimento',
       'Produtos e Estoque',
       'Transportadoras',
-      'Ocorrências',
     ]);
     expect(links[1].getAttribute('href')).toBe('/atendimento');
   });
