@@ -16,6 +16,8 @@ describe('AgentCardComponent', () => {
   let changePresence: Mock;
   let unreadCount: WritableSignal<number>;
   let refreshUnread: Mock;
+  let loadFailed: WritableSignal<boolean>;
+  let load: Mock;
 
   beforeEach(() => {
     me = signal<EmployeeMe | null | undefined>(anEmployee({ presence: 'OFFLINE' }));
@@ -25,10 +27,12 @@ describe('AgentCardComponent', () => {
     });
     unreadCount = signal(0);
     refreshUnread = vi.fn(() => of(unreadCount()));
+    loadFailed = signal(false);
+    load = vi.fn(() => of(null));
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
-        { provide: EmployeeService, useValue: { me, changePresence } },
+        { provide: EmployeeService, useValue: { me, changePresence, loadFailed, load } },
         {
           provide: NotificationService,
           useValue: {
@@ -70,6 +74,14 @@ describe('AgentCardComponent', () => {
 
   function counter(fixture: ComponentFixture<AgentCardComponent>): HTMLElement | null {
     return fixture.nativeElement.querySelector('[data-testid="unread-count"]');
+  }
+
+  function retryButton(
+    fixture: ComponentFixture<AgentCardComponent>,
+  ): HTMLButtonElement | undefined {
+    return Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button')).find(
+      (item) => item.textContent?.trim() === 'Tentar de novo',
+    );
   }
 
   async function choose(
@@ -120,6 +132,27 @@ describe('AgentCardComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Sem cadastro de atendente');
     expect(select(fixture)).toBeNull();
     expect(bell(fixture)).toBeNull();
+  });
+
+  it('keeps saying it is loading while there is no error', async () => {
+    me.set(undefined);
+    const fixture = await render();
+
+    expect(fixture.nativeElement.textContent).toContain('Carregando atendente...');
+    expect(retryButton(fixture)).toBeUndefined();
+  });
+
+  it('shows the error with Tentar de novo when the agent fails to load, and loads again on click', async () => {
+    me.set(undefined);
+    loadFailed.set(true);
+    const fixture = await render();
+
+    expect(fixture.nativeElement.textContent).toContain('Não foi possível carregar o atendente.');
+    expect(fixture.nativeElement.textContent).not.toContain('Carregando atendente...');
+
+    retryButton(fixture)!.click();
+
+    expect(load).toHaveBeenCalledTimes(1);
   });
 
   it('fetches the unread count when it opens and shows it on the bell', async () => {

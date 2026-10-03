@@ -26,15 +26,19 @@ export class EmployeeService {
   private readonly apiUrl = '/api/v1';
 
   private readonly meState = signal<EmployeeMe | null | undefined>(undefined);
+  private readonly loadFailedState = signal(false);
   private readonly presenceChanges = new Subject<Presence>();
 
   /** undefined: carregando; null: staff sem cadastro de atendente. */
   readonly me = this.meState.asReadonly();
+  /** O GET /employees/me falhou de um jeito que repetir sozinho não resolve (ex.: 404). */
+  readonly loadFailed = this.loadFailedState.asReadonly();
   readonly presenceChanged$ = this.presenceChanges.asObservable();
 
   load(): Observable<EmployeeMe | null> {
     return defer(() => {
       this.meState.set(undefined);
+      this.loadFailedState.set(false);
       return this.http.get<EmployeeMe>(`${this.apiUrl}/employees/me`);
     }).pipe(
       retry({
@@ -42,7 +46,13 @@ export class EmployeeService {
           isTransientError(error) ? timer(RETRY_DELAY_MS) : throwError(() => error),
       }),
       // 403 aqui não é erro: é staff sem cadastro de atendente.
-      catchError((error) => (httpStatus(error) === 403 ? of(null) : throwError(() => error))),
+      catchError((error) => {
+        if (httpStatus(error) === 403) {
+          return of(null);
+        }
+        this.loadFailedState.set(true);
+        return throwError(() => error);
+      }),
       tap((me) => this.meState.set(me)),
     );
   }
@@ -69,5 +79,6 @@ export class EmployeeService {
 
   clear(): void {
     this.meState.set(undefined);
+    this.loadFailedState.set(false);
   }
 }

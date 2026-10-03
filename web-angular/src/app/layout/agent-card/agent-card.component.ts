@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
 import { EMPTY, Subject, switchMap } from 'rxjs';
 
@@ -25,8 +25,10 @@ export class AgentCardComponent {
   private readonly employees = inject(EmployeeService);
   private readonly notifications = inject(NotificationService);
   private readonly unreadReload = new Subject<void>();
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly me = this.employees.me;
+  readonly loadFailed = this.employees.loadFailed;
   private readonly isAgent = computed(() => !!this.me());
   readonly userName = this.auth.currentUser()?.name ?? '';
   readonly saving = signal(false);
@@ -48,6 +50,13 @@ export class AgentCardComponent {
         takeUntilDestroyed(),
       )
       .subscribe();
+  }
+
+  reload(): void {
+    this.employees
+      .load()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({ error: () => undefined });
   }
 
   togglePanel(): void {

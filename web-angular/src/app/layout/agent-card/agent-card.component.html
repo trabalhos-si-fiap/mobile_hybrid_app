@@ -42,6 +42,9 @@
       <strong>{{ userName }}</strong>
       <span>Sem cadastro de atendente</span>
     </div>
+  } @else if (loadFailed()) {
+    <p class="card-error" role="alert">Não foi possível carregar o atendente.</p>
+    <button class="btn btn-link" type="button" (click)="reload()">Tentar de novo</button>
   } @else {
     <span class="since">Carregando atendente...</span>
   }

@@ -47,6 +47,27 @@ describe('EmployeeService', () => {
     expect(service.me()).toBeNull();
   });
 
+  it('flags a failure that is not a 403 nor transient and stays on loading', () => {
+    expect(service.loadFailed()).toBe(false);
+
+    service.load().subscribe({ error: () => undefined });
+    http.expectOne(ME_URL).flush({}, { status: 404, statusText: 'Not Found' });
+
+    expect(service.loadFailed()).toBe(true);
+    expect(service.me()).toBeUndefined();
+  });
+
+  it('clears the failure when it loads again', () => {
+    service.load().subscribe({ error: () => undefined });
+    http.expectOne(ME_URL).flush({}, { status: 404, statusText: 'Not Found' });
+
+    service.load().subscribe();
+    expect(service.loadFailed()).toBe(false);
+
+    http.expectOne(ME_URL).flush(anEmployee());
+    expect(service.me()).toEqual(anEmployee());
+  });
+
   it('forgets the previous agent while loading again', () => {
     service.load().subscribe();
     http.expectOne(ME_URL).flush(anEmployee());
