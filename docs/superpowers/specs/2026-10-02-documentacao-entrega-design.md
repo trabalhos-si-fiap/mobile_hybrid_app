@@ -2,8 +2,9 @@
 
 Data: 2026-10-02
 Sub-projeto 5B de 5 da Fase 6 (FIAP). Depende de tudo o que já está em
-`main`: sub-projetos 1 a 4, o 5A (modelo de dados) e o primeiro bloco de
-correções das pendências (`fix/pendencias-bloco-1`).
+`main`: sub-projetos 1 a 4, o 5A (modelo de dados) e os dois blocos de
+correções das pendências (o segundo trouxe a `V10`, peso das palavras-chave
+do chatbot, e o seed `V11`).
 
 ## Contexto
 
@@ -67,7 +68,7 @@ para abrir no Word, completar esses três pontos e exportar o PDF.
 ### 1. Stack de evidências
 
 Uma stack isolada, subida da `main` só para gerar as evidências, com o seed
-completo de demonstração (migrations, `V2` a `V9` e PL/SQL), para que SQL,
+completo de demonstração (migrations, seeds `V2` a `V11` e PL/SQL), para que SQL,
 console e app mostrem os mesmos dados.
 
 - `COMPOSE_PROJECT_NAME=edu-evidencias` e um override no scratchpad que
@@ -147,7 +148,7 @@ Conteúdo por seção:
   usuário, chatbot nível 0, dashboard do atendimento, base Oracle);
   refatorações (H2/PostgreSQL → Oracle com Flyway, Java só em container,
   pirâmide de testes com Oracle efêmero, autorização por papéis, correções
-  do bloco 1 de pendências); valor agregado; tabela com os requisitos do
+  dos blocos 1 e 2 de pendências); valor agregado; tabela com os requisitos do
   "Omnichannel Edu" e como cada um foi atendido; a justificativa de o
   chatbot ser um bot de regras deste repositório e não o `/api/v1/chat` do
   `edu-ia`.
@@ -192,8 +193,9 @@ Conteúdo por seção:
   página (texto, tabelas, imagens legíveis, figuras numeradas em ordem).
 - Nenhuma instrução amarela do modelo sobra, exceto as três marcações
   intencionais.
-- Todo nome de tabela, constraint, índice e objeto PL/SQL citado existe
-  (conferidor do 5A, aplicado ao texto extraído do `.docx`).
+- Todo nome de tabela, coluna, constraint, índice e objeto PL/SQL citado
+  existe (conferência do texto extraído do `.docx` contra o
+  `ddl-consolidado.sql` e os `R__`).
 - A stack de evidências foi removida (`down -v`), a de demonstração segue
   como estava, e nenhum container `edu-evid-*` sobra.
 

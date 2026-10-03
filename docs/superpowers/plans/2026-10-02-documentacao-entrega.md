@@ -94,7 +94,7 @@ for i in $(seq 1 60); do
 done; echo "web=$code"
 ```
 
-Expected: `login=200` e `web=200`. A primeira subida compila a API e roda o `npm ci` do web: pode levar vários minutos. Se `login` não chegar a 200, veja `ev logs api | tail -50`.
+Expected: `login=200` e `web=200`. Todo `up` reconstrói a imagem da API (`pull_policy: build`), e o web serve o código montado de `$W/web-angular`, com `node_modules` e o cache do Angular em volumes desse projeto (`web/tool/dev-server.sh` instala as dependências na primeira subida): pode levar vários minutos. Se `login` não chegar a 200, veja `ev logs api | tail -50`; se `web` não chegar, `ev logs web | tail -50`.
 
 - [ ] **Step 4: Conferir que o seed completo entrou e achar o ticket do chatbot**
 
@@ -137,7 +137,7 @@ Crie `docs/banco-de-dados/consultas-exemplo.sql`:
 -- Consultas de exemplo: as functions e procedures PL/SQL do Edu em uso.
 --
 -- Mostra cada objeto de api/src/main/resources/db/plsql/ dentro de consultas
--- reais sobre o seed de demonstração (V2, V4, V6, V7 e V9). As procedures que
+-- reais sobre o seed de demonstração (V2, V4, V6, V7, V9 e V11). As procedures que
 -- gravam dados rodam e são desfeitas com ROLLBACK: o script não deixa
 -- alteração no banco.
 --
@@ -1029,7 +1029,7 @@ Conteúdo por âncora:
     - Java só em container;
     - pirâmide de testes (unitários sem banco, integração contra Oracle efêmero, e2e no web e no app);
     - autorização por papéis (`USER`, `EMPLOYEE`, `ADMIN`);
-    - correções do primeiro bloco de pendências: erro sem handler deixou de deslogar o atendente, login sem vazamento de e-mails pelo tempo de resposta, anexo sem tipo responde 400, telas sem função removidas do app.
+    - correções dos dois blocos de pendências (`docs/pendencias.md`, itens marcados como resolvidos): erro sem handler deixou de deslogar o atendente; login sem vazamento de e-mails pelo tempo de resposta; anexo sem tipo responde 400; telas sem função removidas do app; o roteamento e o escalonamento nunca entregam o ticket a quem o abriu; o chatbot casa palavras-chave pelo início da palavra e com peso (`V10` e `V11`); uma falha de roteamento não desfaz mais a mudança de presença; modais do console fecham com Escape; imagens Docker com versão fixa.
   - `sub` "Requisitos do Omnichannel Edu" + `tabela` com as colunas Requisito | Como foi atendido, cobrindo os requisitos 1 a 9 e a matriz de triagem (segmento → skill → fila). Larguras `[3400, 5600]`.
   - `sub` "Por que o chatbot é um bot de regras" + `p` com os motivos da seção "Chatbot nível 0" do `README.md`.
   - `sub` "Valor agregado" + `p`.
@@ -1053,7 +1053,7 @@ Conteúdo por âncora:
   - `img` `cod-ddl-tickets.png`.
   - `img` `cod-v8-indices.png`.
 - **`00000045` (importação):**
-  - `p`: dados simulados em scripts SQL do Flyway (`V2`, `V4`, `V6`, `V7`, `V9`), sem `DBMS_RANDOM`; o `V2` reescreve em SQL Oracle os dados que o antigo `DataSeeder` (Java, PostgreSQL) criava; o `V9` gera 180 dias de histórico e um pico de "Problemas com pedido".
+  - `p`: dados simulados em scripts SQL do Flyway (`V2`, `V4`, `V6`, `V7`, `V9`, `V11`), sem `DBMS_RANDOM`; o `V2` reescreve em SQL Oracle os dados que o antigo `DataSeeder` (Java, PostgreSQL) criava; o `V9` gera 180 dias de histórico e um pico de "Problemas com pedido"; o `V11` dá peso às palavras-chave do FAQ (coluna criada pela migration `V10`).
   - `tabela` Script | O que carrega, larguras `[2600, 6400]`.
   - `img` `cod-seed-v9.png`.
   - `img` `sql-0.png`: linhas por tabela depois da importação.
@@ -1076,7 +1076,7 @@ Conteúdo por âncora:
 - **`0000005F` (fim):**
   - `titulo` "Limitações conhecidas";
   - `p` de introdução;
-  - `itens` com 8 a 10 itens ainda abertos em `docs/pendencias.md` (não marcados como resolvidos), em linguagem de usuário, por exemplo: presença presa em Online, notificação só com o app aberto, sem refresh token, iOS não testado, casamento do chatbot por trecho de palavra, pico do seed válido por 24 h, MER e DER montados à mão;
+  - `itens` com 8 a 10 itens ainda abertos em `docs/pendencias.md` (não marcados como resolvidos), em linguagem de usuário, escolhidos na hora da escrita (a lista muda quando alguém resolve um item). Em 2026-10-03 estavam abertos, entre outros: presença presa em Online sem heartbeat (P2B-01), notificação só com o app aberto (P2C-01), sem refresh token (P2C-02), iOS não testado (P2C-03), conversas do chatbot abandonadas ficam abertas (P3-05), pico do seed válido por 24 h (P4-03), dashboard sem cache (P4-04), presença lida sem trava no roteamento (P2A-04) e MER e DER montados à mão (P5A-01);
   - `p` com o caminho da lista completa no repositório.
 
 Se a Task 5 caiu no Step 7, troque os dois `imgs` do app por `marca` "[Colar aqui os prints do app: ...]".
