@@ -116,6 +116,7 @@ export class TransferModalComponent {
       },
     });
   }
+
   /** Só puxa o foco se o usuário ainda não foi para outro controle do modal. */
   private focusSelect(): void {
     const select = this.segmentSelect()?.nativeElement;

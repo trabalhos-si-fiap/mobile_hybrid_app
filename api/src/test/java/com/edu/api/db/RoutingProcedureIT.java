@@ -60,7 +60,7 @@ class RoutingProcedureIT extends OracleIntegrationTest {
 
         assertThat(fx.state(ticket)).isEqualTo(new TicketState("EM_FILA", "ALTA", null));
         assertThat(fx.count("SELECT COUNT(*) FROM ticket_events WHERE ticket_id = ? AND type = 'ROTEADO'"
-                + " AND detail LIKE '%nenhum atendente online%'", ticket)).isEqualTo(1);
+                + " AND detail LIKE '%nenhum outro atendente online%'", ticket)).isEqualTo(1);
         assertThat(fx.count("SELECT COUNT(*) FROM notifications WHERE ticket_id = ?", ticket)).isZero();
     }
 

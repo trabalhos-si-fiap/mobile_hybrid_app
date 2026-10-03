@@ -61,18 +61,18 @@ nova também atualiza o `ddl-consolidado.sql` de lá, conferido por
 app abre ticket ──► POST /tickets ──► PR_ROTEAR_TICKET ──► TICKET_TIPO_CONFIG
                                           │                  (segmento → skill → fila → SLA)
                                           ▼
-                              FN_PROXIMO_ATENDENTE (ONLINE, menos carga)
+                              FN_PROXIMO_ATENDENTE (ONLINE, menos carga, fora quem abriu)
                                           │
 console assume ◄── notificação ◄──────────┘
       │
       ├─ mensagens assíncronas (app ⇄ console, com anexos no MinIO)
       ├─ encerrar → RESOLVIDO → usuário confirma (FECHADO) ou reabre
-      └─ job a cada 60 s: PR_ESCALAR_TICKET_CRITICO, reroteia a fila, fecha resolvidos há 72 h
+      └─ job a cada 60 s: PR_ESCALAR_TICKET_CRITICO, reroteia a fila (ticket sem rota é pulado, o lote segue), fecha resolvidos há 72 h
 ```
 
 | Objeto PL/SQL | Papel |
 |---|---|
-| `FN_PROXIMO_ATENDENTE` | Escolhe o atendente ONLINE da skill com menos tickets ativos |
+| `FN_PROXIMO_ATENDENTE` | Escolhe o atendente ONLINE da skill com menos tickets ativos, fora quem abriu o ticket |
 | `FN_STATUS_SLA_TICKET` | `NO_PRAZO`, `EM_RISCO`, `ESTOURADO`, `CUMPRIDO` ou `VIOLADO` |
 | `PR_ROTEAR_TICKET` | Aplica a matriz de triagem e atribui o ticket |
 | `PR_ESCALAR_TICKET_CRITICO` | Sobe a prioridade e reatribui tickets com SLA estourado |

@@ -10,7 +10,7 @@ desfaz tudo junto. Os nomes seguem o padrão da especificação da FIAP
 
 | Objeto | Tipo | Papel | Chamado por |
 |---|---|---|---|
-| `FN_PROXIMO_ATENDENTE` | function | Escolhe o atendente ONLINE da skill com menos tickets ativos | `PR_ROTEAR_TICKET` e `PR_ESCALAR_TICKET_CRITICO` |
+| `FN_PROXIMO_ATENDENTE` | function | Escolhe o atendente ONLINE da skill com menos tickets ativos, fora quem abriu o ticket | `PR_ROTEAR_TICKET` e `PR_ESCALAR_TICKET_CRITICO` |
 | `FN_STATUS_SLA_TICKET` | function | Status do SLA de um ticket | `TicketProcedures.slaStatuses` e `PR_RESUMO_DASHBOARD` |
 | `PR_ROTEAR_TICKET` | procedure | Aplica a matriz de triagem e atribui o ticket | `TicketProcedures.route` |
 | `PR_ESCALAR_TICKET_CRITICO` | procedure | Escala os tickets com SLA estourado | `TicketProcedures.escalateOverdue` |
@@ -178,7 +178,7 @@ CREATE OR REPLACE PROCEDURE PR_ROTEAR_TICKET (
 6. Com atendente: grava `employees.last_assigned_at` e uma notificação
    `TICKET_ATRIBUIDO` para ele.
 7. Grava o evento `ROTEADO`, com a fila no detalhe ("Fila TECNOLOGIA" ou
-   "Fila TECNOLOGIA: nenhum atendente online").
+   "Fila TECNOLOGIA: nenhum outro atendente online").
 
 **Tabelas:** lê `tickets`, `ticket_tipo_config`, `employees` e
 `employee_skills`; grava `tickets`, `employees`, `notifications` e
@@ -193,7 +193,7 @@ roteamentos do mesmo ticket não se atropelarem. Não faz `COMMIT`.
 - -20002: o estado não permite roteamento (409);
 - -20003: segmento sem configuração ativa (422).
 
-**Quem chama:** `TicketProcedures.route`, a partir de:
+**Quem chama:** `TicketProcedures.route` (direto na abertura e na transferência, por ticket via `routeEach` na presença e no job), a partir de:
 
 - `POST /api/v1/tickets`: abertura (`TicketService`);
 - `POST /api/v1/tickets/{ticketId}/transfer`: transferência para outro
@@ -463,9 +463,9 @@ dos cursores no Java), `OmnichannelDashboardIT` (endpoint) e
 
 ```text
 POST /tickets ───────────────┐
-POST /tickets/{id}/transfer ─┤
-PUT  /employees/me/presence ─┼─► TicketProcedures.route ──► PR_ROTEAR_TICKET ────────────┐
-TicketSlaJob (60 s) ─────────┘                                                          ├─► FN_PROXIMO_ATENDENTE
+POST /tickets/{id}/transfer ─┴─► TicketProcedures.route ─────────┐
+PUT  /employees/me/presence ─┐                                   ├─► PR_ROTEAR_TICKET ──┐
+TicketSlaJob (60 s) ─────────┴─► TicketProcedures.routeEach ─────┘   (route por ticket)  ├─► FN_PROXIMO_ATENDENTE
 TicketSlaJob (60 s) ──► TicketProcedures.escalateOverdue ──► PR_ESCALAR_TICKET_CRITICO ──┘
 
 detalhe e listas de tickets ──► TicketProcedures.slaStatuses ──► FN_STATUS_SLA_TICKET

@@ -71,7 +71,7 @@ BEGIN
     INSERT INTO ticket_events (ticket_id, type, from_status, to_status, employee_id, detail)
     VALUES (p_ticket_id, 'ROTEADO', v_status, v_destino, p_employee_id,
             CASE WHEN p_employee_id IS NULL
-                 THEN 'Fila ' || v_config.queue || ': nenhum atendente online'
+                 THEN 'Fila ' || v_config.queue || ': nenhum outro atendente online'
                  ELSE 'Fila ' || v_config.queue END);
 END PR_ROTEAR_TICKET;
 /
