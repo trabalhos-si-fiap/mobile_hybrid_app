@@ -15,6 +15,7 @@ import { EmployeeMe, TicketDetail } from '../../core/models/ticket.model';
 import { AuthService } from '../../core/services/auth.service';
 import { EmployeeService } from '../../core/services/employee.service';
 import { FlashMessageService } from '../../core/services/flash-message.service';
+import { QueueParamsService } from '../../core/services/queue-params.service';
 import { TicketService } from '../../core/services/ticket.service';
 import { aMessage, anEmployee, aTicket, httpError, SEGMENTS } from '../../testing/test-data';
 import { TicketActionsBarComponent } from './ticket-actions-bar/ticket-actions-bar.component';
@@ -46,6 +47,7 @@ describe('TicketConsoleComponent', () => {
 
   async function render(
     me: EmployeeMe | null = anEmployee(),
+    queue: { aba?: string; status?: string } = {},
   ): Promise<ComponentFixture<TicketConsoleComponent>> {
     TestBed.configureTestingModule({
       providers: [
@@ -69,6 +71,8 @@ describe('TicketConsoleComponent', () => {
     });
     router = TestBed.inject(Router);
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    TestBed.inject(QueueParamsService).remember({ aba: null, status: null, ...queue });
 
     const fixture = TestBed.createComponent(TicketConsoleComponent);
     await fixture.whenStable();
@@ -232,7 +236,29 @@ describe('TicketConsoleComponent', () => {
     expect(TestBed.inject(FlashMessageService).take()).toBe(
       'Ticket #12 transferido para Feedback / Sugestões',
     );
-    expect(router.navigate).toHaveBeenCalledWith(['/atendimento']);
+    expect(router.navigate).toHaveBeenCalledWith(['/atendimento'], { queryParams: {} });
+  });
+
+  it('goes back to the queue tab and status it came from after a transfer', async () => {
+    const fixture = await render(anEmployee(), { aba: 'skills', status: 'EM_FILA' });
+    const bar = fixture.debugElement.query(By.directive(TicketActionsBarComponent));
+
+    bar.componentInstance.transferred.emit({
+      ticket: aTicket({ segment: 'FEEDBACK_SUGESTAO' }),
+      label: 'Feedback / Sugestões',
+    });
+
+    expect(router.navigate).toHaveBeenCalledWith(['/atendimento'], {
+      queryParams: { aba: 'skills', status: 'EM_FILA' },
+    });
+  });
+
+  it('links "← Fila" to the queue tab and status it came from', async () => {
+    const fixture = await render(anEmployee(), { aba: 'skills', status: 'EM_FILA' });
+
+    const link: HTMLAnchorElement = fixture.nativeElement.querySelector('a.back');
+
+    expect(link.getAttribute('href')).toBe('/atendimento?aba=skills&status=EM_FILA');
   });
 
   it('reloads the messages after one is sent', async () => {

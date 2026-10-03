@@ -18,6 +18,7 @@ import { TicketDetail, TicketEvent, TicketMessage } from '../../core/models/tick
 import { AuthService } from '../../core/services/auth.service';
 import { EmployeeService } from '../../core/services/employee.service';
 import { FlashMessageService } from '../../core/services/flash-message.service';
+import { QueueParamsService } from '../../core/services/queue-params.service';
 import { TicketService } from '../../core/services/ticket.service';
 import { actionErrorMessage, httpStatus } from '../../core/utils/api-error';
 import { poll } from '../../core/utils/polling';
@@ -62,6 +63,8 @@ export class TicketConsoleComponent {
   private readonly auth = inject(AuthService);
   private readonly employees = inject(EmployeeService);
   private readonly flash = inject(FlashMessageService);
+  /** A fila que o atendente estava vendo; lida uma vez, porque a fila fecha antes do console abrir. */
+  readonly queueParams = inject(QueueParamsService).current();
   private readonly detailReload = new Subject<void>();
   private readonly messagesReload = new Subject<void>();
   private readonly idChange = new Subject<void>();
@@ -151,7 +154,7 @@ export class TicketConsoleComponent {
 
   transferred(result: TransferResult): void {
     this.flash.set(`Ticket #${result.ticket.id} transferido para ${result.label}`);
-    this.router.navigate(['/atendimento']);
+    this.router.navigate(['/atendimento'], { queryParams: this.queueParams });
   }
 
   alertRaised(ticket: TicketDetail): void {

@@ -2,11 +2,11 @@
   @if (notFound()) {
     <div class="not-found">
       <h1>Ticket não encontrado ou sem acesso</h1>
-      <a routerLink="/atendimento">← Voltar para a fila</a>
+      <a routerLink="/atendimento" [queryParams]="queueParams">← Voltar para a fila</a>
     </div>
   } @else if (ticket(); as ticket) {
     <header class="console-header">
-      <a class="back" routerLink="/atendimento">← Fila</a>
+      <a class="back" routerLink="/atendimento" [queryParams]="queueParams">← Fila</a>
       <h1>#{{ ticket.id }} · {{ ticket.segmentLabel }}</h1>
       <div class="badges">
         <span [class]="badgeClass('status', ticket.status)">{{ statusLabels[ticket.status] }}</span>

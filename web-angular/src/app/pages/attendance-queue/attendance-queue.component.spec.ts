@@ -8,6 +8,7 @@ import { EmployeeMe, Presence, TicketSummary } from '../../core/models/ticket.mo
 import { AuthService } from '../../core/services/auth.service';
 import { EmployeeService } from '../../core/services/employee.service';
 import { FlashMessageService } from '../../core/services/flash-message.service';
+import { QueueParamsService } from '../../core/services/queue-params.service';
 import { TicketService } from '../../core/services/ticket.service';
 import { anEmployee, aSummary, aTicket, httpError } from '../../testing/test-data';
 import { AttendanceQueueComponent } from './attendance-queue.component';
@@ -275,5 +276,20 @@ describe('AttendanceQueueComponent', () => {
     const fixture = await render({}, 'Ticket #12 transferido para Feedback / Sugestões');
 
     expect(text(fixture)).toContain('Ticket #12 transferido para Feedback / Sugestões');
+  });
+
+  it('remembers the tab and the status from the URL for the console to come back to', async () => {
+    await render({ aba: 'skills', status: 'EM_FILA' });
+
+    expect(TestBed.inject(QueueParamsService).current()).toEqual({
+      aba: 'skills',
+      status: 'EM_FILA',
+    });
+  });
+
+  it('remembers nothing when the URL has no params', async () => {
+    await render();
+
+    expect(TestBed.inject(QueueParamsService).current()).toEqual({});
   });
 });

@@ -1,4 +1,4 @@
-import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
+import { Component, computed, DestroyRef, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { EMPTY, merge, Subject, switchMap } from 'rxjs';
@@ -7,6 +7,7 @@ import { TicketSummary } from '../../core/models/ticket.model';
 import { AuthService } from '../../core/services/auth.service';
 import { EmployeeService } from '../../core/services/employee.service';
 import { FlashMessageService } from '../../core/services/flash-message.service';
+import { QueueParamsService } from '../../core/services/queue-params.service';
 import { TicketService } from '../../core/services/ticket.service';
 import { actionErrorMessage, apiErrorMessage, httpStatus } from '../../core/utils/api-error';
 import { poll } from '../../core/utils/polling';
@@ -42,6 +43,7 @@ export class AttendanceQueueComponent {
   private readonly employees = inject(EmployeeService);
   private readonly reload = new Subject<void>();
   private readonly queryParams = toSignal(this.route.queryParamMap, { requireSync: true });
+  private readonly queueParams = inject(QueueParamsService);
 
   readonly me = this.employees.me;
   readonly isAdmin = this.auth.isAdmin();
@@ -91,6 +93,10 @@ export class AttendanceQueueComponent {
       this.toast.show(notice);
     }
     inject(DestroyRef).onDestroy(() => this.toast.clear());
+    effect(() => {
+      const params = this.queryParams();
+      this.queueParams.remember({ aba: params.get('aba'), status: params.get('status') });
+    });
 
     // Trocar de aba ou de status reinicia o polling; mudar a presença recarrega na hora,
     // porque ficar Online dispara o roteamento.
