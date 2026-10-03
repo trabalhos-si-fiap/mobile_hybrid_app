@@ -94,7 +94,7 @@ for i in $(seq 1 60); do
 done; echo "web=$code"
 ```
 
-Expected: `login=200` e `web=200`. Todo `up` reconstrói a imagem da API (`pull_policy: build`), e o web serve o código montado de `$W/web-angular`, com `node_modules` e o cache do Angular em volumes desse projeto (`web/tool/dev-server.sh` instala as dependências na primeira subida): pode levar vários minutos. Se `login` não chegar a 200, veja `ev logs api | tail -50`; se `web` não chegar, `ev logs web | tail -50`.
+Expected: `login=200` e `web=200`. Todo `up` reconstrói a imagem da API (`pull_policy: build`), e o web serve o código montado de `$W/web-angular`, com `node_modules` e o cache do Angular em volumes desse projeto (`web-angular/tool/dev-server.sh` instala as dependências na primeira subida): pode levar vários minutos. Se `login` não chegar a 200, veja `ev logs api | tail -50`; se `web` não chegar, `ev logs web | tail -50`.
 
 - [ ] **Step 4: Conferir que o seed completo entrou e achar o ticket do chatbot**
 
