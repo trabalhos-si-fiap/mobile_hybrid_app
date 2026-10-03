@@ -1,0 +1,120 @@
+
+==== 0. Dados importados: linhas por tabela ====
+
+TABELA                   LINHAS
+------------------------ ------
+admin_users                  10
+products                      5
+inventories                   5
+inventory_adjustments         0
+carriers                      4
+carrier_occurrences           3
+skills                        3
+employees                     4
+employee_skills               6
+ticket_tipo_config            3
+tickets                    1900
+ticket_messages               3
+ticket_attachments            0
+ticket_events              5806
+notifications                 2
+chatbot_faq                  12
+chatbot_faq_keywords         58
+chatbot_conversations         1
+chatbot_messages              8
+
+==== 1. FN_STATUS_SLA_TICKET: SLA de cada ticket em aberto ====
+
+        ID SEGMENT            STATUS          PRIORITY PRAZO       SLA
+---------- ------------------ --------------- -------- ----------- ----------
+         1 DEFEITO_APP        EM_ATENDIMENTO  ALTA     03/10 15:51 NO_PRAZO
+         2 PROBLEMA_PEDIDO    ESCALADO        ALTA     03/10 14:23 NO_PRAZO
+         4 PROBLEMA_PEDIDO    EM_FILA         NORMAL   03/10 20:01 NO_PRAZO
+
+==== 2. FN_STATUS_SLA_TICKET: todos os tickets por status de SLA ====
+
+SLA           TICKETS
+---------- ----------
+CUMPRIDO         1685
+VIOLADO           212
+NO_PRAZO            3
+
+==== 3. FN_CALC_TAXA_VARIACAO: abertos por segmento, ultimos 7 dias x 7 anteriores ====
+
+SEGMENT               ATUAL ANTERIOR VARIACAO_PCT
+------------------ -------- -------- ------------
+DEFEITO_APP            25,0     25,0          0,0
+FEEDBACK_SUGESTAO      25,0     23,0          8,7
+PROBLEMA_PEDIDO        33,0     26,0         26,9
+
+==== 4. FN_PROXIMO_ATENDENTE: quem recebe o proximo ticket de cada skill ====
+(no seed todos estao OFFLINE, o UPDATE abaixo e desfeito pelo ROLLBACK)
+
+SKILL              PROXIMO_ATENDENTE
+------------------ ----------------------
+DESENVOLVEDOR      Diego Desenvolvedor
+GESTAO_ENTREGAS    Lara Logística
+PRODUTO_MELHORIAS  Paula Produto
+
+==== 5. FN_CHATBOT_RESPOSTA: texto livre do usuario x pergunta do FAQ ====
+
+FRASE                                    PERGUNTA_DO_FAQ
+---------------------------------------- ------------------------------------------------------
+Qual o prazo de entrega do meu pedido?   Qual o prazo de entrega do meu pedido?
+Faltou um item na entrega                Meu pedido veio com item faltando ou errado. E agora?
+A camera nao abre no app                 A câmera ou o anexo não funciona. O que fazer?
+Quero mandar uma sugestao                Como enviar uma sugestão?
+O app esta muito lento hoje              (sem casamento: vai para o atendente)
+
+==== 6. PR_RESUMO_DASHBOARD: resumo dos ultimos 7 dias (tres cursores) ====
+-- p_kpis
+
+METRICA                     ATUAL ANTERIOR VARIACAO
+------------------------ -------- -------- --------
+ABERTOS                      83,0     74,0     12,2
+RESOLVIDOS                   81,0     74,0      9,5
+BACKLOG                       3,0
+SLA_CUMPRIDO_PCT             92,6     86,5      7,1
+ESCALADOS                     4,0      5,0    -20,0
+TEMPO_MEDIO_ASSUMIR_MIN      22,4     23,4     -4,3
+TEMPO_MEDIO_RESOLUCAO_H       4,5      5,3    -15,1
+ABERTOS_APP                  71,0     63,0     12,7
+ABERTOS_CHATBOT              12,0     11,0      9,1
+-- p_segmentos
+
+SEGMENT            LABEL                ABERTOS AB_ANT AB_VAR% RESOLV RES_ANT RES_VAR%   SLA% SLA_ANT SLA_VAR% BACKLOG
+------------------ -------------------- ------- ------ ------- ------ ------- -------- ------ ------- -------- -------
+DEFEITO_APP        Defeito no App / Pro      25     25     0,0     24      25     -4,0   95,8    88,0      8,9       1
+PROBLEMA_PEDIDO    Problemas com pedido      33     26    26,9     31      26     19,2   93,5    84,6     10,5       2
+FEEDBACK_SUGESTAO  Feedback / Sugestões      25     23     8,7     26      23     13,0   88,5    87,0      1,7       0
+-- p_anomalias
+
+SEGMENT            LABEL                   ATUAL   MEDIA  DESVIO Z_SCORE SITUACAO       JANELAS
+------------------ -------------------- -------- ------- ------- ------- -------------- -------
+DEFEITO_APP        Defeito no App / Pro      4,0    3,50    1,14    0,44 NORMAL              28
+PROBLEMA_PEDIDO    Problemas com pedido     14,0    3,50    1,14    9,22 ANOMALIA            28
+FEEDBACK_SUGESTAO  Feedback / Sugestões      3,0    3,54    1,10   -0,48 NORMAL              28
+
+==== 7. PR_ROTEAR_TICKET: abre um ticket e roteia (desfeito no fim) ====
+Ticket #1903 roteado para Diego Desenvolvedor
+
+        ID STATUS          PRIORITY PRAZO
+---------- --------------- -------- -----------
+      1903 EM_FILA         ALTA     03/10 16:23
+
+TYPE                 DETAIL
+-------------------- --------------------------------------------
+ROTEADO              Fila TECNOLOGIA
+
+TYPE                 TITLE
+-------------------- --------------------------
+TICKET_ATRIBUIDO     Novo ticket na sua fila
+
+==== 8. PR_ESCALAR_TICKET_CRITICO: escala os tickets com SLA estourado (desfeito no fim) ====
+(o job de SLA da API escala sozinho a cada minuto: o UPDATE vence o prazo
+do ticket em atendimento so nesta transacao, para o exemplo ter o que escalar)
+1 ticket(s) escalado(s)
+
+        ID TYPE                 DETAIL
+---------- -------------------- --------------------------------------------
+         1 ESCALADO             Prioridade ALTA -> CRITICA
