@@ -41,6 +41,10 @@ services:
 
   api:
     build: .
+    # Todo "docker compose up" reconstrói a imagem: depois de um git pull não há
+    # como subir um jar antigo por esquecer o --build. Sem mudanças, o cache das
+    # camadas deixa o build quase instantâneo.
+    pull_policy: build
     container_name: edu-admin-api
     restart: unless-stopped
     depends_on:
@@ -84,9 +88,10 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
-  # Painel web (ng serve) sem Node no host. O código entra read-only e é copiado
-  # na subida (sem node_modules, .angular, dist e e2e): depois de mudar algo em
-  # web-angular/, rode "docker compose restart web".
+  # Painel web (ng serve) sem Node no host. O código fica montado em /app, então
+  # edições e git pull aparecem sozinhos no navegador; node_modules e o cache do
+  # Angular ficam em volumes, fora da pasta do host. Dependências e configuração
+  # novas também se aplicam sozinhas: veja web-angular/tool/dev-server.sh.
   web:
     image: node:24.21.0
     container_name: edu-admin-web
@@ -94,15 +99,13 @@ services:
     depends_on:
       - api
     working_dir: /app
-    entrypoint:
-      - bash
-      - -c
-      - 'set -euo pipefail; find . -mindepth 1 -maxdepth 1 -exec rm -rf {} +; tar -C /src --exclude=node_modules --exclude=.angular --exclude=dist --exclude=e2e -cf - . | tar -xf -; npm ci --no-audit --no-fund; exec npx ng serve --host 0.0.0.0 --port 4200 "$$@"'
-      - ng
+    entrypoint: ["bash", "/app/tool/dev-server.sh"]
     environment:
       API_URL: http://api:8080
     volumes:
-      - ../web-angular:/src:ro
+      - ../web-angular:/app
+      - web-node-modules:/app/node_modules
+      - web-angular-cache:/app/.angular
       - npm-cache:/root/.npm
     ports:
       # Só no localhost, como o Oracle e o MinIO.
@@ -152,6 +155,8 @@ volumes:
   edu_admin_minio_data:
   maven-repo:
   npm-cache:
+  web-node-modules:
+  web-angular-cache:
   # Nomes fixos: o e2e do app (mobile-flutter/e2e) usa os mesmos caches.
   edu-flutter-pub-cache:
     name: edu-flutter-pub-cache

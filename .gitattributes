@@ -1,0 +1,3 @@
+# Scripts rodam em containers Linux, montados direto do checkout: com CRLF
+# (core.autocrlf no Windows) o bash falha com "$'\r': command not found".
+*.sh text eol=lf

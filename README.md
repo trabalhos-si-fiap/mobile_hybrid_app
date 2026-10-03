@@ -79,9 +79,13 @@ instalados: build, testes e execução acontecem em containers.
 
 ```bash
 cd api
-docker compose up -d --build   # sobe Oracle Free, MinIO e API; a primeira vez baixa as imagens
-docker compose logs -f api     # aguarde "Started ApiApplication" (1-2 min na primeira vez)
+docker compose up -d          # sobe Oracle Free, MinIO, API e painel; a primeira vez baixa as imagens
+docker compose logs -f api    # aguarde "Started ApiApplication" (1-2 min na primeira vez)
 ```
+
+Depois de um `git pull`, o mesmo `docker compose up -d` basta: a imagem da API
+é reconstruída a cada subida (sem mudanças, o cache resolve em segundos) e o
+painel lê o código direto da pasta.
 
 Na subida, o Flyway cria o schema (`db/migration`) e carrega a massa de dados
 de demonstração (`db/seed`). Contas de demonstração:
@@ -106,7 +110,7 @@ apague os volumes e suba de novo. Isso apaga os dados do Oracle e os anexos do
 MinIO:
 
 ```bash
-docker compose down -v && docker compose up -d --build   # em api/
+docker compose down -v && docker compose up -d   # em api/
 ```
 
 #### Testes
@@ -126,15 +130,23 @@ A API sobe em `http://localhost:8080/api/v1`, com Swagger em
 
 ### 2. Painel web (`web-angular/`)
 
-O painel sobe junto com a stack do passo 1 (`docker compose up -d --build` em
+O painel sobe junto com a stack do passo 1 (`docker compose up -d` em
 `api/`), no serviço `web`. Acesse `http://localhost:4200`. Assim como o Java,
 o Node roda só em container: o host precisa apenas de Docker.
 
-O container copia o código na subida. Depois de mudar algo em `web-angular/`:
+O container lê o código direto de `web-angular/`: uma edição ou um `git pull`
+recompila o painel e recarrega o navegador sozinho. Se o `package-lock.json`
+mudar, as dependências são reinstaladas; se mudar `angular.json`,
+`proxy.conf.mjs` ou um `tsconfig*.json`, o `ng serve` reinicia
+(`web-angular/tool/dev-server.sh`). Para acompanhar:
 
 ```bash
-docker compose restart web   # em api/
+docker compose logs -f web   # em api/
 ```
+
+As dependências e o cache do Angular ficam em volumes do Docker; as pastas
+`web-angular/node_modules` e `web-angular/.angular` que aparecem vazias no host
+são só os pontos de montagem.
 
 O console de atendimento fica em **Atendimento**, no menu lateral, para contas
 EMPLOYEE e ADMIN. Nele o atendente:
@@ -301,7 +313,7 @@ seguintes; depois delas, sem tickets novos, os três segmentos aparecem com
 
 ```bash
 # em api/ (apaga os volumes do Oracle e do MinIO)
-docker compose down -v && docker compose up -d --build
+docker compose down -v && docker compose up -d
 ```
 
 ## 📚 Documentação da API
