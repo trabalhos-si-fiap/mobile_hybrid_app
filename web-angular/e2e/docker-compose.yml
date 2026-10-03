@@ -4,7 +4,7 @@ name: edu-admin-e2e
 
 services:
   oracle:
-    image: gvenzl/oracle-free:23-slim-faststart
+    image: gvenzl/oracle-free:23.26.3-slim-faststart
     environment:
       ORACLE_PASSWORD: e2e_sys
       APP_USER: edu_admin

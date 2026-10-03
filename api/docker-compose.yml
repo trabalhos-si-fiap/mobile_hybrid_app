@@ -1,6 +1,6 @@
 services:
   oracle:
-    image: gvenzl/oracle-free:23-slim
+    image: gvenzl/oracle-free:23.26.3-slim
     container_name: edu-admin-oracle
     restart: unless-stopped
     environment:
@@ -67,7 +67,7 @@ services:
   # O socket do Docker permite ao Testcontainers criar o Oracle efêmero dos *IT
   # e dá a este container acesso equivalente a root no Docker do host.
   maven:
-    image: maven:3.9-eclipse-temurin-21
+    image: maven:3.9.16-eclipse-temurin-21
     profiles: ["tools"]
     working_dir: /build
     entrypoint:

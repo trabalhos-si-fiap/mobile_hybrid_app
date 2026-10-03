@@ -13,7 +13,7 @@ import org.testcontainers.oracle.OracleContainer;
 public abstract class OracleIntegrationTest {
 
     private static final OracleContainer ORACLE =
-            new OracleContainer("gvenzl/oracle-free:23-slim-faststart")
+            new OracleContainer("gvenzl/oracle-free:23.26.3-slim-faststart")
                     .withUsername("edu_admin")
                     .withPassword("edu_admin");
 
