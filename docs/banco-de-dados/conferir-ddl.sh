@@ -21,7 +21,7 @@ PASTA="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RAIZ="$(cd "$PASTA/../.." && pwd)"
 MIGRATIONS="$RAIZ/api/src/main/resources/db/migration"
 DDL="$(realpath "${1:-$PASTA/ddl-consolidado.sql}")"
-IMAGEM="gvenzl/oracle-free:23-slim-faststart"
+IMAGEM="gvenzl/oracle-free:23.26.3-slim-faststart"
 SENHA="Conferir_123"
 CONTAINER="conferir-ddl-$$"
 
