@@ -80,6 +80,19 @@ describe('NotificationPanelComponent', () => {
     expect(items(fixture)[0].classList).not.toContain('unread');
   });
 
+  it('puts the notification back as unread and says so when marking it fails', async () => {
+    list.mockReturnValue(of([aNotification({ ticketId: null })]));
+    markRead.mockReturnValue(throwError(() => new Error('falha')));
+    const { fixture } = await render();
+
+    items(fixture)[0].click();
+    await fixture.whenStable();
+
+    expect(items(fixture)[0].classList).toContain('unread');
+    const alert = fixture.nativeElement.querySelector('[role="alert"]');
+    expect(alert.textContent).toContain('Não foi possível marcar a notificação como lida.');
+  });
+
   it('marks all as read', async () => {
     const { fixture } = await render();
 

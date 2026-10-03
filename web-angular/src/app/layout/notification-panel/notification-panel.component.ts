@@ -38,9 +38,14 @@ export class NotificationPanelComponent {
   }
 
   open(item: AppNotification): void {
-    // Sem takeUntilDestroyed: a marcação precisa terminar mesmo com o painel já fechado.
-    this.notifications.markRead(item).subscribe({ error: () => undefined });
     this.markLocally(item.id);
+    // Sem takeUntilDestroyed: a marcação precisa terminar mesmo com o painel já fechado.
+    this.notifications.markRead(item).subscribe({
+      error: () => {
+        this.markUnread(item);
+        this.error.set('Não foi possível marcar a notificação como lida.');
+      },
+    });
 
     if (item.ticketId !== null) {
       this.router.navigate(['/atendimento', item.ticketId]);
@@ -63,6 +68,16 @@ export class NotificationPanelComponent {
   private markLocally(id: number): void {
     this.items.update(
       (list) => list?.map((item) => (item.id === id ? { ...item, read: true } : item)) ?? list,
+    );
+  }
+
+  private markUnread(original: AppNotification): void {
+    if (original.read) {
+      return;
+    }
+    this.items.update(
+      (list) =>
+        list?.map((item) => (item.id === original.id ? { ...item, read: false } : item)) ?? list,
     );
   }
 }
