@@ -226,6 +226,53 @@ mobile-flutter/e2e/run.sh                 # com mais de um aparelho: DEVICE=<ser
 
 Detalhes em [`mobile-flutter/README.md`](./mobile-flutter/README.md).
 
+### 4. Problemas comuns
+
+Os comandos abaixo rodam em `api/`.
+
+**Uma rota nova cai no Dashboard, ou o painel não mostra uma mudança.** Para
+quem está logado, o painel manda qualquer caminho que não conhece para o
+Dashboard; então o navegador está com um código antigo. Rode:
+
+```bash
+docker compose up -d                # recria o web se a configuração dele mudou
+docker compose logs --tail 50 web   # um erro de compilação aparece aqui
+```
+
+Um build bom termina em `Application bundle generation complete`. Com o log
+limpo, recarregue a página sem cache (Ctrl+Shift+R).
+
+**Porta em uso.** O `docker compose up -d` falha com
+`failed to bind host port 127.0.0.1:4200/tcp: address already in use` (ou
+8080, 1521, 9000, 9001): outro processo, muitas vezes outro projeto, já usa a
+porta. Pare esse processo ou troque a porta: copie `.env.example` para `.env` e
+mude `WEB_PORT`, `API_PORT`, `ORACLE_PORT`, `MINIO_PORT` ou
+`MINIO_CONSOLE_PORT`. Com outra `API_PORT`, o celular continua usando a 8080,
+basta apontar o `adb reverse` para ela: `adb reverse tcp:8080 tcp:<API_PORT>`.
+
+**Dependências do painel quebradas** (por exemplo, `Cannot find module` depois
+de uma instalação interrompida). Apague a marca da última instalação e
+reinicie; o container roda o `npm ci` de novo:
+
+```bash
+docker exec edu-admin-web rm -f /app/node_modules/.package-lock.sha256
+docker compose restart web
+```
+
+**A API não reflete uma mudança.** O `docker compose up -d` reconstrói a imagem
+a cada subida. Se o build falhar, o erro aparece na saída dele e a API antiga
+continua no ar. Depois de subir, confira em `docker compose logs --tail 50 api`
+se a API chegou a `Started ApiApplication`.
+
+**`Migration checksum mismatch` no log da API.** Uma migration que já rodou no
+seu banco mudou no repositório. Migrations aplicadas não devem ser editadas;
+para alinhar o banco local, apague os volumes (isso apaga os dados do Oracle e
+os anexos do MinIO):
+
+```bash
+docker compose down -v && docker compose up -d
+```
+
 ## 🤖 Chatbot nível 0
 
 O atendimento no app começa pelo **Mentor Edu**, um bot de regras que
