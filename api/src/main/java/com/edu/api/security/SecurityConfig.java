@@ -1,5 +1,6 @@
 package com.edu.api.security;
 
+import jakarta.servlet.DispatcherType;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -48,6 +49,11 @@ public class SecurityConfig {
                 )
 
                 .authorizeHttpRequests(auth -> auth
+                        // Exceção sem handler e rota inexistente vão para /error
+                        // num despacho sem o filtro do JWT; barrado, virava 401
+                        // e deslogava o usuário no painel.
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
+
                         .requestMatchers(
                                 "/auth/login"
                         ).permitAll()
