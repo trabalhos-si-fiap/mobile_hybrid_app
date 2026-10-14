@@ -327,7 +327,9 @@ Cada parâmetro nulo é ignorado: o predicado dele nem entra no SQL.
 | `p_texto` | `LOWER(t.description) LIKE :texto ESCAPE '\'` |
 | `p_alerta_eng` | `t.engineering_alert = TRUE` ou `= FALSE` (literal escolhido por `IF`, não vem do parâmetro) |
 
-`p_texto`: depois de `TRIM`, tem de ter de 3 a 200 caracteres (-20005). O
+`p_texto`: nulo ou só com espaços é ignorado; senão, depois de `TRIM`, tem
+de ter de 3 a 200 caracteres (-20005). Na API, `text` em branco também vale
+como ausente. O
 bind recebe `'%' || escapado || '%'`, em minúsculas, onde `escapado` troca
 primeiro `\` por `\\` e só depois `%` por `\%` e `_` por `\_` (na ordem
 inversa, um `\` do texto escaparia o caractere seguinte). O texto do usuário
@@ -356,21 +358,22 @@ para o resultado ser determinístico. `p_limite` de 1 a 200, aplicado com
 
 ### Forma do SQL
 
-Uma consulta interna filtra, ordena e limita só `tickets`; a externa junta
-o rótulo do segmento e os nomes, calcula o SLA e repete a ordenação:
+Uma consulta interna filtra, ordena e limita só `tickets`, expondo a
+expressão de ordenação como a coluna `ordem`; a externa junta o rótulo do
+segmento e os nomes, calcula o SLA e repete a ordenação por `ordem`:
 
 ```sql
 SELECT b.id, b.segment, c.label AS segment_label, ...,
        PKG_TICKETS.FN_STATUS_SLA_TICKET(b.id, :referencia) AS sla_status, ...
-  FROM (SELECT t.* FROM tickets t
+  FROM (SELECT t.id, ..., <expressão> AS ordem FROM tickets t
          WHERE 1 = 1 <predicados>
-         ORDER BY <expressão> <direção>, t.id <direção>
+         ORDER BY ordem <direção>, t.id <direção>
          FETCH FIRST :limite ROWS ONLY) b
   JOIN ticket_tipo_config c ON c.segment = b.segment
   JOIN admin_users r ON r.id = b.user_id
   LEFT JOIN employees e ON e.id = b.assigned_employee_id
   LEFT JOIN admin_users a ON a.id = e.user_id
- ORDER BY <expressão> <direção>, b.id <direção>
+ ORDER BY b.ordem <direção>, b.id <direção>
 ```
 
 Assim a função de SLA roda só para as linhas devolvidas (no máximo 200),
