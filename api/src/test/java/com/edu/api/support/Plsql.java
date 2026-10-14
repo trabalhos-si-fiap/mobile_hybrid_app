@@ -21,23 +21,24 @@ public final class Plsql {
     }
 
     public String slaStatus(long ticketId, OffsetDateTime reference) {
-        return jdbc.queryForObject("SELECT FN_STATUS_SLA_TICKET(?, ?) FROM dual", String.class, ticketId, reference);
+        return jdbc.queryForObject("SELECT PKG_TICKETS.FN_STATUS_SLA_TICKET(?, ?) FROM dual", String.class,
+                ticketId, reference);
     }
 
     public Long nextAgent(long skillId, Long excludedEmployeeId) {
-        return jdbc.queryForObject("SELECT FN_PROXIMO_ATENDENTE(?, ?) FROM dual", Long.class,
+        return jdbc.queryForObject("SELECT PKG_TICKETS.FN_PROXIMO_ATENDENTE(?, ?) FROM dual", Long.class,
                 skillId, new SqlParameterValue(Types.NUMERIC, excludedEmployeeId));
     }
 
     public Long nextAgent(long skillId, Long excludedEmployeeId, Long requesterUserId) {
-        return jdbc.queryForObject("SELECT FN_PROXIMO_ATENDENTE(?, ?, ?) FROM dual", Long.class,
+        return jdbc.queryForObject("SELECT PKG_TICKETS.FN_PROXIMO_ATENDENTE(?, ?, ?) FROM dual", Long.class,
                 skillId, new SqlParameterValue(Types.NUMERIC, excludedEmployeeId),
                 new SqlParameterValue(Types.NUMERIC, requesterUserId));
     }
 
     public Long route(long ticketId) {
         return jdbc.execute((Connection con) -> {
-            try (CallableStatement call = con.prepareCall("{call PR_ROTEAR_TICKET(?, ?)}")) {
+            try (CallableStatement call = con.prepareCall("{call PKG_TICKETS.PR_ROTEAR_TICKET(?, ?)}")) {
                 call.setLong(1, ticketId);
                 call.registerOutParameter(2, Types.NUMERIC);
                 call.execute();
@@ -49,7 +50,7 @@ public final class Plsql {
 
     public int escalate(OffsetDateTime reference) {
         return jdbc.execute((Connection con) -> {
-            try (CallableStatement call = con.prepareCall("{call PR_ESCALAR_TICKET_CRITICO(?, ?)}")) {
+            try (CallableStatement call = con.prepareCall("{call PKG_TICKETS.PR_ESCALAR_TICKET_CRITICO(?, ?)}")) {
                 call.setObject(1, reference);
                 call.registerOutParameter(2, Types.NUMERIC);
                 call.execute();

@@ -59,16 +59,27 @@ class EscalationProcedureIT extends OracleIntegrationTest {
                 + " AND employee_id = ? AND detail = 'Prioridade NORMAL -> ALTA'", ticket, other)).isEqualTo(1);
         assertThat(fx.count("SELECT COUNT(*) FROM notifications WHERE ticket_id = ? AND type = 'TICKET_ESCALADO'"
                 + " AND recipient_user_id = ?", ticket, fx.userOf(other))).isEqualTo(1);
+        assertThat(fx.count("SELECT COUNT(*) FROM employees WHERE id = ? AND last_assigned_at IS NOT NULL", other))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForMap("SELECT title, body FROM notifications WHERE ticket_id = ?", ticket))
+                .containsEntry("title", "Ticket escalado")
+                .containsEntry("body", "Ticket #" + ticket
+                        + " (Defeito no App / Problemas com App) estourou o SLA e está com prioridade ALTA.");
     }
 
     @Test
     void keepsTheOwnerWhenNoOtherAgentIsOnline() {
         long owner = fx.employee("ONLINE", "DESENVOLVEDOR");
+        fx.lastAssignedAt(owner, T0);
         long ticket = overdueTicket("EM_FILA", "ALTA", owner);
 
         assertThat(plsql.escalate(NOW)).isEqualTo(1);
 
         assertThat(fx.state(ticket)).isEqualTo(new TicketState("ESCALADO", "CRITICA", owner));
+        assertThat(fx.count("SELECT COUNT(*) FROM employees WHERE id = ? AND last_assigned_at = ?", owner, T0))
+                .isEqualTo(1);
+        assertThat(fx.count("SELECT COUNT(*) FROM notifications WHERE ticket_id = ? AND type = 'TICKET_ESCALADO'"
+                + " AND recipient_user_id = ?", ticket, fx.userOf(owner))).isEqualTo(1);
     }
 
     @Test

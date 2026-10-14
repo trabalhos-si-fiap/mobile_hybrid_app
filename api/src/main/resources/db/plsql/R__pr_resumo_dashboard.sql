@@ -49,7 +49,7 @@ IS
            AND created_at < p_fim;
 
         SELECT COUNT(*),
-               ROUND(100 * AVG(CASE WHEN FN_STATUS_SLA_TICKET(id) = 'CUMPRIDO' THEN 1 ELSE 0 END), 1),
+               ROUND(100 * AVG(CASE WHEN PKG_TICKETS.FN_STATUS_SLA_TICKET(id) = 'CUMPRIDO' THEN 1 ELSE 0 END), 1),
                ROUND(AVG((CAST(SYS_EXTRACT_UTC(resolved_at) AS DATE)
                         - CAST(SYS_EXTRACT_UTC(created_at) AS DATE)) * 24), 1)
           INTO p_medidas.resolvidos, p_medidas.sla_pct, p_medidas.resolucao_h
@@ -121,11 +121,11 @@ BEGIN
                    (SELECT COUNT(*) FROM tickets t
                      WHERE t.segment = c.segment AND t.status IN ('RESOLVIDO', 'FECHADO')
                        AND t.resolved_at >= v_ini_ant AND t.resolved_at < v_ini) AS resolvidos_anterior,
-                   (SELECT ROUND(100 * AVG(CASE WHEN FN_STATUS_SLA_TICKET(t.id) = 'CUMPRIDO' THEN 1 ELSE 0 END), 1)
+                   (SELECT ROUND(100 * AVG(CASE WHEN PKG_TICKETS.FN_STATUS_SLA_TICKET(t.id) = 'CUMPRIDO' THEN 1 ELSE 0 END), 1)
                       FROM tickets t
                      WHERE t.segment = c.segment AND t.status IN ('RESOLVIDO', 'FECHADO')
                        AND t.resolved_at >= v_ini AND t.resolved_at < v_ref) AS sla_pct,
-                   (SELECT ROUND(100 * AVG(CASE WHEN FN_STATUS_SLA_TICKET(t.id) = 'CUMPRIDO' THEN 1 ELSE 0 END), 1)
+                   (SELECT ROUND(100 * AVG(CASE WHEN PKG_TICKETS.FN_STATUS_SLA_TICKET(t.id) = 'CUMPRIDO' THEN 1 ELSE 0 END), 1)
                       FROM tickets t
                      WHERE t.segment = c.segment AND t.status IN ('RESOLVIDO', 'FECHADO')
                        AND t.resolved_at >= v_ini_ant AND t.resolved_at < v_ini) AS sla_pct_anterior,

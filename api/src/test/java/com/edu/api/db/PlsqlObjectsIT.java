@@ -28,12 +28,23 @@ class PlsqlObjectsIT extends OracleIntegrationTest {
     void everyPlsqlObjectExistsAndCompiles() {
         List<String> invalid = jdbc.queryForList(
                 "SELECT object_type || ' ' || object_name FROM user_objects WHERE status = 'INVALID'", String.class);
-        List<String> objects = jdbc.queryForList(
-                "SELECT object_name FROM user_objects WHERE object_type IN ('FUNCTION', 'PROCEDURE')", String.class);
+        List<String> objects = jdbc.queryForList("SELECT object_type || ' ' || object_name FROM user_objects"
+                + " WHERE object_type IN ('FUNCTION', 'PROCEDURE', 'PACKAGE', 'PACKAGE BODY')", String.class);
 
         assertThat(invalid).isEmpty();
-        assertThat(objects).contains("FN_PROXIMO_ATENDENTE", "FN_STATUS_SLA_TICKET", "PR_ROTEAR_TICKET",
-                "PR_ESCALAR_TICKET_CRITICO", "FN_CHATBOT_RESPOSTA", "FN_CALC_TAXA_VARIACAO",
-                "PR_RESUMO_DASHBOARD");
+        assertThat(objects)
+                .contains("PACKAGE PKG_TICKETS", "PACKAGE BODY PKG_TICKETS", "FUNCTION FN_CHATBOT_RESPOSTA",
+                        "FUNCTION FN_CALC_TAXA_VARIACAO", "PROCEDURE PR_RESUMO_DASHBOARD")
+                .doesNotContain("FUNCTION FN_PROXIMO_ATENDENTE", "FUNCTION FN_STATUS_SLA_TICKET",
+                        "PROCEDURE PR_ROTEAR_TICKET", "PROCEDURE PR_ESCALAR_TICKET_CRITICO");
+    }
+
+    @Test
+    void ticketPackageExposesOnlyItsPublicMembers() {
+        List<String> members = jdbc.queryForList("SELECT procedure_name FROM user_procedures"
+                + " WHERE object_name = 'PKG_TICKETS' AND procedure_name IS NOT NULL", String.class);
+
+        assertThat(members).containsExactlyInAnyOrder("FN_PROXIMO_ATENDENTE", "FN_STATUS_SLA_TICKET",
+                "PR_ROTEAR_TICKET", "PR_ESCALAR_TICKET_CRITICO");
     }
 }
