@@ -46,7 +46,7 @@ class PlsqlObjectsIT extends OracleIntegrationTest {
     void packagesExposeOnlyTheirPublicMembers() {
         Map<String, List<String>> expected = Map.of(
                 "PKG_TICKETS", List.of("FN_PROXIMO_ATENDENTE", "FN_STATUS_SLA_TICKET", "PR_ROTEAR_TICKET",
-                        "PR_ESCALAR_TICKET_CRITICO"),
+                        "PR_ESCALAR_TICKET_CRITICO", "PR_BUSCAR_TICKETS"),
                 "PKG_CHATBOT", List.of("FN_CHATBOT_RESPOSTA"),
                 "PKG_DASHBOARD", List.of("FN_CALC_TAXA_VARIACAO", "PR_RESUMO_DASHBOARD"));
 

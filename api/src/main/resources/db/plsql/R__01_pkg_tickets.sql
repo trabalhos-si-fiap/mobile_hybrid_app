@@ -9,6 +9,7 @@ CREATE OR REPLACE PACKAGE PKG_TICKETS AUTHID DEFINER AS
     c_erro_ticket_nao_encontrado CONSTANT PLS_INTEGER := -20001;
     c_erro_estado_invalido       CONSTANT PLS_INTEGER := -20002;
     c_erro_segmento_inativo      CONSTANT PLS_INTEGER := -20003;
+    c_erro_busca_invalida        CONSTANT PLS_INTEGER := -20005;
 
     e_ticket_nao_encontrado EXCEPTION;
     PRAGMA EXCEPTION_INIT(e_ticket_nao_encontrado, -20001);
@@ -16,6 +17,8 @@ CREATE OR REPLACE PACKAGE PKG_TICKETS AUTHID DEFINER AS
     PRAGMA EXCEPTION_INIT(e_estado_invalido, -20002);
     e_segmento_inativo EXCEPTION;
     PRAGMA EXCEPTION_INIT(e_segmento_inativo, -20003);
+    e_busca_invalida EXCEPTION;
+    PRAGMA EXCEPTION_INIT(e_busca_invalida, -20005);
 
     -- Próximo atendente de uma skill: ONLINE, com menos tickets ativos e, no
     -- empate, o que está há mais tempo sem receber ticket. Nunca escolhe
@@ -51,6 +54,30 @@ CREATE OR REPLACE PACKAGE PKG_TICKETS AUTHID DEFINER AS
     PROCEDURE PR_ESCALAR_TICKET_CRITICO (
         p_referencia    IN  TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP,
         p_qtd_escalados OUT NUMBER
+    );
+
+    -- Busca de tickets com filtros opcionais, montada por Dynamic SQL
+    -- (DBMS_SQL): filtro nulo fica fora do SQL, os valores entram por bind e
+    -- a ordenação passa por whitelist. p_usuario_id e p_ver_todos não têm
+    -- padrão: sem p_ver_todos, só aparece o que o usuário pode ver (abriu, é
+    -- dono ou é de um segmento da sua skill). Devolve as colunas do resumo do
+    -- ticket, no máximo p_limite linhas. Erros: -20005.
+    PROCEDURE PR_BUSCAR_TICKETS (
+        p_usuario_id   IN  admin_users.id%TYPE,
+        p_ver_todos    IN  BOOLEAN,
+        p_status       IN  tickets.status%TYPE      DEFAULT NULL,
+        p_segment      IN  tickets.segment%TYPE     DEFAULT NULL,
+        p_priority     IN  tickets.priority%TYPE    DEFAULT NULL,
+        p_atendente_id IN  employees.id%TYPE        DEFAULT NULL,
+        p_criado_desde IN  TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+        p_criado_ate   IN  TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+        p_texto        IN  VARCHAR2                 DEFAULT NULL,
+        p_alerta_eng   IN  BOOLEAN                  DEFAULT NULL,
+        p_ordenar_por  IN  VARCHAR2                 DEFAULT 'CRIADO_EM',
+        p_direcao      IN  VARCHAR2                 DEFAULT 'DESC',
+        p_limite       IN  PLS_INTEGER              DEFAULT 50,
+        p_referencia   IN  TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+        p_resultado    OUT SYS_REFCURSOR
     );
 
 END PKG_TICKETS;
@@ -294,6 +321,181 @@ CREATE OR REPLACE PACKAGE BODY PKG_TICKETS AS
             END;
         END LOOP;
     END PR_ESCALAR_TICKET_CRITICO;
+
+    PROCEDURE PR_BUSCAR_TICKETS (
+        p_usuario_id   IN  admin_users.id%TYPE,
+        p_ver_todos    IN  BOOLEAN,
+        p_status       IN  tickets.status%TYPE      DEFAULT NULL,
+        p_segment      IN  tickets.segment%TYPE     DEFAULT NULL,
+        p_priority     IN  tickets.priority%TYPE    DEFAULT NULL,
+        p_atendente_id IN  employees.id%TYPE        DEFAULT NULL,
+        p_criado_desde IN  TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+        p_criado_ate   IN  TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+        p_texto        IN  VARCHAR2                 DEFAULT NULL,
+        p_alerta_eng   IN  BOOLEAN                  DEFAULT NULL,
+        p_ordenar_por  IN  VARCHAR2                 DEFAULT 'CRIADO_EM',
+        p_direcao      IN  VARCHAR2                 DEFAULT 'DESC',
+        p_limite       IN  PLS_INTEGER              DEFAULT 50,
+        p_referencia   IN  TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+        p_resultado    OUT SYS_REFCURSOR
+    )
+    IS
+        -- O JDBC manda todos os parâmetros, inclusive os nulos: o DEFAULT da
+        -- assinatura não se aplica, então os padrões vêm do NVL.
+        v_coluna    VARCHAR2(30)    := UPPER(NVL(p_ordenar_por, 'CRIADO_EM'));
+        v_limite    NUMBER          := NVL(p_limite, 50);
+        v_texto     VARCHAR2(32767) := TRIM(p_texto);
+        v_ordem     VARCHAR2(100);
+        v_direcao   VARCHAR2(4);
+        v_nulos     VARCHAR2(11);
+        v_filtros   VARCHAR2(4000);
+        v_sql       VARCHAR2(32767);
+        v_cursor    INTEGER;
+        v_executado INTEGER;
+
+        -- A mensagem diz o parâmetro, nunca o valor recebido.
+        PROCEDURE recusar (p_motivo IN VARCHAR2)
+        IS
+        BEGIN
+            RAISE_APPLICATION_ERROR(c_erro_busca_invalida, 'Busca inválida: ' || p_motivo);
+        END recusar;
+    BEGIN
+        IF p_usuario_id IS NULL THEN
+            recusar('p_usuario_id é obrigatório');
+        END IF;
+        IF p_ver_todos IS NULL THEN
+            recusar('p_ver_todos é obrigatório');
+        END IF;
+
+        -- Whitelist: o parâmetro só escolhe um trecho fixo do código; nenhum
+        -- caractere dele entra no SQL.
+        v_ordem := CASE v_coluna
+                       WHEN 'CRIADO_EM'     THEN 't.created_at'
+                       WHEN 'ATUALIZADO_EM' THEN 't.updated_at'
+                       WHEN 'PRAZO_SLA'     THEN 't.sla_due_at'
+                       WHEN 'PRIORIDADE'    THEN 'DECODE(t.priority, ''CRITICA'', 3, ''ALTA'', 2, 1)'
+                   END;
+        IF v_ordem IS NULL THEN
+            recusar('p_ordenar_por aceita CRIADO_EM, ATUALIZADO_EM, PRAZO_SLA ou PRIORIDADE');
+        END IF;
+
+        v_direcao := CASE UPPER(NVL(p_direcao, 'DESC')) WHEN 'ASC' THEN 'ASC' WHEN 'DESC' THEN 'DESC' END;
+        IF v_direcao IS NULL THEN
+            recusar('p_direcao aceita ASC ou DESC');
+        END IF;
+        -- Ticket sem prazo fica sempre no fim, nas duas direções.
+        v_nulos := CASE WHEN v_coluna = 'PRAZO_SLA' THEN ' NULLS LAST' END;
+
+        IF v_limite NOT BETWEEN 1 AND 200 THEN
+            recusar('p_limite aceita de 1 a 200');
+        END IF;
+        IF v_texto IS NOT NULL AND LENGTH(v_texto) NOT BETWEEN 3 AND 200 THEN
+            recusar('p_texto aceita de 3 a 200 caracteres');
+        END IF;
+        IF p_criado_desde > p_criado_ate THEN
+            recusar('p_criado_desde deve ser anterior ou igual a p_criado_ate');
+        END IF;
+
+        -- Predicados sempre na mesma ordem e com os mesmos nomes de bind: cada
+        -- combinação de filtros gera um único texto de SQL, que o Oracle
+        -- reaproveita.
+        IF NOT p_ver_todos THEN
+            v_filtros := v_filtros
+                || ' AND (t.user_id = :usuario'
+                || ' OR EXISTS (SELECT 1 FROM employees e WHERE e.user_id = :usuario'
+                || ' AND (t.assigned_employee_id = e.id'
+                || ' OR t.segment IN (SELECT c.segment FROM ticket_tipo_config c'
+                || ' JOIN employee_skills es ON es.skill_id = c.skill_id'
+                || ' WHERE es.employee_id = e.id))))';
+        END IF;
+        IF p_status IS NOT NULL THEN
+            v_filtros := v_filtros || ' AND t.status = :status';
+        END IF;
+        IF p_segment IS NOT NULL THEN
+            v_filtros := v_filtros || ' AND t.segment = :segment';
+        END IF;
+        IF p_priority IS NOT NULL THEN
+            v_filtros := v_filtros || ' AND t.priority = :priority';
+        END IF;
+        IF p_atendente_id IS NOT NULL THEN
+            v_filtros := v_filtros || ' AND t.assigned_employee_id = :atendente';
+        END IF;
+        IF p_criado_desde IS NOT NULL THEN
+            v_filtros := v_filtros || ' AND t.created_at >= :desde';
+        END IF;
+        IF p_criado_ate IS NOT NULL THEN
+            v_filtros := v_filtros || ' AND t.created_at < :ate';
+        END IF;
+        IF v_texto IS NOT NULL THEN
+            v_filtros := v_filtros || ' AND LOWER(t.description) LIKE :texto ESCAPE ''\''';
+        END IF;
+        IF p_alerta_eng IS NOT NULL THEN
+            v_filtros := v_filtros || CASE WHEN p_alerta_eng THEN ' AND t.engineering_alert = TRUE'
+                                           ELSE ' AND t.engineering_alert = FALSE' END;
+        END IF;
+
+        -- A consulta interna filtra, ordena e limita; a externa junta rótulo e
+        -- nomes e calcula o SLA só das linhas devolvidas.
+        v_sql := 'SELECT b.id, b.segment, c.label AS segment_label, b.status, b.priority,'
+              || ' PKG_TICKETS.FN_STATUS_SLA_TICKET(b.id, :referencia) AS sla_status, b.sla_due_at,'
+              || ' r.name AS requester_name, a.name AS assignee_name, b.engineering_alert,'
+              || ' b.created_at, b.updated_at'
+              || ' FROM (SELECT t.id, t.segment, t.status, t.priority, t.sla_due_at, t.user_id,'
+              || ' t.assigned_employee_id, t.engineering_alert, t.created_at, t.updated_at,'
+              || ' ' || v_ordem || ' AS ordem'
+              || ' FROM tickets t WHERE 1 = 1' || v_filtros
+              || ' ORDER BY ordem ' || v_direcao || v_nulos || ', t.id ' || v_direcao
+              || ' FETCH FIRST :limite ROWS ONLY) b'
+              || ' JOIN ticket_tipo_config c ON c.segment = b.segment'
+              || ' JOIN admin_users r ON r.id = b.user_id'
+              || ' LEFT JOIN employees e ON e.id = b.assigned_employee_id'
+              || ' LEFT JOIN admin_users a ON a.id = e.user_id'
+              || ' ORDER BY b.ordem ' || v_direcao || v_nulos || ', b.id ' || v_direcao;
+
+        -- DBMS_SQL liga só as binds dos filtros presentes, o que o OPEN ... FOR
+        -- ... USING (lista fixa) não faz.
+        v_cursor := DBMS_SQL.OPEN_CURSOR;
+        DBMS_SQL.PARSE(v_cursor, v_sql, DBMS_SQL.NATIVE);
+
+        DBMS_SQL.BIND_VARIABLE(v_cursor, ':referencia', NVL(p_referencia, SYSTIMESTAMP));
+        DBMS_SQL.BIND_VARIABLE(v_cursor, ':limite', v_limite);
+        IF NOT p_ver_todos THEN
+            DBMS_SQL.BIND_VARIABLE(v_cursor, ':usuario', p_usuario_id);
+        END IF;
+        IF p_status IS NOT NULL THEN
+            DBMS_SQL.BIND_VARIABLE(v_cursor, ':status', p_status);
+        END IF;
+        IF p_segment IS NOT NULL THEN
+            DBMS_SQL.BIND_VARIABLE(v_cursor, ':segment', p_segment);
+        END IF;
+        IF p_priority IS NOT NULL THEN
+            DBMS_SQL.BIND_VARIABLE(v_cursor, ':priority', p_priority);
+        END IF;
+        IF p_atendente_id IS NOT NULL THEN
+            DBMS_SQL.BIND_VARIABLE(v_cursor, ':atendente', p_atendente_id);
+        END IF;
+        IF p_criado_desde IS NOT NULL THEN
+            DBMS_SQL.BIND_VARIABLE(v_cursor, ':desde', p_criado_desde);
+        END IF;
+        IF p_criado_ate IS NOT NULL THEN
+            DBMS_SQL.BIND_VARIABLE(v_cursor, ':ate', p_criado_ate);
+        END IF;
+        IF v_texto IS NOT NULL THEN
+            -- Primeiro a barra, depois % e _: na ordem inversa, a barra do texto
+            -- escaparia o caractere seguinte.
+            DBMS_SQL.BIND_VARIABLE(v_cursor, ':texto',
+                '%' || REPLACE(REPLACE(REPLACE(LOWER(v_texto), '\', '\\'), '%', '\%'), '_', '\_') || '%');
+        END IF;
+
+        v_executado := DBMS_SQL.EXECUTE(v_cursor);
+        p_resultado := DBMS_SQL.TO_REFCURSOR(v_cursor);
+    EXCEPTION
+        WHEN OTHERS THEN
+            IF v_cursor IS NOT NULL AND DBMS_SQL.IS_OPEN(v_cursor) THEN
+                DBMS_SQL.CLOSE_CURSOR(v_cursor);
+            END IF;
+            RAISE;
+    END PR_BUSCAR_TICKETS;
 
 END PKG_TICKETS;
 /
