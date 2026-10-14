@@ -79,6 +79,8 @@ services:
     image: maven:3.9.16-eclipse-temurin-21
     profiles: ["tools"]
     working_dir: /build
+    # init: o bash do script não é PID 1, então Ctrl+C e docker stop chegam ao build.
+    init: true
     entrypoint: ["bash", "/src/tool/maven-container.sh"]
     volumes:
       - ./:/src:ro
@@ -120,6 +122,7 @@ services:
     image: node:24.21.0
     profiles: ["tools"]
     working_dir: /build
+    init: true
     entrypoint: ["bash", "/src/tool/node-container.sh"]
     volumes:
       - ../web-angular:/src:ro
@@ -136,6 +139,7 @@ services:
   flutter:
     image: ghcr.io/cirruslabs/flutter:3.44.0
     profiles: ["tools"]
+    init: true
     entrypoint: ["bash", "/src/tool/container.sh"]
     volumes:
       - ../mobile-flutter:/src:ro
