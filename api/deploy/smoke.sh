@@ -11,6 +11,9 @@
 # CI são públicos.
 set -uo pipefail
 
+# Sem ela, todo comando do compose falha e a espera pela API levaria 5 minutos.
+: "${API_IMAGE:?defina API_IMAGE com a imagem da API implantada (a mesma do docker compose up)}"
+
 BASE_URL="${1:-http://127.0.0.1:18080/api/v1}"
 OUT_DIR="${2:-./smoke-out}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
