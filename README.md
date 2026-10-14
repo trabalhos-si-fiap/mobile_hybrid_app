@@ -1,5 +1,7 @@
 # Edu Admin 📚
 
+[![CI/CD](https://github.com/trabalhos-si-fiap/mobile_hybrid_app/actions/workflows/ci-cd.yml/badge.svg?branch=main)](https://github.com/trabalhos-si-fiap/mobile_hybrid_app/actions/workflows/ci-cd.yml)
+
 Monorepo acadêmico de um sistema de gestão educacional e operacional,
 composto por três aplicações que conversam entre si via API REST:
 
@@ -63,6 +65,10 @@ Cada pasta tem seu próprio README com instruções específicas:
 * `flutter_local_notifications` para avisar das respostas com o app aberto
 * `integration_test` no celular para os testes de ponta a ponta
 
+**CI/CD**
+* GitHub Actions (build, testes, publicação e deploy efêmero)
+* GitHub Container Registry (imagem da API e espelho do MinIO)
+
 ## 🚀 Como rodar o projeto
 
 Clone o repositório:
@@ -124,6 +130,10 @@ Os testes não usam a massa de dados de demonstração: cada teste de
 integração cria os próprios dados. O serviço `maven` monta o socket do Docker
 para o Testcontainers criar o Oracle de teste.
 
+Os relatórios do Surefire e do Failsafe, a cobertura do JaCoCo
+(`out/jacoco/index.html`) e o jar ficam em `api/out/`, também quando um teste
+falha; cada execução substitui a anterior.
+
 A API sobe em `http://localhost:8080/api/v1`, com Swagger em
 `/swagger-ui.html` e o contrato OpenAPI em
 `src/main/resources/static/openapi.yaml`.
@@ -167,6 +177,8 @@ login: elas usam o app.
 docker compose run --rm node test        # unitários (Vitest), uma vez
 docker compose run --rm node run build   # build de produção, com os limites de tamanho
 ```
+
+O `node test` grava o JUnit do Vitest em `web-angular/out/junit.xml`.
 
 O e2e (Playwright) roda numa stack efêmera e isolada, sem o seed de
 demonstração e sem portas publicadas. Ele sobe Oracle, MinIO, API e painel,
@@ -215,6 +227,8 @@ Contas `EMPLOYEE` e `ADMIN` entram no dashboard administrativo; o atendimento
 docker compose run --rm flutter analyze   # análise estática, sem nenhum aviso
 docker compose run --rm flutter test      # unidade e widget
 ```
+
+O `flutter test` grava o relatório em `mobile-flutter/out/flutter-test.json`.
 
 O e2e roda no celular ligado por USB, desbloqueado, contra uma stack efêmera
 própria (sem o seed). Ele sobe Oracle, MinIO e API, instala o app de teste,
@@ -362,6 +376,89 @@ seguintes; depois delas, sem tickets novos, os três segmentos aparecem com
 # em api/ (apaga os volumes do Oracle e do MinIO)
 docker compose down -v && docker compose up -d
 ```
+
+## 🔁 CI/CD
+
+O pipeline fica em `.github/workflows/ci-cd.yml` (GitHub Actions) e roda os
+mesmos comandos das seções de testes acima, nos mesmos containers.
+
+| Gatilho | O que roda |
+| ------- | ---------- |
+| Pull request para `main` | build e testes das partes que mudaram e o build da imagem da API, sem publicar |
+| Push em `main` | o mesmo, mais a publicação da imagem e o deploy efêmero |
+| Manual (Actions → CI/CD → Run workflow) | tudo, sem olhar o que mudou; publica e implanta só quando rodado na `main` |
+
+```text
+changes ─┬─ api ────── publish ── deploy ─┐
+         ├─ web ──────────────────────────┼── report
+         └─ mobile ───────────────────────┘
+```
+
+* **changes** descobre o que mudou. Mudança só em `.md` dentro de `api/` não
+  dispara a API; mudança no `api/docker-compose.yml` ou no workflow dispara
+  tudo.
+* **api** roda o `mvn verify`: testes unitários e de controller, os de
+  integração contra um Oracle efêmero (Testcontainers) e a cobertura.
+* **web** roda o Vitest e o build de produção do painel; **mobile**, o
+  `flutter analyze` e o `flutter test`.
+* **publish** monta a imagem da API com o jar que passou nos testes e, na
+  `main`, publica em `ghcr.io/trabalhos-si-fiap/edu-admin-api` (tags
+  `sha-<commit>` e `latest`).
+* **deploy** sobe no próprio runner Oracle, MinIO e a API a partir da imagem
+  publicada (`api/deploy/docker-compose.yml`). O Flyway aplica migrations e
+  PL/SQL num Oracle novo, sem o seed de demonstração. O smoke test
+  (`api/deploy/smoke.sh`) confere:
+  * no Oracle: as migrations aplicadas, nenhuma versão do seed, os objetos
+    PL/SQL válidos e a `FN_CALC_TAXA_VARIACAO`;
+  * pela API: login, um ticket roteado pela `PR_ROTEAR_TICKET` (fila,
+    prioridade e prazo de SLA), o SLA pela `FN_STATUS_SLA_TICKET`, um anexo
+    gravado e lido no MinIO e o dashboard pela `PR_RESUMO_DASHBOARD`.
+
+  Depois tudo é derrubado. Cada deploy aparece em **Deployments → staging**.
+* **report** junta o resultado de todos os jobs e deixa o run vermelho se
+  algum falhou.
+
+**Onde ver os resultados**, na página de cada run:
+
+* o resumo de cada job: cobertura, imagem publicada, migrations e objetos
+  PL/SQL do deploy, tabela do smoke test e a tabela final do `report`;
+* as check runs **Testes API**, **Testes Web** e **Testes Mobile** (aba
+  Checks do PR ou do commit), com cada teste e a duração dele;
+* os artifacts, por 30 dias: `api-reports` (Surefire, Failsafe e o HTML do
+  JaCoCo), `web-reports`, `mobile-reports` e `deploy-logs` (logs do Oracle, do
+  MinIO e da API, e os relatórios do smoke).
+
+No log da API aparece "Using generated security password": é o aviso padrão do
+Spring Boot quando não há usuário em memória, e essa senha não serve para nada
+(a API não aceita autenticação básica). Pushes seguidos em `main` deixam no
+máximo um run na fila; os do meio aparecem como cancelados.
+
+### Deploy e smoke test na máquina local
+
+Precisa de Docker, `bash`, `curl`, `jq` e `sha256sum`. A API sobe em
+`127.0.0.1:18080` (mude com `STAGING_API_PORT`).
+
+```bash
+cd api/deploy
+export API_IMAGE=ghcr.io/trabalhos-si-fiap/edu-admin-api:latest   # ou: docker build -t edu-admin-api:local .. && export API_IMAGE=edu-admin-api:local
+docker compose up -d --wait --wait-timeout 300 oracle minio
+docker compose up -d api
+./smoke.sh                 # relatórios em api/deploy/smoke-out/
+docker compose down -v
+```
+
+Todo comando do compose dessa pasta exige `API_IMAGE`.
+
+### Imagens
+
+* `edu-admin-api` é uma imagem de demonstração: sem configuração, ela usa o
+  JWT padrão e carrega o seed. Em uso real, defina `JWT_SECRET` e
+  `SPRING_FLYWAY_LOCATIONS`, como faz `api/deploy/docker-compose.yml`.
+* A imagem oficial `minio/minio` saiu do Docker Hub. O projeto usa uma cópia
+  idêntica da versão `RELEASE.2025-09-07T16-13-09Z` em
+  `ghcr.io/trabalhos-si-fiap/minio`. Essa versão tem a CVE-2025-62506; aqui o
+  MinIO só escuta no `127.0.0.1`, e no CI e nos e2e nem publica porta. Ver
+  `docs/pendencias.md` (P6-01).
 
 ## 📚 Documentação da API
 
