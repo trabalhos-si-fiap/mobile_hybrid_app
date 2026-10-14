@@ -1,5 +1,6 @@
 package com.edu.api.support;
 
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.oracle.OracleContainer;
@@ -26,5 +27,14 @@ public abstract class OracleIntegrationTest {
         registry.add("spring.datasource.url", ORACLE::getJdbcUrl);
         registry.add("spring.datasource.username", ORACLE::getUsername);
         registry.add("spring.datasource.password", ORACLE::getPassword);
+    }
+
+    protected static String jdbcUrl() {
+        return ORACLE.getJdbcUrl();
+    }
+
+    /** Conexão como SYSTEM no mesmo Oracle, para testes que criam e apagam usuários. */
+    protected static DriverManagerDataSource systemDataSource() {
+        return new DriverManagerDataSource(ORACLE.getJdbcUrl(), "system", ORACLE.getEnvMap().get("ORACLE_PASSWORD"));
     }
 }
