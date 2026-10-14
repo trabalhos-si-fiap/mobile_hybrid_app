@@ -137,6 +137,8 @@ jobs:
           path: |
             api/out/
             !api/out/jar/
+          # Um re-run do job sobe de novo com o mesmo nome no mesmo run.
+          overwrite: true
           retention-days: 30
           if-no-files-found: warn
       - name: Guardar o jar testado
@@ -144,6 +146,8 @@ jobs:
         with:
           name: api-jar
           path: api/out/jar/app.jar
+          # Um re-run do job sobe de novo com o mesmo nome no mesmo run.
+          overwrite: true
           retention-days: 1
           if-no-files-found: error
       - name: Disco
@@ -186,6 +190,8 @@ jobs:
         with:
           name: web-reports
           path: web-angular/out/
+          # Um re-run do job sobe de novo com o mesmo nome no mesmo run.
+          overwrite: true
           retention-days: 30
           if-no-files-found: warn
 
@@ -223,6 +229,8 @@ jobs:
         with:
           name: mobile-reports
           path: mobile-flutter/out/
+          # Um re-run do job sobe de novo com o mesmo nome no mesmo run.
+          overwrite: true
           retention-days: 30
           if-no-files-found: warn
 
@@ -345,6 +353,9 @@ jobs:
                 echo
               fi
             done
+            echo '### Disco do runner'
+            echo
+            { df -h /; docker system df; } | sed 's/^/    /'
           } >>"$GITHUB_STEP_SUMMARY"
       - name: Coletar os logs
         if: always()
@@ -361,6 +372,8 @@ jobs:
         with:
           name: deploy-logs
           path: deploy-out/
+          # Um re-run do job sobe de novo com o mesmo nome no mesmo run.
+          overwrite: true
           retention-days: 30
           if-no-files-found: warn
       - name: Derrubar a stack
