@@ -38,6 +38,13 @@ class OracleErrorsTest {
     }
 
     @Test
+    void invalidSearchBecomesUnprocessable() {
+        assertThat(OracleErrors.translate(oracle(20005, "Busca inválida: p_limite aceita de 1 a 200")))
+                .isInstanceOf(UnprocessableException.class)
+                .hasMessage("Busca inválida: p_limite aceita de 1 a 200");
+    }
+
+    @Test
     void otherErrorsAreKept() {
         UncategorizedSQLException original = oracle(1400, "cannot insert NULL");
 
