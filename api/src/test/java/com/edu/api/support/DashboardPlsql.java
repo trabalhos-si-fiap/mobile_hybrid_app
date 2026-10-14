@@ -22,7 +22,7 @@ import java.util.Map;
  */
 public final class DashboardPlsql {
 
-    /** As linhas dos três cursores da PR_RESUMO_DASHBOARD. */
+    /** As linhas dos três cursores da PKG_DASHBOARD.PR_RESUMO_DASHBOARD. */
     public record Summary(List<Map<String, Object>> kpis, List<Map<String, Object>> segments,
                           List<Map<String, Object>> anomalies) {
 
@@ -57,13 +57,13 @@ public final class DashboardPlsql {
     }
 
     public BigDecimal variationRate(Number current, Number previous) {
-        return jdbc.queryForObject("SELECT FN_CALC_TAXA_VARIACAO(?, ?) FROM dual", BigDecimal.class,
+        return jdbc.queryForObject("SELECT PKG_DASHBOARD.FN_CALC_TAXA_VARIACAO(?, ?) FROM dual", BigDecimal.class,
                 new SqlParameterValue(Types.NUMERIC, current), new SqlParameterValue(Types.NUMERIC, previous));
     }
 
     public Summary summary(int days, OffsetDateTime reference) {
         return jdbc.execute((Connection con) -> {
-            try (CallableStatement call = con.prepareCall("{call PR_RESUMO_DASHBOARD(?, ?, ?, ?, ?)}")) {
+            try (CallableStatement call = con.prepareCall("{call PKG_DASHBOARD.PR_RESUMO_DASHBOARD(?, ?, ?, ?, ?)}")) {
                 call.setInt(1, days);
                 call.setObject(2, reference);
                 call.registerOutParameter(3, Types.REF_CURSOR);

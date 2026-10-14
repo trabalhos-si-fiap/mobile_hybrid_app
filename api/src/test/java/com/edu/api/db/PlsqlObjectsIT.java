@@ -9,6 +9,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,26 +26,32 @@ class PlsqlObjectsIT extends OracleIntegrationTest {
     private JdbcTemplate jdbc;
 
     @Test
-    void everyPlsqlObjectExistsAndCompiles() {
+    void everyPlsqlObjectIsAValidPackage() {
         List<String> invalid = jdbc.queryForList(
                 "SELECT object_type || ' ' || object_name FROM user_objects WHERE status = 'INVALID'", String.class);
-        List<String> objects = jdbc.queryForList("SELECT object_type || ' ' || object_name FROM user_objects"
-                + " WHERE object_type IN ('FUNCTION', 'PROCEDURE', 'PACKAGE', 'PACKAGE BODY')", String.class);
+        List<String> packages = jdbc.queryForList(
+                "SELECT object_type || ' ' || object_name FROM user_objects"
+                        + " WHERE object_type IN ('PACKAGE', 'PACKAGE BODY')", String.class);
+        List<String> standalone = jdbc.queryForList(
+                "SELECT object_name FROM user_objects WHERE object_type IN ('FUNCTION', 'PROCEDURE')", String.class);
 
         assertThat(invalid).isEmpty();
-        assertThat(objects)
-                .contains("PACKAGE PKG_TICKETS", "PACKAGE BODY PKG_TICKETS", "FUNCTION FN_CHATBOT_RESPOSTA",
-                        "FUNCTION FN_CALC_TAXA_VARIACAO", "PROCEDURE PR_RESUMO_DASHBOARD")
-                .doesNotContain("FUNCTION FN_PROXIMO_ATENDENTE", "FUNCTION FN_STATUS_SLA_TICKET",
-                        "PROCEDURE PR_ROTEAR_TICKET", "PROCEDURE PR_ESCALAR_TICKET_CRITICO");
+        assertThat(packages).contains("PACKAGE PKG_TICKETS", "PACKAGE BODY PKG_TICKETS",
+                "PACKAGE PKG_CHATBOT", "PACKAGE BODY PKG_CHATBOT",
+                "PACKAGE PKG_DASHBOARD", "PACKAGE BODY PKG_DASHBOARD");
+        assertThat(standalone).isEmpty();
     }
 
     @Test
-    void ticketPackageExposesOnlyItsPublicMembers() {
-        List<String> members = jdbc.queryForList("SELECT procedure_name FROM user_procedures"
-                + " WHERE object_name = 'PKG_TICKETS' AND procedure_name IS NOT NULL", String.class);
+    void packagesExposeOnlyTheirPublicMembers() {
+        Map<String, List<String>> expected = Map.of(
+                "PKG_TICKETS", List.of("FN_PROXIMO_ATENDENTE", "FN_STATUS_SLA_TICKET", "PR_ROTEAR_TICKET",
+                        "PR_ESCALAR_TICKET_CRITICO"),
+                "PKG_CHATBOT", List.of("FN_CHATBOT_RESPOSTA"),
+                "PKG_DASHBOARD", List.of("FN_CALC_TAXA_VARIACAO", "PR_RESUMO_DASHBOARD"));
 
-        assertThat(members).containsExactlyInAnyOrder("FN_PROXIMO_ATENDENTE", "FN_STATUS_SLA_TICKET",
-                "PR_ROTEAR_TICKET", "PR_ESCALAR_TICKET_CRITICO");
+        expected.forEach((pkg, members) -> assertThat(jdbc.queryForList(
+                "SELECT procedure_name FROM user_procedures WHERE object_name = ? AND procedure_name IS NOT NULL",
+                String.class, pkg)).as(pkg).containsExactlyInAnyOrderElementsOf(members));
     }
 }

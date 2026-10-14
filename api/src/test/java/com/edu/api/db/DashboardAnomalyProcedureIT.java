@@ -19,7 +19,7 @@ import java.util.Map;
 import static com.edu.api.support.DashboardPlsql.number;
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Anomalias de volume da PR_RESUMO_DASHBOARD: últimas 24 h contra as 28 janelas de 24 h anteriores. */
+/** Anomalias de volume da PKG_DASHBOARD.PR_RESUMO_DASHBOARD: últimas 24 h contra as 28 janelas de 24 h anteriores. */
 @JdbcTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")

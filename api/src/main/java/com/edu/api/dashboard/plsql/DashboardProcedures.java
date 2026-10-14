@@ -19,7 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Único ponto do Java que chama a PR_RESUMO_DASHBOARD. Só lê; um erro do
+ * Único ponto do Java que chama o PKG_DASHBOARD. Só lê; um erro do
  * Oracle (como o ORA-20004 de período inválido) segue adiante, porque a API
  * valida o período antes de chegar aqui.
  */
@@ -34,7 +34,7 @@ public class DashboardProcedures {
 
     public DashboardSummaryRows summary(int days, Instant reference) {
         return jdbc.execute((Connection con) -> {
-            try (CallableStatement call = con.prepareCall("{call PR_RESUMO_DASHBOARD(?, ?, ?, ?, ?)}")) {
+            try (CallableStatement call = con.prepareCall("{call PKG_DASHBOARD.PR_RESUMO_DASHBOARD(?, ?, ?, ?, ?)}")) {
                 call.setInt(1, days);
                 call.setObject(2, reference.atOffset(ZoneOffset.UTC));
                 call.registerOutParameter(3, Types.REF_CURSOR);

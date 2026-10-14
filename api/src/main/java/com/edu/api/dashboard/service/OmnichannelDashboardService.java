@@ -25,7 +25,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/** Dashboard do atendimento: o cálculo é da PR_RESUMO_DASHBOARD; aqui só se monta a resposta. */
+/** Dashboard do atendimento: o cálculo é da PKG_DASHBOARD.PR_RESUMO_DASHBOARD; aqui só se monta a resposta. */
 @Service
 public class OmnichannelDashboardService {
 

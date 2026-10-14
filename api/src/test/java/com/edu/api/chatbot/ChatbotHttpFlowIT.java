@@ -16,7 +16,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** O Mentor Edu pela HTTP, com JWT e a FN_CHATBOT_RESPOSTA reais. */
+/** O Mentor Edu pela HTTP, com JWT e a PKG_CHATBOT.FN_CHATBOT_RESPOSTA reais. */
 class ChatbotHttpFlowIT extends FullStackIntegration {
 
     private ChatbotFixtures bot;

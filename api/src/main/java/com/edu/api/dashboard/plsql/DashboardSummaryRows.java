@@ -5,7 +5,7 @@ import com.edu.api.ticket.entity.Segment;
 import java.math.BigDecimal;
 import java.util.List;
 
-/** As linhas dos três cursores da PR_RESUMO_DASHBOARD, sem interpretação. */
+/** As linhas dos três cursores da PKG_DASHBOARD.PR_RESUMO_DASHBOARD, sem interpretação. */
 public record DashboardSummaryRows(List<Kpi> kpis, List<SegmentLine> segments, List<AnomalyLine> anomalies) {
 
     /** Uma linha de p_kpis; no BACKLOG, previous e variation vêm nulos. */

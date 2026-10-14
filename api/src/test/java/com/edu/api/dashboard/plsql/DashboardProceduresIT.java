@@ -20,7 +20,7 @@ import java.time.Instant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** A PR_RESUMO_DASHBOARD pelo gateway: os três cursores viram records, nulos inclusos. */
+/** A PKG_DASHBOARD.PR_RESUMO_DASHBOARD pelo gateway: os três cursores viram records, nulos inclusos. */
 @JdbcTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")
