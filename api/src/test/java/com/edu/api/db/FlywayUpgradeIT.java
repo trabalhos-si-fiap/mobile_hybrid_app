@@ -99,6 +99,8 @@ class FlywayUpgradeIT extends OracleIntegrationTest {
                 .map(MigrationInfo::getDescription)
                 .toList())
                 .containsExactlyInAnyOrderElementsOf(REMOVED);
+        assertThat(schema.queryForList("SELECT trigger_name FROM user_triggers WHERE status = 'ENABLED'", String.class))
+                .containsExactlyInAnyOrder("TRG_TICKETS_AUDITORIA", "TRG_TICKET_AUDITORIA_IMUTAVEL");
     }
 
     @Test

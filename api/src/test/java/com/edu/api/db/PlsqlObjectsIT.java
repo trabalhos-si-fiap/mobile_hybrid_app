@@ -54,4 +54,12 @@ class PlsqlObjectsIT extends OracleIntegrationTest {
                 "SELECT procedure_name FROM user_procedures WHERE object_name = ? AND procedure_name IS NOT NULL",
                 String.class, pkg)).as(pkg).containsExactlyInAnyOrderElementsOf(members));
     }
+
+    @Test
+    void bothAuditTriggersAreEnabled() {
+        assertThat(jdbc.queryForList(
+                "SELECT trigger_name || ' ' || table_name || ' ' || status FROM user_triggers", String.class))
+                .contains("TRG_TICKETS_AUDITORIA TICKETS ENABLED",
+                        "TRG_TICKET_AUDITORIA_IMUTAVEL TICKET_AUDITORIA ENABLED");
+    }
 }
