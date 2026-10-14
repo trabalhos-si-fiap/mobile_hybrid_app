@@ -117,7 +117,8 @@
           "options": {
             "runner": "vitest",
             "tsConfig": "tsconfig.spec.json",
-            "include": ["src/**/*.spec.ts"]
+            "include": ["src/**/*.spec.ts"],
+            "reporters": ["default", ["junit", { "outputFile": "reports/junit.xml" }]]
           }
         }
       }

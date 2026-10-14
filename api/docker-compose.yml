@@ -114,19 +114,16 @@ services:
       - "127.0.0.1:${WEB_PORT:-4200}:4200"
 
   # Testes e build do painel sem Node no host, no mesmo esquema do serviço maven:
-  #   docker compose run --rm node test        (Vitest, uma vez)
+  #   docker compose run --rm node test        (Vitest, uma vez; JUnit em web-angular/out)
   #   docker compose run --rm node run build   (build de produção, com os limites de tamanho)
   node:
     image: node:24.21.0
     profiles: ["tools"]
     working_dir: /build
-    entrypoint:
-      - bash
-      - -c
-      - 'set -euo pipefail; tar -C /src --exclude=node_modules --exclude=.angular --exclude=dist --exclude=e2e -cf - . | tar -xf -; npm ci --no-audit --no-fund; exec npm "$$@"'
-      - npm
+    entrypoint: ["bash", "/src/tool/node-container.sh"]
     volumes:
       - ../web-angular:/src:ro
+      - ../web-angular/out:/out
       - npm-cache:/root/.npm
 
   # App Flutter sem Flutter no host, no mesmo esquema dos serviços maven e node:
