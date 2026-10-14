@@ -589,6 +589,91 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
+  /tickets/search:
+    get:
+      tags: [Atendimento]
+      summary: Busca de tickets com filtros opcionais (EMPLOYEE/ADMIN)
+      description: >
+        Montada por Dynamic SQL na PKG_TICKETS.PR_BUSCAR_TICKETS: cada filtro
+        ausente fica fora da consulta. O ADMIN vê todos os tickets; o atendente,
+        os que abriu, os atribuídos a ele e os dos segmentos das suas skills.
+      operationId: searchTickets
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/TicketStatus'
+        - name: segment
+          in: query
+          schema:
+            $ref: '#/components/schemas/Segment'
+        - name: priority
+          in: query
+          schema:
+            $ref: '#/components/schemas/TicketPriority'
+        - name: assigneeId
+          in: query
+          description: Id do atendente (employees.id)
+          schema:
+            type: integer
+            format: int64
+        - name: from
+          in: query
+          description: Abertos a partir deste instante (incluso), ISO-8601
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          description: Abertos antes deste instante (excluso), ISO-8601
+          schema:
+            type: string
+            format: date-time
+        - name: text
+          in: query
+          description: Trecho da descrição, sem diferenciar maiúsculas (3 a 200 caracteres; em branco é ignorado)
+          schema:
+            type: string
+            maxLength: 200
+        - name: engineeringAlert
+          in: query
+          schema:
+            type: boolean
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [createdAt, updatedAt, slaDueAt, priority]
+            default: createdAt
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+      responses:
+        '200':
+          description: Tickets encontrados, na ordem pedida
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TicketSummaryResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
   /tickets/{ticketId}:
     parameters:
       - $ref: '#/components/parameters/TicketId'

@@ -5,6 +5,7 @@ import com.edu.api.support.ControllerSliceTest;
 import com.edu.api.support.WithAuthenticatedUser;
 import com.edu.api.ticket.dto.QueueScope;
 import com.edu.api.ticket.dto.TicketDetailResponse;
+import com.edu.api.ticket.dto.TicketSearchCriteria;
 import com.edu.api.ticket.dto.UserSummary;
 import com.edu.api.ticket.entity.*;
 import com.edu.api.ticket.service.TicketStaffService;
@@ -91,5 +92,67 @@ class TicketStaffControllerTest {
                 .andExpect(status().isOk());
 
         verify(staff).engineeringAlert(AGENT, 7L, "Crash no checkout");
+    }
+
+    private static TicketSearchCriteria defaults(Instant from) {
+        return new TicketSearchCriteria(null, null, null, null, from, null, null, null,
+                TicketSearchCriteria.Sort.CREATED_AT, TicketSearchCriteria.Direction.DESC, 50);
+    }
+
+    @Test
+    void searchUsesTheDefaultsWhenNoParameterIsGiven() throws Exception {
+        when(staff.search(AGENT, defaults(null))).thenReturn(List.of());
+
+        mockMvc.perform(get("/tickets/search")).andExpect(status().isOk());
+
+        verify(staff).search(AGENT, defaults(null));
+    }
+
+    @Test
+    void searchPassesEveryFilterToTheService() throws Exception {
+        TicketSearchCriteria expected = new TicketSearchCriteria(TicketStatus.EM_FILA, Segment.DEFEITO_APP,
+                TicketPriority.ALTA, 9L, Instant.parse("2030-01-01T00:00:00Z"), Instant.parse("2030-01-02T00:00:00Z"),
+                "tela branca", true, TicketSearchCriteria.Sort.PRIORITY, TicketSearchCriteria.Direction.ASC, 20);
+        when(staff.search(AGENT, expected)).thenReturn(List.of());
+
+        mockMvc.perform(get("/tickets/search")
+                        .param("status", "EM_FILA").param("segment", "DEFEITO_APP").param("priority", "ALTA")
+                        .param("assigneeId", "9")
+                        .param("from", "2030-01-01T00:00:00Z").param("to", "2030-01-02T00:00:00Z")
+                        .param("text", "  tela branca ").param("engineeringAlert", "true")
+                        .param("sort", "priority").param("direction", "asc").param("limit", "20"))
+                .andExpect(status().isOk());
+
+        verify(staff).search(AGENT, expected);
+    }
+
+    @Test
+    void searchAcceptsTimestampsWithAnOffset() throws Exception {
+        TicketSearchCriteria expected = defaults(Instant.parse("2030-01-01T12:00:00Z"));
+        when(staff.search(AGENT, expected)).thenReturn(List.of());
+
+        mockMvc.perform(get("/tickets/search").param("from", "2030-01-01T09:00:00-03:00"))
+                .andExpect(status().isOk());
+
+        verify(staff).search(AGENT, expected);
+    }
+
+    @Test
+    void searchRejectsAnUnknownSortBeforeTheService() throws Exception {
+        mockMvc.perform(get("/tickets/search").param("sort", "name"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("VALIDATION_ERROR"))
+                .andExpect(jsonPath("$.message").value("sort: use createdAt, updatedAt, slaDueAt ou priority"));
+
+        verifyNoInteractions(staff);
+    }
+
+    @Test
+    void searchRejectsAnUnknownStatus() throws Exception {
+        mockMvc.perform(get("/tickets/search").param("status", "PERDIDO"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("BAD_REQUEST"));
+
+        verifyNoInteractions(staff);
     }
 }

@@ -2,12 +2,15 @@ package com.edu.api.ticket.controller;
 
 import com.edu.api.security.AuthenticatedUser;
 import com.edu.api.ticket.dto.*;
+import com.edu.api.ticket.entity.Segment;
+import com.edu.api.ticket.entity.TicketPriority;
 import com.edu.api.ticket.entity.TicketStatus;
 import com.edu.api.ticket.service.TicketStaffService;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.util.List;
 
 /** Endpoints do console do atendente (EMPLOYEE/ADMIN, ver SecurityConfig). */
@@ -26,6 +29,23 @@ public class TicketStaffController {
                                              @RequestParam(defaultValue = "mine") String scope,
                                              @RequestParam(required = false) TicketStatus status) {
         return staff.queue(user, QueueScope.parse(scope), status);
+    }
+
+    @GetMapping("/search")
+    public List<TicketSummaryResponse> search(@AuthenticationPrincipal AuthenticatedUser user,
+                                              @RequestParam(required = false) TicketStatus status,
+                                              @RequestParam(required = false) Segment segment,
+                                              @RequestParam(required = false) TicketPriority priority,
+                                              @RequestParam(required = false) Long assigneeId,
+                                              @RequestParam(required = false) Instant from,
+                                              @RequestParam(required = false) Instant to,
+                                              @RequestParam(required = false) String text,
+                                              @RequestParam(required = false) Boolean engineeringAlert,
+                                              @RequestParam(required = false) String sort,
+                                              @RequestParam(required = false) String direction,
+                                              @RequestParam(required = false) Integer limit) {
+        return staff.search(user, TicketSearchCriteria.of(status, segment, priority, assigneeId, from, to, text,
+                engineeringAlert, sort, direction, limit));
     }
 
     @GetMapping("/{ticketId}/events")

@@ -6,6 +6,7 @@ import com.edu.api.shared.exception.ForbiddenException;
 import com.edu.api.ticket.dto.QueueScope;
 import com.edu.api.ticket.dto.TicketDetailResponse;
 import com.edu.api.ticket.dto.TicketEventResponse;
+import com.edu.api.ticket.dto.TicketSearchCriteria;
 import com.edu.api.ticket.dto.TicketSummaryResponse;
 import com.edu.api.ticket.entity.*;
 import com.edu.api.ticket.event.TicketActivity;
@@ -83,6 +84,12 @@ public class TicketStaffService {
             }
         };
         return views.summaries(found.stream().sorted(QUEUE_ORDER).toList());
+    }
+
+    /** Busca na base de tickets: o ADMIN vê tudo; os demais, o que a regra de visibilidade permite. */
+    @Transactional(readOnly = true)
+    public List<TicketSummaryResponse> search(AuthenticatedUser user, TicketSearchCriteria criteria) {
+        return procedures.search(criteria, user.id(), user.isAdmin());
     }
 
     @Transactional(readOnly = true)
