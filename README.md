@@ -20,7 +20,7 @@ quanto pelo app mobile via HTTP/JSON.
 * 🚚 Transportadoras
 * ⚠️ Ocorrências
 * 📈 Dashboard (métricas agregadas)
-* 🎫 Tickets omnichannel (roteamento por skill, SLA e escalonamento em PL/SQL)
+* 🎫 Tickets omnichannel (roteamento por skill, SLA, escalonamento e busca em packages PL/SQL, com auditoria por trigger)
 * 🤖 Chatbot nível 0 (Mentor Edu: dúvidas comuns por menu ou texto livre, com passagem para ticket)
 
 ## 📁 Estrutura do repositório
@@ -297,7 +297,7 @@ responde às dúvidas comuns antes de envolver um atendente.
 | Parte | Onde |
 |---|---|
 | FAQ e conversas | tabelas `chatbot_faq`, `chatbot_faq_keywords`, `chatbot_conversations` e `chatbot_messages` (`V5__chatbot.sql`, com o peso das palavras-chave da `V10__chatbot_keyword_weight.sql`; FAQ de demonstração em `V6__seed_chatbot.sql`, com os ajustes de palavras-chave do `V7__seed_chatbot_keywords.sql` e do `V11__seed_chatbot_keyword_weights.sql`) |
-| Casamento do texto livre | function PL/SQL `FN_CHATBOT_RESPOSTA` (`db/plsql/R__fn_chatbot_resposta.sql`): normaliza o texto (minúsculas, sem acento), casa cada palavra-chave com o começo das palavras do texto e escolhe o item do FAQ com a maior soma de pesos (palavra genérica vale 1, as outras 2) |
+| Casamento do texto livre | function PL/SQL `PKG_CHATBOT.FN_CHATBOT_RESPOSTA` (`db/plsql/R__02_pkg_chatbot.sql`): normaliza o texto (minúsculas, sem acento), casa cada palavra-chave com o começo das palavras do texto e escolhe o item do FAQ com a maior soma de pesos (palavra genérica vale 1, as outras 2) |
 | Fluxo da conversa | `ChatbotService` na API; `POST /chatbot/conversations` e `POST /chatbot/conversations/{id}/messages` |
 | Passagem para o ticket | campo `chatbotConversationId` em `POST /tickets`; transcrição em `GET /tickets/{id}/chatbot-conversation` |
 
@@ -334,8 +334,8 @@ anomalia como pico ou queda e monta as frases de destaque.
 
 | Objeto PL/SQL | Papel |
 |---|---|
-| `PR_RESUMO_DASHBOARD(p_dias, p_referencia, p_kpis, p_segmentos, p_anomalias)` | Agrega `tickets` e `ticket_events` e devolve três cursores: indicadores, segmentos e anomalias |
-| `FN_CALC_TAXA_VARIACAO(p_atual, p_anterior)` | Variação percentual com 1 casa decimal; nula sem base de comparação (anterior 0) |
+| `PKG_DASHBOARD.PR_RESUMO_DASHBOARD(p_dias, p_referencia, p_kpis, p_segmentos, p_anomalias)` | Agrega `tickets` e `ticket_events` e devolve três cursores: indicadores, segmentos e anomalias |
+| `PKG_DASHBOARD.FN_CALC_TAXA_VARIACAO(p_atual, p_anterior)` | Variação percentual com 1 casa decimal; nula sem base de comparação (anterior 0) |
 
 **Anomalias.** Para cada segmento, o volume das últimas 24 horas é comparado
 com as janelas de 24 horas dos 28 dias anteriores por z-score: |z| ≥ 2 é
@@ -346,8 +346,9 @@ média já é anomalia. É estatística simples, como a do `analytics-service` d
 evitam comparar o dia de hoje pela metade com dias cheios.
 
 **Por que estas assinaturas.** A divisão da Fase 6 nomeia
-`PR_RESUMO_DASHBOARD` e `FN_CALC_TAXA_VARIACAO`, mas nenhum material da FIAP
-define parâmetros nem comportamento. As assinaturas acima foram definidas neste
+`PR_RESUMO_DASHBOARD` e `FN_CALC_TAXA_VARIACAO` (hoje membros do
+`PKG_DASHBOARD`), mas nenhum material da FIAP define parâmetros nem
+comportamento. As assinaturas acima foram definidas neste
 repositório: a procedure devolve cursores para que o Java não repita a regra de
 negócio, e a função é pura (`DETERMINISTIC`) para ser usada dentro das
 consultas da procedure.
@@ -362,6 +363,38 @@ seguintes; depois delas, sem tickets novos, os três segmentos aparecem com
 # em api/ (apaga os volumes do Oracle e do MinIO)
 docker compose down -v && docker compose up -d
 ```
+
+## 🗄️ PL/SQL: packages, auditoria e busca dinâmica
+
+O PL/SQL fica em três packages, um por domínio, e em duas triggers
+(`api/src/main/resources/db/plsql/`):
+
+| Objeto | Conteúdo |
+|---|---|
+| `PKG_TICKETS` | Próximo atendente, status do SLA, roteamento, escalonamento e a busca dinâmica |
+| `PKG_CHATBOT` | Casamento do texto livre com o FAQ |
+| `PKG_DASHBOARD` | Variação entre períodos e o resumo do dashboard |
+| `TRG_TICKETS_AUDITORIA` | Grava em `ticket_auditoria` cada mudança de status, prioridade, dono, segmento ou alerta de engenharia de um ticket |
+| `TRG_TICKET_AUDITORIA_IMUTAVEL` | Recusa alterar ou apagar a auditoria |
+
+Os packages não guardam estado, declaram os códigos de erro como constantes e
+exceções nomeadas e compartilham o que é comum em membros privados.
+
+**Busca dinâmica.** `GET /api/v1/tickets/search` (atendente e ADMIN) aceita
+`status`, `segment`, `priority`, `assigneeId`, `from`, `to`, `text`,
+`engineeringAlert`, `sort`, `direction` e `limit`. A
+`PKG_TICKETS.PR_BUSCAR_TICKETS` monta o SQL com `DBMS_SQL` só com os filtros
+recebidos, liga cada valor por bind e escolhe a ordenação numa lista fixa. O
+ADMIN vê tudo; o atendente vê os tickets que abriu, os atribuídos a ele e os
+dos segmentos das suas skills.
+
+**Auditoria.** A trigger registra a mudança venha de onde vier (API,
+PL/SQL ou SQL manual), na mesma transação, com o usuário do banco e o módulo
+da sessão. Os detalhes e os limites estão em
+[`docs/banco-de-dados/plsql.md`](./docs/banco-de-dados/plsql.md).
+
+As seções 9 e 10 de `docs/banco-de-dados/consultas-exemplo.sql` mostram a
+busca e a auditoria no banco da demonstração.
 
 ## 📚 Documentação da API
 

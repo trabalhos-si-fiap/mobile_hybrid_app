@@ -34,7 +34,7 @@ O Flyway é dono do schema, e o Hibernate apenas valida (`ddl-auto: validate`):
 ```text
 src/main/resources/db/
 ├── migration/   # V__: DDL versionado
-├── plsql/       # R__: functions e procedures PL/SQL (repeatable)
+├── plsql/       # R__: packages e triggers PL/SQL (repeatable)
 └── seed/        # V__: massa de dados de demonstração (fora do perfil de teste)
 ```
 
@@ -49,6 +49,10 @@ Regras de versionamento:
 - Scripts `R__` ficam só em `plsql/`. O Flyway os aplica depois de todos os
   `V__` pendentes, inclusive o seed; por isso o seed não pode depender de
   objetos PL/SQL.
+- Um `R__` que sai do repositório continua no histórico do Flyway dos bancos
+  que já subiram. `spring.flyway.ignore-migration-patterns` tolera só esse
+  caso (`repeatable:missing`), além do padrão `*:future`; um objeto que
+  sumiu por engano aparece no `PlsqlObjectsIT`.
 
 O modelo de dados (MER, DER, dicionário e documentação PL/SQL) está em
 [`docs/banco-de-dados/`](../docs/banco-de-dados/README.md). Uma migration
@@ -58,34 +62,40 @@ nova também atualiza o `ddl-consolidado.sql` de lá, conferido por
 ## Tickets omnichannel
 
 ```text
-app abre ticket ──► POST /tickets ──► PR_ROTEAR_TICKET ──► TICKET_TIPO_CONFIG
-                                          │                  (segmento → skill → fila → SLA)
+app abre ticket ──► POST /tickets ──► PKG_TICKETS.PR_ROTEAR_TICKET ──► TICKET_TIPO_CONFIG
+                                          │                             (segmento → skill → fila → SLA)
                                           ▼
-                              FN_PROXIMO_ATENDENTE (ONLINE, menos carga, fora quem abriu)
+                              PKG_TICKETS.FN_PROXIMO_ATENDENTE (ONLINE, menos carga, fora quem abriu)
                                           │
 console assume ◄── notificação ◄──────────┘
       │
       ├─ mensagens assíncronas (app ⇄ console, com anexos no MinIO)
       ├─ encerrar → RESOLVIDO → usuário confirma (FECHADO) ou reabre
-      └─ job a cada 60 s: PR_ESCALAR_TICKET_CRITICO, reroteia a fila (ticket sem rota é pulado, o lote segue), fecha resolvidos há 72 h
+      ├─ busca com filtros: GET /tickets/search ──► PKG_TICKETS.PR_BUSCAR_TICKETS (Dynamic SQL)
+      └─ job a cada 60 s: PKG_TICKETS.PR_ESCALAR_TICKET_CRITICO, reroteia a fila (ticket sem rota é pulado, o lote segue), fecha resolvidos há 72 h
+
+toda mudança de estado em tickets ──► TRG_TICKETS_AUDITORIA ──► ticket_auditoria (só INSERT)
 ```
 
 | Objeto PL/SQL | Papel |
 |---|---|
-| `FN_PROXIMO_ATENDENTE` | Escolhe o atendente ONLINE da skill com menos tickets ativos, fora quem abriu o ticket |
-| `FN_STATUS_SLA_TICKET` | `NO_PRAZO`, `EM_RISCO`, `ESTOURADO`, `CUMPRIDO` ou `VIOLADO` |
-| `PR_ROTEAR_TICKET` | Aplica a matriz de triagem e atribui o ticket |
-| `PR_ESCALAR_TICKET_CRITICO` | Sobe a prioridade e reatribui tickets com SLA estourado |
-| `FN_CHATBOT_RESPOSTA` | Casa o texto livre do usuário com o FAQ do chatbot pelas palavras-chave |
-| `FN_CALC_TAXA_VARIACAO` | Variação percentual entre o período atual e o anterior (dashboard) |
-| `PR_RESUMO_DASHBOARD` | Indicadores, segmentos e anomalias do dashboard do atendimento, em três cursores |
+| `PKG_TICKETS.FN_PROXIMO_ATENDENTE` | Escolhe o atendente ONLINE da skill com menos tickets ativos, fora quem abriu o ticket |
+| `PKG_TICKETS.FN_STATUS_SLA_TICKET` | `NO_PRAZO`, `EM_RISCO`, `ESTOURADO`, `CUMPRIDO` ou `VIOLADO` |
+| `PKG_TICKETS.PR_ROTEAR_TICKET` | Aplica a matriz de triagem e atribui o ticket |
+| `PKG_TICKETS.PR_ESCALAR_TICKET_CRITICO` | Sobe a prioridade e reatribui tickets com SLA estourado |
+| `PKG_TICKETS.PR_BUSCAR_TICKETS` | Busca de tickets com filtros opcionais, por Dynamic SQL (`GET /tickets/search`) |
+| `PKG_CHATBOT.FN_CHATBOT_RESPOSTA` | Casa o texto livre do usuário com o FAQ do chatbot pelas palavras-chave |
+| `PKG_DASHBOARD.FN_CALC_TAXA_VARIACAO` | Variação percentual entre o período atual e o anterior (dashboard) |
+| `PKG_DASHBOARD.PR_RESUMO_DASHBOARD` | Indicadores, segmentos e anomalias do dashboard do atendimento, em três cursores |
+| `TRG_TICKETS_AUDITORIA` | Grava em `ticket_auditoria` cada mudança de status, prioridade, dono, segmento ou alerta de um ticket |
+| `TRG_TICKET_AUDITORIA_IMUTAVEL` | Recusa `UPDATE` e `DELETE` na auditoria |
 
 Estados: `ABERTO → EM_FILA → EM_ATENDIMENTO → RESOLVIDO → FECHADO`, com
 `ESCALADO` quando o SLA estoura. Papéis: `USER` (app), `EMPLOYEE`
 (atendente), `ADMIN` (atendente com visão total).
 
 Numeração Flyway: a próxima versão é o maior `V` entre `migration/` e
-`seed/` + 1 (hoje: `V8` migration, `V9` seed).
+`seed/` + 1 (hoje: `V12` migration, `V11` seed).
 
 ## Domínios persistidos
 
