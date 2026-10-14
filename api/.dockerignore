@@ -3,3 +3,5 @@ data/
 .env
 .idea/
 *.iml
+out/
+deploy/smoke-out/

@@ -69,21 +69,21 @@ services:
       - "${API_PORT:-8080}:8080"
 
   # Build e testes Java sem JDK no host: docker compose run --rm maven test|verify
-  # O código entra read-only e é copiado para /build, então nada é escrito no host.
+  # O código entra read-only e é copiado para /build; só api/out volta para o
+  # host (relatórios de teste, cobertura e jar), também quando um teste falha.
+  # MAVEN_REPO troca o volume do repositório Maven por uma pasta do host (o CI
+  # usa $HOME/.m2, guardada entre execuções).
   # O socket do Docker permite ao Testcontainers criar o Oracle efêmero dos *IT
   # e dá a este container acesso equivalente a root no Docker do host.
   maven:
     image: maven:3.9.16-eclipse-temurin-21
     profiles: ["tools"]
     working_dir: /build
-    entrypoint:
-      - sh
-      - -c
-      - 'tar -C /src --exclude=./target --exclude=./data -cf - . | tar -xf - && exec mvn -B "$$@"'
-      - mvn
+    entrypoint: ["bash", "/src/tool/maven-container.sh"]
     volumes:
       - ./:/src:ro
-      - maven-repo:/root/.m2
+      - ./out:/out
+      - ${MAVEN_REPO:-maven-repo}:/root/.m2
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       TESTCONTAINERS_HOST_OVERRIDE: host.docker.internal
