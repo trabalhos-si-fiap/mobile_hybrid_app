@@ -341,8 +341,10 @@ CREATE OR REPLACE PACKAGE BODY PKG_TICKETS AS
     )
     IS
         -- O JDBC manda todos os parâmetros, inclusive os nulos: o DEFAULT da
-        -- assinatura não se aplica, então os padrões vêm do NVL.
-        v_coluna    VARCHAR2(30)    := UPPER(NVL(p_ordenar_por, 'CRIADO_EM'));
+        -- assinatura não se aplica, então os padrões vêm do NVL. v_coluna cabe
+        -- qualquer valor recebido: um erro na declaração não chegaria ao
+        -- recusar e sairia como ORA-06502, não -20005.
+        v_coluna    VARCHAR2(32767) := UPPER(NVL(p_ordenar_por, 'CRIADO_EM'));
         v_limite    NUMBER          := NVL(p_limite, 50);
         v_texto     VARCHAR2(32767) := TRIM(p_texto);
         v_ordem     VARCHAR2(100);

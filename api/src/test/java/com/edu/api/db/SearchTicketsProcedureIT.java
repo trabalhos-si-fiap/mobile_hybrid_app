@@ -323,6 +323,11 @@ class SearchTicketsProcedureIT extends OracleIntegrationTest {
         assertRejected(mine().createdBetween(W.plusMinutes(1), W), "p_criado_desde");
     }
 
+    @Test
+    void rejectsAnOverlongSortWithTheSearchError() {
+        assertRejected(mine().sort("X".repeat(40), "ASC"), "p_ordenar_por");
+    }
+
     private void assertRejected(TicketSearch search, String parameter) {
         assertThatThrownBy(() -> plsql.search(search))
                 .hasMessageContaining("ORA-20005")
