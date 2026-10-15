@@ -11,7 +11,7 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    branches: [main, feat/ci-cd]
   workflow_dispatch:
 
 permissions: {}
@@ -41,6 +41,7 @@ jobs:
         if: github.event_name != 'workflow_dispatch'
         uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
+          base: ${{ github.ref_name }}
           # Com "every", cada padrão de um filtro tem de casar; por isso cada
           # filtro tem uma pasta só, e a combinação fica nas outputs acima.
           predicate-quantifier: every
@@ -246,7 +247,7 @@ jobs:
       image: ${{ steps.ref.outputs.image }}
     env:
       IMAGE_NAME: ghcr.io/trabalhos-si-fiap/edu-admin-api
-      PUSH: ${{ github.ref == 'refs/heads/main' }} # main-only
+      PUSH: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/ci-cd' }} # main-only
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -308,7 +309,7 @@ jobs:
   deploy:
     name: Deploy efêmero (Oracle)
     needs: publish
-    if: github.ref == 'refs/heads/main' # main-only
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feat/ci-cd' # main-only
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
