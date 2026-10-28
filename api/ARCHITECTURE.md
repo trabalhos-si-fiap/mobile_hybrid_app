@@ -116,3 +116,10 @@ próprios dados e termina em rollback. O perfil `test` não aplica `db/seed`.
 
 Com a API em execução, abra `http://localhost:8080/api/v1/swagger-ui.html`.
 O contrato está em `src/main/resources/static/openapi.yaml`.
+
+## Build e entrega
+
+Build, testes, publicação da imagem e deploy efêmero rodam no GitHub Actions
+(`.github/workflows/ci-cd.yml`); a seção "CI/CD" do README da raiz explica o
+pipeline e onde ficam os relatórios. Localmente, os relatórios de teste, a
+cobertura e o jar ficam em `out/`.
