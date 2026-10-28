@@ -110,6 +110,9 @@ jobs:
           reporter: java-junit
           fail-on-error: false
           fail-on-empty: false
+          # No v3 o padrão (true) escreve o relatório no resumo do job e não
+          # cria a check run.
+          use-actions-summary: false
       - name: Resumo da cobertura
         if: ${{ !cancelled() }}
         run: |
@@ -185,6 +188,7 @@ jobs:
           reporter: jest-junit
           fail-on-error: false
           fail-on-empty: false
+          use-actions-summary: false
       - name: Guardar os relatórios
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -224,6 +228,7 @@ jobs:
           reporter: flutter-json
           fail-on-error: false
           fail-on-empty: false
+          use-actions-summary: false
       - name: Guardar os relatórios
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
