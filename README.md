@@ -408,7 +408,9 @@ da sessão. Os detalhes e os limites estão em
 [`docs/banco-de-dados/plsql.md`](./docs/banco-de-dados/plsql.md).
 
 As seções 9 e 10 de `docs/banco-de-dados/consultas-exemplo.sql` mostram a
-busca e a auditoria no banco da demonstração.
+busca e a auditoria no banco da demonstração. O que os packages, as triggers
+e a busca dinâmica agregam ao sistema está na seção "Valor agregado" de
+[`docs/banco-de-dados/plsql.md`](./docs/banco-de-dados/plsql.md).
 
 ## 🔁 CI/CD
 
