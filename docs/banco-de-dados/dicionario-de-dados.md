@@ -173,7 +173,7 @@ atendente. Origem: `V3`.
 | `user_id` | `NUMBER(19)` | não | — | FK → `admin_users` (`FK_EMPLOYEES_USER`), UQ (`UQ_EMPLOYEES_USER`) | Conta de login do atendente. |
 | `presence` | `VARCHAR2(10 CHAR)` | não | `'OFFLINE'` | — | Presença: `ONLINE`, `AUSENTE` ou `OFFLINE` (`CK_EMPLOYEES_PRESENCE`). Só quem está `ONLINE` recebe tickets novos. |
 | `presence_changed_at` | `TIMESTAMP(6) WITH TIME ZONE` | não | `SYSTIMESTAMP` | — | Quando a presença mudou pela última vez. |
-| `last_assigned_at` | `TIMESTAMP(6) WITH TIME ZONE` | sim | — | — | Quando o atendente recebeu o último ticket. Desempata o `FN_PROXIMO_ATENDENTE` (quem está há mais tempo sem receber vem primeiro); nulo para quem nunca recebeu. |
+| `last_assigned_at` | `TIMESTAMP(6) WITH TIME ZONE` | sim | — | — | Quando o atendente recebeu o último ticket. Desempata o `PKG_TICKETS.FN_PROXIMO_ATENDENTE` (quem está há mais tempo sem receber vem primeiro); nulo para quem nunca recebeu. |
 
 ### `employee_skills`
 
@@ -189,13 +189,13 @@ tickets. Origem: `V3`.
 **Índices:**
 
 - `IX_EMP_SKILLS_SKILL` (`skill_id`): índice de FK e da busca de atendentes
-  por skill no `FN_PROXIMO_ATENDENTE`. A FK `employee_id` já é coberta pela
+  por skill no `PKG_TICKETS.FN_PROXIMO_ATENDENTE`. A FK `employee_id` já é coberta pela
   PK, que começa por ela.
 
 ### `ticket_tipo_config`
 
 Matriz de triagem: para cada segmento do formulário, a skill que atende, a
-fila, a prioridade inicial e os prazos. É a tabela que o `PR_ROTEAR_TICKET`
+fila, a prioridade inicial e os prazos. É a tabela que o `PKG_TICKETS.PR_ROTEAR_TICKET`
 consulta. Origem: `V3`.
 
 | Coluna | Tipo | Nulo | Padrão | Chave | Descrição |
@@ -263,15 +263,15 @@ estado, o atendente responsável e os prazos de SLA. Origem: `V3`.
 
 - `IX_TICKETS_USER` (`user_id`): índice de FK e da lista "Meus tickets".
 - `IX_TICKETS_EMPLOYEE` (`assigned_employee_id`): índice de FK e da carga de
-  cada atendente no `FN_PROXIMO_ATENDENTE`.
+  cada atendente no `PKG_TICKETS.FN_PROXIMO_ATENDENTE`.
 - `IX_TICKETS_SEGMENT_STATUS` (`segment`, `status`): fila do console por
   segmento e estado; também cobre a FK `segment`.
 - `IX_TICKETS_STATUS_SLA` (`status`, `sla_due_at`): busca dos tickets
-  vencidos pelo `PR_ESCALAR_TICKET_CRITICO`.
+  vencidos pelo `PKG_TICKETS.PR_ESCALAR_TICKET_CRITICO`.
 - `IX_TICKETS_CREATED` (`created_at`): janelas de abertura do
-  `PR_RESUMO_DASHBOARD` (vem da `V8`).
+  `PKG_DASHBOARD.PR_RESUMO_DASHBOARD` (vem da `V8`).
 - `IX_TICKETS_RESOLVED` (`resolved_at`): janelas de resolução do
-  `PR_RESUMO_DASHBOARD` (vem da `V8`).
+  `PKG_DASHBOARD.PR_RESUMO_DASHBOARD` (vem da `V8`).
 
 ### `ticket_messages`
 
@@ -342,10 +342,10 @@ dashboard. Origem: `V3`.
 | Valor | Significado |
 |---|---|
 | `ABERTO` | O usuário abriu o ticket. |
-| `ROTEADO` | O `PR_ROTEAR_TICKET` aplicou a matriz e atribuiu (ou deixou na fila sem dono). |
+| `ROTEADO` | O `PKG_TICKETS.PR_ROTEAR_TICKET` aplicou a matriz e atribuiu (ou deixou na fila sem dono). |
 | `ASSUMIDO` | Um atendente assumiu o ticket. |
 | `TRANSFERIDO` | O atendente trocou o segmento; o ticket volta à fila e é roteado de novo. |
-| `ESCALADO` | O `PR_ESCALAR_TICKET_CRITICO` escalou o ticket por SLA estourado. |
+| `ESCALADO` | O `PKG_TICKETS.PR_ESCALAR_TICKET_CRITICO` escalou o ticket por SLA estourado. |
 | `RESOLVIDO` | O atendente encerrou o atendimento. |
 | `REABERTO` | O usuário reabriu um ticket resolvido. |
 | `FECHADO` | O usuário confirmou a resolução, ou o job fechou o ticket 72 h depois de resolvido. |
@@ -359,7 +359,7 @@ dashboard. Origem: `V3`.
 - `IX_TICKET_EVT_EMPLOYEE` (`employee_id`): índice de FK, que o Oracle não
   cria sozinho.
 - `IX_TICKET_EVT_TYPE_CREATED` (`type`, `created_at`): contagem de
-  escalonamentos por janela no `PR_RESUMO_DASHBOARD` (vem da `V8`).
+  escalonamentos por janela no `PKG_DASHBOARD.PR_RESUMO_DASHBOARD` (vem da `V8`).
 
 ### `notifications`
 
@@ -409,7 +409,7 @@ que o bot mostra. Origem: `V5`.
 | `segment` | `VARCHAR2(30 CHAR)` | não | — | FK → `ticket_tipo_config` (`FK_CHATBOT_FAQ_SEGMENT`) | Segmento a que a pergunta pertence. |
 | `question` | `VARCHAR2(200 CHAR)` | não | — | — | Pergunta, mostrada como opção no menu do segmento. |
 | `answer` | `VARCHAR2(1000 CHAR)` | não | — | — | Resposta que o bot dá. |
-| `sort_order` | `NUMBER(3)` | não | — | — | Ordem no menu do segmento (o menu mostra as 4 primeiras); também desempata o `FN_CHATBOT_RESPOSTA`. |
+| `sort_order` | `NUMBER(3)` | não | — | — | Ordem no menu do segmento (o menu mostra as 4 primeiras); também desempata o `PKG_CHATBOT.FN_CHATBOT_RESPOSTA`. |
 | `active` | `BOOLEAN` | não | `TRUE` | — | Se a pergunta aparece no menu e entra no casamento do texto livre. |
 
 **Índices:**
@@ -420,7 +420,7 @@ que o bot mostra. Origem: `V5`.
 ### `chatbot_faq_keywords`
 
 Palavras-chave de cada pergunta do FAQ, com PK composta (`faq_id`,
-`keyword`). O `FN_CHATBOT_RESPOSTA` soma o peso das que aparecem no começo
+`keyword`). O `PKG_CHATBOT.FN_CHATBOT_RESPOSTA` soma o peso das que aparecem no começo
 de alguma palavra do texto do usuário. Origem: `V5` (o `weight` veio na
 `V10`).
 
@@ -494,3 +494,28 @@ quando o ticket veio do chatbot. Origem: `V5`.
   conversa em ordem; também cobre a FK.
 - `IX_CHATBOT_MSG_FAQ` (`faq_id`): índice de FK, que o Oracle não cria
   sozinho.
+
+## Auditoria (`V12`)
+
+### `ticket_auditoria`
+
+Auditoria das mudanças de estado dos tickets, gravada pela
+`TRG_TICKETS_AUDITORIA`: uma linha por campo que mudou. Só recebe `INSERT`
+(a `TRG_TICKET_AUDITORIA_IMUTAVEL` recusa `UPDATE` e `DELETE`). Origem: `V12`.
+
+| Coluna | Tipo | Nulo | Padrão | Chave | Descrição |
+|---|---|---|---|---|---|
+| `id` | `NUMBER(19)`, identidade | não | — | PK (`PK_TICKET_AUDITORIA`) | Identificador da linha. |
+| `ticket_id` | `NUMBER(19)` | não | — | — | Ticket alterado. Sem FK: a auditoria sobrevive à exclusão do ticket. |
+| `operacao` | `VARCHAR2(6 CHAR)` | não | — | — | `INSERT`, `UPDATE` ou `DELETE` (`CK_TICKET_AUDITORIA_OPERACAO`). |
+| `campo` | `VARCHAR2(30 CHAR)` | não | — | — | `STATUS`, `PRIORITY`, `ASSIGNED_EMPLOYEE_ID`, `SEGMENT` ou `ENGINEERING_ALERT` (`CK_TICKET_AUDITORIA_CAMPO`). |
+| `valor_anterior` | `VARCHAR2(30 CHAR)` | sim | — | — | Valor antes da mudança, em texto; nulo no `INSERT`. |
+| `valor_novo` | `VARCHAR2(30 CHAR)` | sim | — | — | Valor depois da mudança, em texto; nulo no `DELETE`. |
+| `usuario_banco` | `VARCHAR2(128 CHAR)` | não | `SYS_CONTEXT('USERENV', 'SESSION_USER')` | — | Usuário do banco da sessão que mudou o ticket. |
+| `modulo` | `VARCHAR2(64 CHAR)` | sim | `SYS_CONTEXT('USERENV', 'MODULE')` | — | Módulo declarado pelo cliente ("JDBC Thin Client" para a API). |
+| `created_at` | `TIMESTAMP(6) WITH TIME ZONE` | não | `SYSTIMESTAMP` | — | Quando a mudança foi gravada. |
+
+**Índices:**
+
+- `IX_TICKET_AUDITORIA_TICKET` (`ticket_id`, `created_at`): a auditoria de
+  um ticket, em ordem.

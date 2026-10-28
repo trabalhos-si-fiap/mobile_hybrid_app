@@ -21,6 +21,7 @@ final class OracleErrors {
                 case 20001: return new NotFoundException(message);
                 case 20002: return new ConflictException(message);
                 case 20003: return new UnprocessableException(message);
+                case 20005: return new UnprocessableException(message);
                 default: break;
             }
         }

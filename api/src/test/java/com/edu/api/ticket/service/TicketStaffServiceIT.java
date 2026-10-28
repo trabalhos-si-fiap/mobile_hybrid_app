@@ -35,6 +35,20 @@ class TicketStaffServiceIT extends FullStackIntegration {
     }
 
     @Test
+    void assumingAuditsOnlyTheStatusChange() {
+        long requester = fx.user("USER");
+        long agent = fx.employee("ONLINE", "DESENVOLVEDOR");
+        long ticket = fx.ticketFor(requester, "DEFEITO_APP").status("EM_FILA").assignedTo(agent).insert();
+
+        staff.assume(login(fx.userOf(agent), "EMPLOYEE"), ticket);
+        flush();
+
+        assertThat(jdbc.queryForList("SELECT campo || ' ' || valor_anterior || ' -> ' || valor_novo"
+                + " FROM ticket_auditoria WHERE ticket_id = ? AND operacao = 'UPDATE' ORDER BY id", String.class, ticket))
+                .containsExactly("STATUS EM_FILA -> EM_ATENDIMENTO");
+    }
+
+    @Test
     void cannotAssumeATicketAlreadyInService() {
         long requester = fx.user("USER");
         long first = fx.employee("ONLINE", "DESENVOLVEDOR");

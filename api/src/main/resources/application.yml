@@ -18,6 +18,12 @@ spring:
       - classpath:db/migration
       - classpath:db/plsql
       - classpath:db/seed
+    # Os R__ dos objetos standalone saíram quando o PL/SQL virou package; um
+    # banco que já subiu os tem no histórico. Definir a lista substitui o
+    # padrão do Spring Boot, por isso o "*:future" continua aqui.
+    ignore-migration-patterns:
+      - "*:future"
+      - "repeatable:missing"
 
   servlet:
     multipart:

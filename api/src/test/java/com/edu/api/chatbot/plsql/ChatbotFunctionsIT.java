@@ -14,7 +14,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** FN_CHATBOT_RESPOSTA pelo gateway Java, com o FAQ criado por cada teste. */
+/** PKG_CHATBOT.FN_CHATBOT_RESPOSTA pelo gateway Java, com o FAQ criado por cada teste. */
 @JdbcTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")

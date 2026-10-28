@@ -20,7 +20,7 @@ import static com.edu.api.support.DashboardPlsql.number;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** Indicadores e segmentos da PR_RESUMO_DASHBOARD, com a referência fixa em 2001. */
+/** Indicadores e segmentos da PKG_DASHBOARD.PR_RESUMO_DASHBOARD, com a referência fixa em 2001. */
 @JdbcTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @ActiveProfiles("test")

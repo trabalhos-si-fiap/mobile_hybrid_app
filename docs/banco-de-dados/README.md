@@ -7,23 +7,23 @@ sendo o Flyway (`api/src/main/resources/db/`).
 
 | Arquivo | Para quê |
 |---|---|
-| [`ddl-consolidado.sql`](./ddl-consolidado.sql) | As 19 tabelas, 27 FKs e 29 índices num arquivo só, para importar no Data Modeler |
+| [`ddl-consolidado.sql`](./ddl-consolidado.sql) | As 20 tabelas, 27 FKs e 30 índices num arquivo só, para importar no Data Modeler |
 | [`conferir-ddl.sh`](./conferir-ddl.sh) | Prova, num Oracle efêmero, que o DDL consolidado gera o mesmo esquema que as migrations |
 | [`mer-conceitual.md`](./mer-conceitual.md) | Entidades, relacionamentos e cardinalidades para o brModelo |
 | [`dicionario-de-dados.md`](./dicionario-de-dados.md) | Cada tabela e coluna: tipo, nulidade, padrão, chave, valores aceitos e índices |
-| [`plsql.md`](./plsql.md) | Os 7 objetos PL/SQL: assinatura, regra, tabelas, erros, quem chama e testes |
+| [`plsql.md`](./plsql.md) | Os 3 packages e as 2 triggers PL/SQL: assinatura, regra, tabelas, erros, quem chama e testes |
 
 ## DER no SQL Developer Data Modeler
 
 1. File > Import > DDL File e escolha `ddl-consolidado.sql`.
 2. Banco: Oracle Database 23ai (ou a versão mais nova que a ferramenta
    oferecer). Confirme a importação no relatório que o Data Modeler mostra.
-3. Confira o resultado: 19 tabelas no modelo relacional e 27 linhas de FK.
+3. Confira o resultado: 20 tabelas no modelo relacional e 27 linhas de FK.
 4. Crie três subviews (botão direito no modelo relacional > New SubView) e
    arraste as tabelas:
    - **Atendimento omnichannel:** `admin_users`, `skills`, `employees`,
      `employee_skills`, `ticket_tipo_config`, `tickets`, `ticket_messages`,
-     `ticket_attachments`, `ticket_events` e `notifications`;
+     `ticket_attachments`, `ticket_events`, `notifications` e `ticket_auditoria`;
    - **Chatbot:** `chatbot_faq`, `chatbot_faq_keywords`,
      `chatbot_conversations` e `chatbot_messages`, mais `admin_users`,
      `ticket_tipo_config` e `tickets` como contexto;
@@ -97,6 +97,8 @@ Tabelas que não estavam na sugestão:
 - `ticket_events`: a trilha de cada ticket (roteado, assumido, transferido,
   escalado...). Base do histórico no console e do dashboard.
 - `notifications`: avisos para o app e o console, lidos por polling.
+- `ticket_auditoria`: a auditoria das mudanças de estado dos tickets,
+  gravada por trigger e imutável.
 - `chatbot_faq`, `chatbot_faq_keywords`, `chatbot_conversations` e
   `chatbot_messages`: o chatbot nível 0 e a conversa que o atendente vê no
   console.
@@ -105,7 +107,7 @@ Tabelas que não estavam na sugestão:
 
 ## Manutenção
 
-Quem criar uma migration nova (a próxima é a `V12`):
+Quem criar uma migration nova (a próxima é a `V13`):
 
 1. Acrescente a mudança ao `ddl-consolidado.sql`, no bloco da tabela.
 2. Rode `docs/banco-de-dados/conferir-ddl.sh` (só precisa de Docker; leva

@@ -1,54 +1,106 @@
 # Objetos PL/SQL
 
-Os 7 objetos ficam em `api/src/main/resources/db/plsql/`, um por arquivo,
-como scripts `R__` (repeatable) do Flyway, aplicados depois de todos os
-`V__`. Nenhum faz `COMMIT`: a transação é sempre da API, que confirma ou
-desfaz tudo junto. Os nomes seguem o padrão da especificação da FIAP
-(`FN_` e `PR_`, em português).
+O PL/SQL do Edu fica em três packages e duas triggers, em
+`api/src/main/resources/db/plsql/`, como scripts `R__` (repeatable) do
+Flyway, aplicados depois de todos os `V__`, na ordem do prefixo numérico:
+
+| Arquivo | Objeto |
+|---|---|
+| `R__01_pkg_tickets.sql` | `PKG_TICKETS` |
+| `R__02_pkg_chatbot.sql` | `PKG_CHATBOT` |
+| `R__03_pkg_dashboard.sql` | `PKG_DASHBOARD` (usa `PKG_TICKETS`) |
+| `R__04_trg_tickets_auditoria.sql` | `TRG_TICKETS_AUDITORIA` |
+| `R__05_trg_ticket_auditoria_imutavel.sql` | `TRG_TICKET_AUDITORIA_IMUTAVEL` |
+
+Os membros seguem o padrão de nomes da especificação da FIAP (`FN_` e `PR_`,
+em português). Até a `V11` eram sete objetos standalone; a `V12` os remove
+dos bancos que já existiam (ver "Migração dos objetos standalone").
+
+## Regras comuns
+
+- **Nenhum objeto faz `COMMIT`:** a transação é sempre da API, que confirma
+  ou desfaz tudo junto, inclusive a auditoria.
+- **`AUTHID DEFINER`** em toda spec, e nenhum `GRANT EXECUTE` para outro
+  usuário.
+- **Sem estado de package:** no nível do package só há constantes, exceções
+  e tipos; cursores e variáveis são locais às rotinas. Recriar um package
+  com a API no ar não causa ORA-04068 nas sessões do pool.
+- **Erros nomeados:** cada package declara na spec os códigos que lança
+  (`c_erro_...`) e uma exceção ligada a cada um (`e_...`, por `PRAGMA
+  EXCEPTION_INIT`), para outro PL/SQL tratar o erro pelo nome.
+- **Reuso:** o que dois membros fazem igual fica num membro privado do body,
+  como `marcar_atribuicao` e `notificar_atendente`, usados pelo roteamento e
+  pelo escalonamento.
 
 ## Resumo
 
-| Objeto | Tipo | Papel | Chamado por |
+| Membro | Tipo | Papel | Chamado por |
 |---|---|---|---|
-| `FN_PROXIMO_ATENDENTE` | function | Escolhe o atendente ONLINE da skill com menos tickets ativos, fora quem abriu o ticket | `PR_ROTEAR_TICKET` e `PR_ESCALAR_TICKET_CRITICO` |
-| `FN_STATUS_SLA_TICKET` | function | Status do SLA de um ticket | `TicketProcedures.slaStatuses` e `PR_RESUMO_DASHBOARD` |
-| `PR_ROTEAR_TICKET` | procedure | Aplica a matriz de triagem e atribui o ticket | `TicketProcedures.route` |
-| `PR_ESCALAR_TICKET_CRITICO` | procedure | Escala os tickets com SLA estourado | `TicketProcedures.escalateOverdue` |
-| `FN_CHATBOT_RESPOSTA` | function | Casa o texto livre do usuário com o FAQ do chatbot | `ChatbotFunctions.answerFor` |
-| `FN_CALC_TAXA_VARIACAO` | function | Variação percentual entre dois períodos | `PR_RESUMO_DASHBOARD` |
-| `PR_RESUMO_DASHBOARD` | procedure | Indicadores, segmentos e anomalias do dashboard, em três cursores | `DashboardProcedures.summary` |
+| `PKG_TICKETS.FN_PROXIMO_ATENDENTE` | function | Escolhe o atendente ONLINE da skill com menos tickets ativos, fora quem abriu o ticket | `PR_ROTEAR_TICKET` e `PR_ESCALAR_TICKET_CRITICO` |
+| `PKG_TICKETS.FN_STATUS_SLA_TICKET` | function | Status do SLA de um ticket | `TicketProcedures.slaStatuses`, `PR_BUSCAR_TICKETS` e `PKG_DASHBOARD.PR_RESUMO_DASHBOARD` |
+| `PKG_TICKETS.PR_ROTEAR_TICKET` | procedure | Aplica a matriz de triagem e atribui o ticket | `TicketProcedures.route` |
+| `PKG_TICKETS.PR_ESCALAR_TICKET_CRITICO` | procedure | Escala os tickets com SLA estourado | `TicketProcedures.escalateOverdue` |
+| `PKG_TICKETS.PR_BUSCAR_TICKETS` | procedure | Busca de tickets com filtros opcionais, por Dynamic SQL | `TicketProcedures.search` |
+| `PKG_CHATBOT.FN_CHATBOT_RESPOSTA` | function | Casa o texto livre do usuário com o FAQ do chatbot | `ChatbotFunctions.answerFor` |
+| `PKG_DASHBOARD.FN_CALC_TAXA_VARIACAO` | function | Variação percentual entre dois períodos | `PR_RESUMO_DASHBOARD` |
+| `PKG_DASHBOARD.PR_RESUMO_DASHBOARD` | procedure | Indicadores, segmentos e anomalias do dashboard, em três cursores | `DashboardProcedures.summary` |
+| `TRG_TICKETS_AUDITORIA` | trigger | Grava em `ticket_auditoria` cada mudança de estado de um ticket | o Oracle, em todo `INSERT`, `DELETE` e `UPDATE` das colunas auditadas |
+| `TRG_TICKET_AUDITORIA_IMUTAVEL` | trigger | Impede alterar ou apagar a auditoria | o Oracle, em todo `UPDATE` e `DELETE` de `ticket_auditoria` |
 
 As classes Java ficam em `api/src/main/java/com/edu/api/`:
-`ticket/plsql/TicketProcedures.java`, `chatbot/plsql/ChatbotFunctions.java`
-e `dashboard/plsql/DashboardProcedures.java`. Cada uma é o único ponto do
-Java que chama os seus objetos.
+`ticket/plsql/TicketProcedures.java` (`PKG_TICKETS`),
+`chatbot/plsql/ChatbotFunctions.java` (`PKG_CHATBOT`) e
+`dashboard/plsql/DashboardProcedures.java` (`PKG_DASHBOARD`). Cada uma é o
+único ponto do Java que chama o seu package.
 
 ## Erros e tradução na API
 
-| Código | Levantado por | Situação | HTTP |
-|---|---|---|---|
-| -20001 | `FN_STATUS_SLA_TICKET`, `PR_ROTEAR_TICKET` | Ticket não encontrado | 404 |
-| -20002 | `PR_ROTEAR_TICKET` | O estado do ticket não permite roteamento | 409 |
-| -20003 | `PR_ROTEAR_TICKET` | Segmento sem configuração ativa | 422 |
-| -20004 | `PR_RESUMO_DASHBOARD` | Período fora de 7, 30 e 90 dias | não traduzido |
+| Código | Constante e exceção | Levantado por | Situação | HTTP |
+|---|---|---|---|---|
+| -20001 | `PKG_TICKETS.c_erro_ticket_nao_encontrado`, `e_ticket_nao_encontrado` | `FN_STATUS_SLA_TICKET`, `PR_ROTEAR_TICKET` | Ticket não encontrado | 404 |
+| -20002 | `PKG_TICKETS.c_erro_estado_invalido`, `e_estado_invalido` | `PR_ROTEAR_TICKET` | O estado do ticket não permite roteamento | 409 |
+| -20003 | `PKG_TICKETS.c_erro_segmento_inativo`, `e_segmento_inativo` | `PR_ROTEAR_TICKET` | Segmento sem configuração ativa | 422 |
+| -20004 | `PKG_DASHBOARD.c_erro_periodo_invalido`, `e_periodo_invalido` | `PR_RESUMO_DASHBOARD` | Período fora de 7, 30 e 90 dias | não traduzido |
+| -20005 | `PKG_TICKETS.c_erro_busca_invalida`, `e_busca_invalida` | `PR_BUSCAR_TICKETS` | Parâmetro de busca inválido | 422 |
+| -20006 | — | `TRG_TICKET_AUDITORIA_IMUTAVEL` | Tentativa de alterar ou apagar a auditoria | não chega à API |
 
 A tradução fica em `OracleErrors.translate`
 (`api/src/main/java/com/edu/api/ticket/plsql/OracleErrors.java`), usada por
-`TicketProcedures`. O -20004 não chega à API em uso normal: o
-`DashboardController` valida `days` antes e responde 400 (`days: use 7, 30
-ou 90`). Qualquer outro erro do Oracle vira 500, no formato de erro da API.
+`TicketProcedures`. O -20004 e o -20005 não chegam à API em uso normal: o
+`DashboardController` valida `days` e o `TicketSearchCriteria` valida os
+parâmetros da busca antes, respondendo 400. Qualquer outro erro do Oracle
+vira 500, no formato de erro da API.
 
-## `FN_PROXIMO_ATENDENTE`
+## `PKG_TICKETS`
+
+Atendimento omnichannel: escolha do atendente, SLA, roteamento,
+escalonamento e busca. Arquivo:
+`api/src/main/resources/db/plsql/R__01_pkg_tickets.sql`.
+
+Na spec, além dos membros públicos abaixo, ficam os códigos de erro
+(`c_erro_ticket_nao_encontrado`, `c_erro_estado_invalido`,
+`c_erro_segmento_inativo`, `c_erro_busca_invalida`) e as exceções ligadas a
+eles (ver "Erros e tradução na API").
+
+**Membros privados** (só no body):
+
+| Membro | Papel | Usado por |
+|---|---|---|
+| `segundos` | Converte um intervalo em segundos sem estourar acima de 99 dias (`DSINTERVAL_UNCONSTRAINED`) | `FN_STATUS_SLA_TICKET` |
+| `marcar_atribuicao` | Grava `employees.last_assigned_at` | `PR_ROTEAR_TICKET` (sempre que há atendente) e `PR_ESCALAR_TICKET_CRITICO` (só quando o dono muda) |
+| `notificar_atendente` | Insere a notificação para o usuário do atendente | `PR_ROTEAR_TICKET` (`TICKET_ATRIBUIDO`) e `PR_ESCALAR_TICKET_CRITICO` (`TICKET_ESCALADO`) |
+
+### `PKG_TICKETS.FN_PROXIMO_ATENDENTE`
 
 Escolhe o próximo atendente de uma skill. Arquivo:
-`api/src/main/resources/db/plsql/R__fn_proximo_atendente.sql`.
+`api/src/main/resources/db/plsql/R__01_pkg_tickets.sql`.
 
 ```sql
-CREATE OR REPLACE FUNCTION FN_PROXIMO_ATENDENTE (
+FUNCTION FN_PROXIMO_ATENDENTE (
     p_skill_id       IN skills.id%TYPE,
     p_excluir_id     IN employees.id%TYPE DEFAULT NULL,
     p_solicitante_id IN admin_users.id%TYPE DEFAULT NULL
-) RETURN employees.id%TYPE
+) RETURN employees.id%TYPE;
 ```
 
 | Parâmetro | Modo e tipo | Descrição |
@@ -78,25 +130,26 @@ candidato estiver `ONLINE`.
 
 **Erros:** nenhum.
 
-**Quem chama:** só PL/SQL: o `PR_ROTEAR_TICKET` (atribuição, excluindo quem
-abriu o ticket) e o `PR_ESCALAR_TICKET_CRITICO` (novo dono, excluindo o
-atual e quem abriu o ticket). Nenhum código Java chama a função.
+**Quem chama:** só PL/SQL: o `PKG_TICKETS.PR_ROTEAR_TICKET` (atribuição,
+excluindo quem abriu o ticket) e o `PKG_TICKETS.PR_ESCALAR_TICKET_CRITICO`
+(novo dono, excluindo o atual e quem abriu o ticket). Nenhum código Java
+chama a função.
 
 **Testes:** `NextAgentFunctionIT` (casos da regra), `RoutingProcedureIT` e
 `EscalationProcedureIT` (pelas procedures) e `PlsqlObjectsIT` (objeto
 existe e está válido).
 
-## `FN_STATUS_SLA_TICKET`
+### `PKG_TICKETS.FN_STATUS_SLA_TICKET`
 
 Status textual do SLA de um ticket, mostrado no app, no console e usado no
 indicador de SLA do dashboard. Arquivo:
-`api/src/main/resources/db/plsql/R__fn_status_sla_ticket.sql`.
+`api/src/main/resources/db/plsql/R__01_pkg_tickets.sql`.
 
 ```sql
-CREATE OR REPLACE FUNCTION FN_STATUS_SLA_TICKET (
+FUNCTION FN_STATUS_SLA_TICKET (
     p_ticket_id  IN tickets.id%TYPE,
     p_referencia IN TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP
-) RETURN VARCHAR2
+) RETURN VARCHAR2;
 ```
 
 | Parâmetro | Modo e tipo | Descrição |
@@ -136,25 +189,26 @@ CREATE OR REPLACE FUNCTION FN_STATUS_SLA_TICKET (
 vários tickets numa consulta só, usado por `TicketViews` em toda resposta
 com o detalhe de um ticket (abertura, consulta e ações do usuário e do
 atendente) e nas listas `GET /api/v1/tickets/mine` e
-`GET /api/v1/tickets/queue`. Também o `PR_RESUMO_DASHBOARD`, no percentual
-de SLA cumprido.
+`GET /api/v1/tickets/queue`. Também o `PKG_DASHBOARD.PR_RESUMO_DASHBOARD`,
+no percentual de SLA cumprido, e a `PR_BUSCAR_TICKETS`, na coluna
+`sla_status`.
 
 **Testes:** `SlaStatusFunctionIT` (casos da regra), `TicketProceduresIT`
 (leitura em lote), `TicketServiceIT` (status na resposta) e
-`PlsqlObjectsIT` (objeto existe e está válido).
+`PlsqlObjectsIT` (membro público de um package válido).
 
-## `PR_ROTEAR_TICKET`
+### `PKG_TICKETS.PR_ROTEAR_TICKET`
 
 Roteia um ticket pela matriz de triagem: define fila, prioridade e prazo, e
 atribui ao próximo atendente ONLINE da skill, nunca a quem abriu o ticket.
 Arquivo:
-`api/src/main/resources/db/plsql/R__pr_rotear_ticket.sql`.
+`api/src/main/resources/db/plsql/R__01_pkg_tickets.sql`.
 
 ```sql
-CREATE OR REPLACE PROCEDURE PR_ROTEAR_TICKET (
+PROCEDURE PR_ROTEAR_TICKET (
     p_ticket_id   IN  tickets.id%TYPE,
     p_employee_id OUT employees.id%TYPE
-)
+);
 ```
 
 | Parâmetro | Modo e tipo | Descrição |
@@ -169,20 +223,20 @@ CREATE OR REPLACE PROCEDURE PR_ROTEAR_TICKET (
 1. Trava o ticket (`SELECT ... FOR UPDATE`).
 2. Só roteia ticket `ABERTO`, ou `EM_FILA` e `ESCALADO` sem dono.
 3. Lê a linha ativa de `ticket_tipo_config` do segmento do ticket.
-4. Escolhe o atendente com `FN_PROXIMO_ATENDENTE(skill, p_solicitante_id
-   => tickets.user_id)`: quem abriu o ticket nunca o recebe, mesmo sendo
+4. Escolhe o atendente com `PKG_TICKETS.FN_PROXIMO_ATENDENTE(skill,
+   p_solicitante_id => tickets.user_id)`: quem abriu o ticket nunca o recebe, mesmo sendo
    atendente da skill.
 5. Atualiza o ticket: status `EM_FILA` (ou mantém `ESCALADO`), dono,
    prioridade padrão do segmento (só se estava `ABERTO`), início e fim do
    prazo (só se ainda não havia: fim = agora + `sla_minutes`).
-6. Com atendente: grava `employees.last_assigned_at` e uma notificação
-   `TICKET_ATRIBUIDO` para ele.
+6. Com atendente: grava `employees.last_assigned_at` (`marcar_atribuicao`)
+   e uma notificação `TICKET_ATRIBUIDO` para ele (`notificar_atendente`).
 7. Grava o evento `ROTEADO`, com a fila no detalhe ("Fila TECNOLOGIA" ou
    "Fila TECNOLOGIA: nenhum outro atendente online").
 
 **Tabelas:** lê `tickets`, `ticket_tipo_config`, `employees` e
 `employee_skills`; grava `tickets`, `employees`, `notifications` e
-`ticket_events`.
+`ticket_events` (e, pela `TRG_TICKETS_AUDITORIA`, `ticket_auditoria`).
 
 **Travas e transação:** `SELECT ... FOR UPDATE` no ticket, para dois
 roteamentos do mesmo ticket não se atropelarem. Não faz `COMMIT`.
@@ -213,20 +267,20 @@ outros roteamentos são confirmados.
 **Testes:** `RoutingProcedureIT` (casos da regra), `TicketProceduresIT`
 (tradução dos erros e lote que segue depois de uma falha),
 `ConcurrentTicketUpdatesIT` (presença confirmada mesmo com um ticket que
-falha) e `PlsqlObjectsIT` (objeto existe e está válido).
+falha) e `PlsqlObjectsIT` (membro público de um package válido).
 
-## `PR_ESCALAR_TICKET_CRITICO`
+### `PKG_TICKETS.PR_ESCALAR_TICKET_CRITICO`
 
 Escala os tickets com SLA estourado: sobe a prioridade, passa para outro
 atendente ONLINE da skill que não seja quem abriu o ticket (ou mantém o
 dono, se não houver outro), marca `ESCALADO` e renova o prazo. Arquivo:
-`api/src/main/resources/db/plsql/R__pr_escalar_ticket_critico.sql`.
+`api/src/main/resources/db/plsql/R__01_pkg_tickets.sql`.
 
 ```sql
-CREATE OR REPLACE PROCEDURE PR_ESCALAR_TICKET_CRITICO (
+PROCEDURE PR_ESCALAR_TICKET_CRITICO (
     p_referencia    IN  TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP,
     p_qtd_escalados OUT NUMBER
-)
+);
 ```
 
 | Parâmetro | Modo e tipo | Descrição |
@@ -243,12 +297,14 @@ CREATE OR REPLACE PROCEDURE PR_ESCALAR_TICKET_CRITICO (
    novo.
 2. Para cada um, num `SAVEPOINT` próprio:
    1. prioridade `NORMAL` vira `ALTA`; `ALTA` e `CRITICA` viram `CRITICA`;
-   2. novo dono: `FN_PROXIMO_ATENDENTE(skill, dono atual, quem abriu o
-      ticket)`, ou o dono atual se não houver outro;
+   2. novo dono: `PKG_TICKETS.FN_PROXIMO_ATENDENTE(skill, dono atual, quem
+      abriu o ticket)`, ou o dono atual se não houver outro;
    3. ticket fica `ESCALADO`, com prazo novo: de `p_referencia` até
       `p_referencia` + `escalation_minutes`;
-   4. se o dono mudou, grava `employees.last_assigned_at` dele;
-   5. com dono, grava a notificação `TICKET_ESCALADO` para ele;
+   4. se o dono mudou, grava `employees.last_assigned_at` dele
+      (`marcar_atribuicao`);
+   5. com dono, grava a notificação `TICKET_ESCALADO` para ele
+      (`notificar_atendente`);
    6. grava o evento `ESCALADO` ("Prioridade NORMAL -> ALTA").
 3. Se um ticket falhar, desfaz só ele (`ROLLBACK TO SAVEPOINT`), grava o
    evento `ERRO_ESCALONAMENTO` com a mensagem do erro e segue para o
@@ -256,7 +312,7 @@ CREATE OR REPLACE PROCEDURE PR_ESCALAR_TICKET_CRITICO (
 
 **Tabelas:** lê `tickets`, `ticket_tipo_config`, `employees` e
 `employee_skills`; grava `tickets`, `employees`, `notifications` e
-`ticket_events`.
+`ticket_events` (e, pela `TRG_TICKETS_AUDITORIA`, `ticket_auditoria`).
 
 **Travas e transação:** `FOR UPDATE OF t.status SKIP LOCKED`: um ticket
 travado por outra transação fica para a próxima execução, em vez de
@@ -269,18 +325,130 @@ bloquear o job. `SAVEPOINT sp_ticket` por ticket. Não faz `COMMIT`.
 `TicketSlaJob`, a cada 60 s (`TicketMaintenanceService.escalateOverdue`).
 
 **Testes:** `EscalationProcedureIT` (casos da regra), `TicketProceduresIT`
-(contagem devolvida) e `PlsqlObjectsIT` (objeto existe e está válido).
+(contagem devolvida) e `PlsqlObjectsIT` (membro público de um package válido).
 
-## `FN_CHATBOT_RESPOSTA`
+### `PKG_TICKETS.PR_BUSCAR_TICKETS`
 
-Casa o texto livre do usuário com o FAQ do chatbot (Mentor Edu). Arquivo:
-`api/src/main/resources/db/plsql/R__fn_chatbot_resposta.sql`.
+Busca de tickets com filtros opcionais, para o console consultar a base em
+tempo real. É o exemplo de Dynamic SQL do projeto: o SQL é montado na hora,
+só com os filtros recebidos. Arquivo:
+`api/src/main/resources/db/plsql/R__01_pkg_tickets.sql`.
 
 ```sql
-CREATE OR REPLACE FUNCTION FN_CHATBOT_RESPOSTA (
+PROCEDURE PR_BUSCAR_TICKETS (
+    p_usuario_id   IN  admin_users.id%TYPE,
+    p_ver_todos    IN  BOOLEAN,
+    p_status       IN  tickets.status%TYPE      DEFAULT NULL,
+    p_segment      IN  tickets.segment%TYPE     DEFAULT NULL,
+    p_priority     IN  tickets.priority%TYPE    DEFAULT NULL,
+    p_atendente_id IN  employees.id%TYPE        DEFAULT NULL,
+    p_criado_desde IN  TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+    p_criado_ate   IN  TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+    p_texto        IN  VARCHAR2                 DEFAULT NULL,
+    p_alerta_eng   IN  BOOLEAN                  DEFAULT NULL,
+    p_ordenar_por  IN  VARCHAR2                 DEFAULT 'CRIADO_EM',
+    p_direcao      IN  VARCHAR2                 DEFAULT 'DESC',
+    p_limite       IN  PLS_INTEGER              DEFAULT 50,
+    p_referencia   IN  TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+    p_resultado    OUT SYS_REFCURSOR
+);
+```
+
+| Parâmetro | Modo e tipo | Descrição |
+|---|---|---|
+| `p_usuario_id` | `IN admin_users.id%TYPE` | Quem busca. Obrigatório. |
+| `p_ver_todos` | `IN BOOLEAN` | `TRUE` para o ADMIN (sem restrição); `FALSE` aplica a visibilidade de `p_usuario_id`. Obrigatório. |
+| `p_status`, `p_segment`, `p_priority` | `IN`, tipos das colunas | Igualdade com a coluna. |
+| `p_atendente_id` | `IN employees.id%TYPE` | Dono do ticket. |
+| `p_criado_desde`, `p_criado_ate` | `IN TIMESTAMP WITH TIME ZONE` | Abertura em `[desde, ate)`. |
+| `p_texto` | `IN VARCHAR2` | Trecho da descrição, sem diferenciar maiúsculas; de 3 a 200 caracteres depois do `TRIM`; só espaços é ignorado. |
+| `p_alerta_eng` | `IN BOOLEAN` | Com ou sem alerta de engenharia. |
+| `p_ordenar_por` | `IN VARCHAR2` | `CRIADO_EM` (nulo), `ATUALIZADO_EM`, `PRAZO_SLA` ou `PRIORIDADE`. |
+| `p_direcao` | `IN VARCHAR2` | `ASC` ou `DESC` (nulo). |
+| `p_limite` | `IN PLS_INTEGER` | De 1 a 200; nulo é 50. |
+| `p_referencia` | `IN TIMESTAMP WITH TIME ZONE` | Instante do status de SLA; nulo é agora. Existe para testes determinísticos. |
+| `p_resultado` | `OUT SYS_REFCURSOR` | Os tickets encontrados. |
+
+O JDBC passa todos os parâmetros por posição, inclusive os nulos; por isso o
+body aplica os padrões com `NVL` em vez de depender do `DEFAULT`.
+
+**Saída:** uma linha por ticket, no máximo `p_limite`, com `id`, `segment`,
+`segment_label`, `status`, `priority`, `sla_status`
+(`FN_STATUS_SLA_TICKET(id, p_referencia)`), `sla_due_at`, `requester_name`,
+`assignee_name` (nulo sem dono), `engineering_alert`, `created_at` e
+`updated_at`: as colunas do `TicketSummaryResponse`, numa ida ao banco.
+
+**Regra:**
+
+1. Valida os parâmetros (erro -20005, abaixo).
+2. Monta o `WHERE` só com os filtros recebidos, sempre na mesma ordem e com
+   os mesmos nomes de bind (`:status`, `:segment`...). Cada combinação de
+   filtros gera um único texto de SQL, que o Oracle reaproveita.
+3. Visibilidade (com `p_ver_todos = FALSE`), a mesma de
+   `TicketAccess.canView` para staff: o ticket aparece se foi aberto por
+   `p_usuario_id`, ou está atribuído ao cadastro de atendente dele, ou é de
+   um segmento cuja skill ele tem (sem olhar `ticket_tipo_config.active`).
+   Sem cadastro de atendente, só os que abriu. A busca mostra também os
+   tickets fechados que ele pode ver, ao contrário da fila: o
+   `GET /tickets/{id}` já os mostra um a um.
+4. Texto: o bind recebe `'%' || texto || '%'` em minúsculas, com `\`, `%` e
+   `_` escapados (a barra primeiro), e o `LIKE` usa `ESCAPE '\'`: os
+   curingas digitados valem como caractere.
+5. Alerta: o predicado é `= TRUE` ou `= FALSE`, escolhido por `IF`.
+6. Ordenação por whitelist: um `CASE` troca `p_ordenar_por` por uma
+   expressão fixa (`t.created_at`, `t.updated_at`, `t.sla_due_at` ou
+   `DECODE(t.priority, 'CRITICA', 3, 'ALTA', 2, 1)`) e `p_direcao` por `ASC`
+   ou `DESC`. Nenhum caractere desses parâmetros entra no SQL. O prazo nulo
+   fica sempre no fim; o desempate é `id`, na mesma direção.
+7. Uma consulta interna filtra, ordena e limita (`FETCH FIRST :limite ROWS
+   ONLY`); a externa junta rótulo e nomes e calcula o SLA só das linhas
+   devolvidas.
+8. `DBMS_SQL`: `OPEN_CURSOR`, `PARSE`, `BIND_VARIABLE` só dos filtros
+   presentes, `EXECUTE` e `TO_REFCURSOR`, que entrega o resultado como um
+   `SYS_REFCURSOR` comum. O `DBMS_SQL` resolve o número variável de binds,
+   que o `OPEN ... FOR ... USING` não resolve. Se algo falhar antes, o
+   cursor é fechado e o erro relançado.
+
+**Tabelas:** lê `tickets`, `ticket_tipo_config`, `admin_users`, `employees`
+e `employee_skills`; não grava.
+
+**Travas e transação:** nenhuma trava. Não faz `COMMIT`.
+
+**Erros:** -20005 (`e_busca_invalida`) quando `p_usuario_id` ou
+`p_ver_todos` é nulo, quando `p_ordenar_por`, `p_direcao` ou `p_limite` é
+inválido, quando `p_texto` tem menos de 3 ou mais de 200 caracteres, ou
+quando `p_criado_desde` é depois de `p_criado_ate`. A mensagem diz o
+parâmetro, sem repetir o valor recebido.
+
+**Desempenho:** no volume atual (cerca de 2.000 tickets) nenhuma busca pesa.
+O período usa o índice de `created_at`; as ordenações ordenam as linhas
+filtradas, e o `LIKE` com `%` na frente lê a tabela inteira. O limite de 200
+linhas e o tempo máximo de 10 s no JDBC seguram o custo.
+
+**Quem chama:** `TicketProcedures.search`, usado por `TicketStaffService` em
+`GET /api/v1/tickets/search` (só `EMPLOYEE` e `ADMIN`).
+
+**Testes:** `SearchTicketsProcedureIT` (casos da regra), `TicketProceduresIT`
+(leitura do cursor no Java), `TicketSecurityIT` (visibilidade pela API) e
+`PlsqlObjectsIT` (membro público de um package válido).
+
+## `PKG_CHATBOT`
+
+Chatbot nível 0 (Mentor Edu). Arquivo:
+`api/src/main/resources/db/plsql/R__02_pkg_chatbot.sql`. Membro privado:
+`normalizar`, que põe o texto em minúsculas, tira os acentos, troca o que
+não é letra ou número por espaço e põe um espaço na frente.
+
+### `PKG_CHATBOT.FN_CHATBOT_RESPOSTA`
+
+Casa o texto livre do usuário com o FAQ do chatbot (Mentor Edu). Arquivo:
+`api/src/main/resources/db/plsql/R__02_pkg_chatbot.sql`.
+
+```sql
+FUNCTION FN_CHATBOT_RESPOSTA (
     p_texto   IN VARCHAR2,
     p_segment IN VARCHAR2 DEFAULT NULL
-) RETURN chatbot_faq.id%TYPE
+) RETURN chatbot_faq.id%TYPE;
 ```
 
 | Parâmetro | Modo e tipo | Descrição |
@@ -319,19 +487,27 @@ quando o usuário digita um texto em
 uma opção do menu não passa pela função.
 
 **Testes:** `ChatbotFunctionsIT` (casos da regra), `ChatbotHttpFlowIT`
-(conversa pela API) e `PlsqlObjectsIT` (objeto existe e está válido).
+(conversa pela API) e `PlsqlObjectsIT` (membro público de um package válido).
 
-## `FN_CALC_TAXA_VARIACAO`
+## `PKG_DASHBOARD`
+
+Dashboard do atendimento. Arquivo:
+`api/src/main/resources/db/plsql/R__03_pkg_dashboard.sql`. Na spec ficam
+`c_erro_periodo_invalido` (-20004) e `e_periodo_invalido`. Membros
+privados: o tipo `t_medidas` e a procedure `medir`, que calcula as métricas
+de uma janela. Usa `PKG_TICKETS.FN_STATUS_SLA_TICKET` no percentual de SLA.
+
+### `PKG_DASHBOARD.FN_CALC_TAXA_VARIACAO`
 
 Variação percentual de um indicador entre o período atual e o anterior,
 usada nos cartões do dashboard do atendimento. Arquivo:
-`api/src/main/resources/db/plsql/R__fn_calc_taxa_variacao.sql`.
+`api/src/main/resources/db/plsql/R__03_pkg_dashboard.sql`.
 
 ```sql
-CREATE OR REPLACE FUNCTION FN_CALC_TAXA_VARIACAO (
+FUNCTION FN_CALC_TAXA_VARIACAO (
     p_atual    IN NUMBER,
     p_anterior IN NUMBER
-) RETURN NUMBER DETERMINISTIC
+) RETURN NUMBER DETERMINISTIC;
 ```
 
 | Parâmetro | Modo e tipo | Descrição |
@@ -353,28 +529,29 @@ CREATE OR REPLACE FUNCTION FN_CALC_TAXA_VARIACAO (
 
 **Erros:** nenhum.
 
-**Quem chama:** só a `PR_RESUMO_DASHBOARD`, nas colunas de variação dos
-cursores `p_kpis` e `p_segmentos`. Nenhum código Java chama a função.
+**Quem chama:** só a `PKG_DASHBOARD.PR_RESUMO_DASHBOARD`, nas colunas de
+variação dos cursores `p_kpis` e `p_segmentos`. Nenhum código Java chama a
+função.
 
 **Testes:** `VariationRateFunctionIT` (casos da regra),
 `DashboardSummaryProcedureIT` (variação nos cursores) e `PlsqlObjectsIT`
 (objeto existe e está válido).
 
-## `PR_RESUMO_DASHBOARD`
+### `PKG_DASHBOARD.PR_RESUMO_DASHBOARD`
 
 Resumo do atendimento para o dashboard: indicadores do período contra o
 período anterior, os mesmos indicadores por segmento e a detecção de
 anomalias de volume. Só lê. Arquivo:
-`api/src/main/resources/db/plsql/R__pr_resumo_dashboard.sql`.
+`api/src/main/resources/db/plsql/R__03_pkg_dashboard.sql`.
 
 ```sql
-CREATE OR REPLACE PROCEDURE PR_RESUMO_DASHBOARD (
+PROCEDURE PR_RESUMO_DASHBOARD (
     p_dias       IN  NUMBER,
     p_referencia IN  TIMESTAMP WITH TIME ZONE,
     p_kpis       OUT SYS_REFCURSOR,
     p_segmentos  OUT SYS_REFCURSOR,
     p_anomalias  OUT SYS_REFCURSOR
-)
+);
 ```
 
 | Parâmetro | Modo e tipo | Descrição |
@@ -394,14 +571,14 @@ CREATE OR REPLACE PROCEDURE PR_RESUMO_DASHBOARD (
 | `metrica` | Nome da métrica (abaixo). |
 | `atual` | Valor no período atual. |
 | `anterior` | Valor no período anterior (nulo para `BACKLOG`). |
-| `variacao` | `FN_CALC_TAXA_VARIACAO(atual, anterior)`. |
+| `variacao` | `PKG_DASHBOARD.FN_CALC_TAXA_VARIACAO(atual, anterior)`. |
 
 | Métrica | Valor |
 |---|---|
 | `ABERTOS` | Tickets abertos no período. |
 | `RESOLVIDOS` | Tickets `RESOLVIDO` ou `FECHADO` com `resolved_at` no período. |
 | `BACKLOG` | Tickets abertos antes da referência que ainda não estão `RESOLVIDO` nem `FECHADO`. |
-| `SLA_CUMPRIDO_PCT` | Percentual dos resolvidos no período com `FN_STATUS_SLA_TICKET` = `CUMPRIDO`. |
+| `SLA_CUMPRIDO_PCT` | Percentual dos resolvidos no período com `PKG_TICKETS.FN_STATUS_SLA_TICKET` = `CUMPRIDO`. |
 | `ESCALADOS` | Eventos `ESCALADO` no período. |
 | `TEMPO_MEDIO_ASSUMIR_MIN` | Média, em minutos, da abertura até o atendente assumir, dos tickets assumidos no período. |
 | `TEMPO_MEDIO_RESOLUCAO_H` | Média, em horas, da abertura até a resolução, dos resolvidos no período. |
@@ -447,8 +624,8 @@ grava.
 
 **Travas e transação:** nenhuma trava. Não faz `COMMIT`.
 
-**Erros:** -20004 para período inválido; não traduzido pela API (ver
-"Erros e tradução na API").
+**Erros:** -20004 (`e_periodo_invalido`) para período inválido; não
+traduzido pela API (ver "Erros e tradução na API").
 
 **Quem chama:** `DashboardProcedures.summary`, usado por
 `OmnichannelDashboardService` em `GET /api/v1/dashboard/omnichannel?days=7`
@@ -457,25 +634,105 @@ grava.
 **Testes:** `DashboardSummaryProcedureIT` (indicadores e segmentos),
 `DashboardAnomalyProcedureIT` (anomalias), `DashboardProceduresIT` (leitura
 dos cursores no Java), `OmnichannelDashboardIT` (endpoint) e
-`PlsqlObjectsIT` (objeto existe e está válido).
+`PlsqlObjectsIT` (membro público de um package válido).
+
+## Triggers
+
+### `TRG_TICKETS_AUDITORIA`
+
+Auditoria das mudanças de estado dos tickets, venham da API, do PL/SQL ou
+de SQL manual. Arquivo:
+`api/src/main/resources/db/plsql/R__04_trg_tickets_auditoria.sql`.
+
+```sql
+CREATE OR REPLACE TRIGGER TRG_TICKETS_AUDITORIA
+AFTER INSERT OR DELETE
+   OR UPDATE OF status, priority, assigned_employee_id, segment, engineering_alert
+   ON tickets
+FOR EACH ROW
+```
+
+**Regra:**
+
+1. Para cada campo auditado (`STATUS`, `PRIORITY`, `ASSIGNED_EMPLOYEE_ID`,
+   `SEGMENT` e `ENGINEERING_ALERT`, nessa ordem), grava uma linha em
+   `ticket_auditoria` quando o valor antigo e o novo diferem (nulo e valor
+   são diferentes; nulo e nulo, iguais). `ENGINEERING_ALERT` vira `TRUE` ou
+   `FALSE`.
+2. `INSERT` grava o estado inicial (sem linha para dono nulo); `DELETE`
+   grava o estado final, com `valor_novo` nulo; `UPDATE` grava só o que
+   mudou.
+3. Um `UPDATE` que não cita nenhuma coluna auditada (como o das mensagens
+   do chat, que só muda `updated_at`) nem dispara a trigger. Quando cita,
+   mas com o mesmo valor (as procedures regravam `status` e `priority`),
+   não grava nada.
+4. Usuário do banco e módulo vêm dos `DEFAULT` da tabela
+   (`SYS_CONTEXT('USERENV', ...)`).
+
+**Tabelas:** grava `ticket_auditoria`; não lê `tickets` (sem erro de tabela
+mutante) e não altera a linha auditada.
+
+**Travas e transação:** não faz `COMMIT` nem usa transação autônoma: a
+auditoria entra e sai com a transação que mudou o ticket. O `ROLLBACK TO
+SAVEPOINT` do escalonamento desfaz também a auditoria do ticket que falhou.
+
+### `TRG_TICKET_AUDITORIA_IMUTAVEL`
+
+`BEFORE UPDATE OR DELETE ON ticket_auditoria FOR EACH ROW`: lança -20006
+("A auditoria de tickets não pode ser alterada nem apagada"). A auditoria só
+recebe `INSERT`. Arquivo:
+`api/src/main/resources/db/plsql/R__05_trg_ticket_auditoria_imutavel.sql`.
+
+### Limites da auditoria
+
+- A API, o Flyway e as ferramentas entram com o mesmo usuário, dono do
+  schema (`edu_admin`): `usuario_banco` é quase sempre `EDU_ADMIN`, e
+  `modulo` é o que o cliente declara ("JDBC Thin Client" para a API), sem
+  verificação.
+- O dono do schema pode desabilitar as triggers, e `TRUNCATE` não dispara
+  trigger de linha. Num ambiente real, a API usaria um usuário sem
+  privilégio de DDL.
+- Quem fez a ação no sistema (o atendente) continua em `ticket_events`.
+
+**Testes:** `TicketAuditTriggerIT` (casos da regra e imutabilidade),
+`TicketStaffServiceIT` (assumir um ticket grava só o status),
+`PlsqlObjectsIT` e `FlywayUpgradeIT` (triggers habilitadas).
+
+## Migração dos objetos standalone
+
+A `V12__pacotes_plsql_auditoria.sql` cria `ticket_auditoria` e remove, num
+bloco anônimo, os sete objetos standalone que viraram membros dos packages
+(`EXECUTE IMMEDIATE 'DROP ...'` só para os nomes fixos que existirem em
+`user_objects`). Num banco novo o bloco não faz nada. Como os `R__` antigos
+saíram do repositório, `application.yml` define
+`spring.flyway.ignore-migration-patterns` com `"*:future"` e
+`"repeatable:missing"`: só repeatables ausentes são tolerados, e um `R__`
+apagado por engano aparece no `PlsqlObjectsIT`. O `FlywayUpgradeIT`
+reproduz um banco antigo e confere a migração.
 
 ## Quem chama quem
 
 ```text
 POST /tickets ───────────────┐
-POST /tickets/{id}/transfer ─┴─► TicketProcedures.route ─────────┐
-PUT  /employees/me/presence ─┐                                   ├─► PR_ROTEAR_TICKET ──┐
-TicketSlaJob (60 s) ─────────┴─► TicketProcedures.routeEach ─────┘   (route por ticket)  ├─► FN_PROXIMO_ATENDENTE
-TicketSlaJob (60 s) ──► TicketProcedures.escalateOverdue ──► PR_ESCALAR_TICKET_CRITICO ──┘
+POST /tickets/{id}/transfer ─┴─► TicketProcedures.route ──────┐
+PUT  /employees/me/presence ─┐                                ├─► PKG_TICKETS.PR_ROTEAR_TICKET ─────────┐
+TicketSlaJob (60 s) ─────────┴─► TicketProcedures.routeEach ──┘   (route por ticket)                     ├─► PKG_TICKETS.FN_PROXIMO_ATENDENTE
+TicketSlaJob (60 s) ──► TicketProcedures.escalateOverdue ──► PKG_TICKETS.PR_ESCALAR_TICKET_CRITICO ──────┘
 
-detalhe e listas de tickets ──► TicketProcedures.slaStatuses ──► FN_STATUS_SLA_TICKET
+detalhe e listas de tickets ──► TicketProcedures.slaStatuses ──► PKG_TICKETS.FN_STATUS_SLA_TICKET
+
+GET /tickets/search ──► TicketProcedures.search ──► PKG_TICKETS.PR_BUSCAR_TICKETS (DBMS_SQL)
+                                                      └─► PKG_TICKETS.FN_STATUS_SLA_TICKET
 
 POST /chatbot/conversations/{id}/messages (texto livre)
-    └─► ChatbotFunctions.answerFor ──► FN_CHATBOT_RESPOSTA
+    └─► ChatbotFunctions.answerFor ──► PKG_CHATBOT.FN_CHATBOT_RESPOSTA
 
-GET /dashboard/omnichannel ──► DashboardProcedures.summary ──► PR_RESUMO_DASHBOARD
-                                                                  ├─► FN_STATUS_SLA_TICKET
-                                                                  └─► FN_CALC_TAXA_VARIACAO
+GET /dashboard/omnichannel ──► DashboardProcedures.summary ──► PKG_DASHBOARD.PR_RESUMO_DASHBOARD
+                                                                  ├─► PKG_TICKETS.FN_STATUS_SLA_TICKET
+                                                                  └─► PKG_DASHBOARD.FN_CALC_TAXA_VARIACAO
+
+INSERT, UPDATE e DELETE em tickets (API, PL/SQL ou SQL manual) ──► TRG_TICKETS_AUDITORIA ──► ticket_auditoria
+UPDATE e DELETE em ticket_auditoria ──► TRG_TICKET_AUDITORIA_IMUTAVEL (-20006)
 ```
 
 Rotas relativas a `/api/v1`. O `TicketSlaJob` roda, nesta ordem, o

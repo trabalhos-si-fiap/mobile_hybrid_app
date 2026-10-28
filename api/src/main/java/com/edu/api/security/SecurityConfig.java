@@ -73,6 +73,7 @@ public class SecurityConfig {
                                 "/dashboard/**",
                                 "/employees/**",
                                 "/tickets/queue",
+                                "/tickets/search",
                                 "/tickets/*/events",
                                 "/tickets/*/assume",
                                 "/tickets/*/resolve",

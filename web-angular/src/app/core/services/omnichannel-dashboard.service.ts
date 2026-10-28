@@ -4,7 +4,10 @@ import { Observable } from 'rxjs';
 
 import { DashboardPeriod, OmnichannelDashboard } from '../models/omnichannel-dashboard.model';
 
-/** Resumo do atendimento (PR_RESUMO_DASHBOARD). Sem cache: cada período é buscado de novo. */
+/**
+ * Resumo do atendimento (PKG_DASHBOARD.PR_RESUMO_DASHBOARD). Sem cache: cada
+ * período é buscado de novo.
+ */
 @Injectable({ providedIn: 'root' })
 export class OmnichannelDashboardService {
   private readonly http = inject(HttpClient);

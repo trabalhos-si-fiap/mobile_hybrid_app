@@ -54,6 +54,15 @@ sempre 0, porque o banco não obriga um usuário a ter ticket.
 | Transportadora | `carriers` | id | nome, localização, e-mail, prazo médio de entrega em dias, avaliação, SLA (%), status, criada em |
 | Ocorrência da transportadora | `carrier_occurrences` | id | tipo, descrição, status, criada em, resolvida em |
 
+### Auditoria
+
+| Entidade | Tabela | Identificador | Atributos |
+|---|---|---|---|
+| Auditoria do ticket | `ticket_auditoria` | id | ticket (id, sem relacionamento), operação, campo, valor anterior, valor novo, usuário do banco, módulo, gravada em |
+
+A auditoria não participa de relacionamento: guarda o id do ticket sem FK,
+para continuar existindo depois que o ticket é apagado.
+
 ## Relacionamentos
 
 | # | Entidade A | Junto de A | Relacionamento | Junto de B | Entidade B | Constraint | Leitura |

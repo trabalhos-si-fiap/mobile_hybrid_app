@@ -13,8 +13,9 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Monta as respostas da API. O status de SLA vem da FN_STATUS_SLA_TICKET, que
- * lê o banco: por isso o flush antes de consultá-lo.
+ * Monta as respostas da API. O status de SLA vem da
+ * PKG_TICKETS.FN_STATUS_SLA_TICKET, que lê o banco: por isso o flush antes de
+ * consultá-lo.
  */
 @Component
 public class TicketViews {

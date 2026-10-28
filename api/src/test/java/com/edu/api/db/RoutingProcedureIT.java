@@ -49,11 +49,16 @@ class RoutingProcedureIT extends OracleIntegrationTest {
                 + " AND employee_id = ? AND from_status = 'ABERTO' AND to_status = 'EM_FILA'", ticket, agent)).isEqualTo(1);
         assertThat(fx.count("SELECT COUNT(*) FROM notifications WHERE ticket_id = ? AND type = 'TICKET_ATRIBUIDO'"
                 + " AND recipient_user_id = ?", ticket, fx.userOf(agent))).isEqualTo(1);
+        assertThat(fx.count("SELECT COUNT(*) FROM employees WHERE id = ? AND last_assigned_at IS NOT NULL", agent))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForMap("SELECT title, body FROM notifications WHERE ticket_id = ?", ticket))
+                .containsEntry("title", "Novo ticket na sua fila")
+                .containsEntry("body", "Ticket #" + ticket + " (Defeito no App / Problemas com App) foi atribuído a você.");
     }
 
     @Test
     void queuesWithoutOwnerWhenNobodyIsOnline() {
-        fx.employee("OFFLINE", "DESENVOLVEDOR");
+        long offline = fx.employee("OFFLINE", "DESENVOLVEDOR");
         long ticket = fx.ticket(requester, "DEFEITO_APP");
 
         assertThat(plsql.route(ticket)).isNull();
@@ -62,6 +67,8 @@ class RoutingProcedureIT extends OracleIntegrationTest {
         assertThat(fx.count("SELECT COUNT(*) FROM ticket_events WHERE ticket_id = ? AND type = 'ROTEADO'"
                 + " AND detail LIKE '%nenhum outro atendente online%'", ticket)).isEqualTo(1);
         assertThat(fx.count("SELECT COUNT(*) FROM notifications WHERE ticket_id = ?", ticket)).isZero();
+        assertThat(fx.count("SELECT COUNT(*) FROM employees WHERE id = ? AND last_assigned_at IS NULL", offline))
+                .isEqualTo(1);
     }
 
     @Test

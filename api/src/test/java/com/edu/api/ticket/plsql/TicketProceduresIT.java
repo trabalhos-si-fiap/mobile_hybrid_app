@@ -4,6 +4,11 @@ import com.edu.api.shared.exception.ConflictException;
 import com.edu.api.shared.exception.NotFoundException;
 import com.edu.api.support.OracleIntegrationTest;
 import com.edu.api.support.TicketFixtures;
+import com.edu.api.ticket.dto.TicketSearchCriteria;
+import com.edu.api.ticket.dto.TicketSummaryResponse;
+import com.edu.api.ticket.entity.Segment;
+import com.edu.api.ticket.entity.TicketPriority;
+import com.edu.api.ticket.entity.TicketStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -97,5 +102,35 @@ class TicketProceduresIT extends OracleIntegrationTest {
         assertThat(procedures.slaStatuses(List.of(breached, met)))
                 .containsEntry(breached, "ESTOURADO")
                 .containsEntry(met, "CUMPRIDO");
+    }
+
+    private static TicketSearchCriteria alert(Boolean engineeringAlert) {
+        return TicketSearchCriteria.of(null, null, null, null, null, null, null, engineeringAlert, null, null, null);
+    }
+
+    private static List<Long> ids(List<TicketSummaryResponse> summaries) {
+        return summaries.stream().map(TicketSummaryResponse::id).toList();
+    }
+
+    @Test
+    void searchMapsTheCursorIntoSummaries() {
+        long agent = fx.employee("ONLINE", "DESENVOLVEDOR");
+        long ticket = fx.ticketFor(requester, "DEFEITO_APP").status("EM_FILA").priority("ALTA").assignedTo(agent)
+                .updatedAt(T0.plusMinutes(3)).engineeringAlert(true).insert();
+
+        assertThat(procedures.search(alert(null), requester, false)).containsExactly(new TicketSummaryResponse(
+                ticket, Segment.DEFEITO_APP, "Defeito no App / Problemas com App", TicketStatus.EM_FILA,
+                TicketPriority.ALTA, "NO_PRAZO", null, fx.nameOf(requester), fx.nameOf(fx.userOf(agent)), true,
+                T0.toInstant(), T0.plusMinutes(3).toInstant()));
+    }
+
+    @Test
+    void searchPassesTheEngineeringAlertFilterInEveryState() {
+        long alerted = fx.ticketFor(requester, "DEFEITO_APP").engineeringAlert(true).insert();
+        long quiet = fx.ticketFor(requester, "DEFEITO_APP").createdAt(T0.plusMinutes(1)).insert();
+
+        assertThat(ids(procedures.search(alert(true), requester, false))).containsExactly(alerted);
+        assertThat(ids(procedures.search(alert(false), requester, false))).containsExactly(quiet);
+        assertThat(ids(procedures.search(alert(null), requester, false))).containsExactly(quiet, alerted);
     }
 }

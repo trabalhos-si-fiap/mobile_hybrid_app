@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.jdbc.test.autoconfigure.JdbcTest;
+import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -25,6 +26,16 @@ class FlywayMigrationIT extends OracleIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    @Autowired
+    private Environment environment;
+
+    @Test
+    void toleratesOnlyFutureMigrationsAndRemovedRepeatables() {
+        assertThat(environment.getProperty("spring.flyway.ignore-migration-patterns[0]")).isEqualTo("*:future");
+        assertThat(environment.getProperty("spring.flyway.ignore-migration-patterns[1]")).isEqualTo("repeatable:missing");
+        assertThat(environment.getProperty("spring.flyway.ignore-migration-patterns[2]")).isNull();
+    }
 
     @Test
     void migrationsSucceedWithoutSeed() {
@@ -49,7 +60,7 @@ class FlywayMigrationIT extends OracleIntegrationTest {
                 "products", "inventories", "inventory_adjustments",
                 "carriers", "carrier_occurrences", "admin_users",
                 "skills", "employees", "employee_skills", "ticket_tipo_config",
-                "tickets", "ticket_messages", "ticket_attachments", "ticket_events", "notifications",
+                "tickets", "ticket_messages", "ticket_attachments", "ticket_events", "notifications", "ticket_auditoria",
                 "chatbot_faq", "chatbot_faq_keywords", "chatbot_conversations", "chatbot_messages");
         assertThat(tables).doesNotContain("student_metrics");
     }

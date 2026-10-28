@@ -30,7 +30,7 @@ public class DashboardController {
         return dashboardService.getDashboard(days);
     }
 
-    /** Resumo do atendimento omnichannel (PR_RESUMO_DASHBOARD) nos últimos 7, 30 ou 90 dias. */
+    /** Resumo do atendimento omnichannel (PKG_DASHBOARD.PR_RESUMO_DASHBOARD) nos últimos 7, 30 ou 90 dias. */
     @GetMapping("/omnichannel")
     public OmnichannelDashboardResponse getOmnichannel(@RequestParam(defaultValue = "7") int days) {
         if (!OmnichannelDashboardService.PERIODS.contains(days)) {

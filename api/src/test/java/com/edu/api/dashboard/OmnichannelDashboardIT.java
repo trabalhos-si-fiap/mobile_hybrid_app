@@ -14,7 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * O endpoint de ponta a ponta, lendo os cursores reais da PR_RESUMO_DASHBOARD.
+ * O endpoint de ponta a ponta, lendo os cursores reais da PKG_DASHBOARD.PR_RESUMO_DASHBOARD.
  * Outros ITs podem ter deixado tickets no banco, então os números são
  * conferidos como mínimos, nunca exatos.
  */

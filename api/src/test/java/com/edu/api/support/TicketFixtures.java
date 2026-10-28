@@ -31,8 +31,13 @@ public final class TicketFixtures {
     }
 
     public long user(String role) {
+        String id = UUID.randomUUID().toString();
         return insert("INSERT INTO admin_users (name, email, password, role) VALUES (?, ?, ?, ?)",
-                "Pessoa " + role, role.toLowerCase() + "-" + UUID.randomUUID() + "@teste.edu", "x", role);
+                "Pessoa " + role + " " + id.substring(0, 8), role.toLowerCase() + "-" + id + "@teste.edu", "x", role);
+    }
+
+    public String nameOf(long userId) {
+        return jdbc.queryForObject("SELECT name FROM admin_users WHERE id = ?", String.class, userId);
     }
 
     public long employee(String presence, String... skillCodes) {
@@ -113,6 +118,9 @@ public final class TicketFixtures {
         private OffsetDateTime slaStartedAt;
         private OffsetDateTime slaDueAt;
         private OffsetDateTime resolvedAt;
+        private String description = "Descrição de teste";
+        private boolean engineeringAlert;
+        private OffsetDateTime updatedAt;
 
         private TicketRow(long userId, String segment) {
             this.userId = userId;
@@ -126,14 +134,20 @@ public final class TicketFixtures {
         public TicketRow slaStartedAt(OffsetDateTime value) { slaStartedAt = value; return this; }
         public TicketRow slaDueAt(OffsetDateTime value) { slaDueAt = value; return this; }
         public TicketRow resolvedAt(OffsetDateTime value) { resolvedAt = value; return this; }
+        public TicketRow description(String value) { description = value; return this; }
+        public TicketRow engineeringAlert(boolean value) { engineeringAlert = value; return this; }
+        /** Sem valor, igual a createdAt. */
+        public TicketRow updatedAt(OffsetDateTime value) { updatedAt = value; return this; }
 
         public long insert() {
             return TicketFixtures.this.insert(
                     "INSERT INTO tickets (user_id, segment, description, status, priority, assigned_employee_id,"
-                            + " created_at, updated_at, sla_started_at, sla_due_at, resolved_at)"
-                            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    userId, segment, "Descrição de teste", status, priority, number(assignedEmployeeId),
-                    createdAt, createdAt, timestamp(slaStartedAt), timestamp(slaDueAt), timestamp(resolvedAt));
+                            + " engineering_alert, created_at, updated_at, sla_started_at, sla_due_at, resolved_at)"
+                            + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    userId, segment, description, status, priority, number(assignedEmployeeId),
+                    new SqlParameterValue(Types.BOOLEAN, engineeringAlert), createdAt,
+                    updatedAt == null ? createdAt : updatedAt, timestamp(slaStartedAt), timestamp(slaDueAt),
+                    timestamp(resolvedAt));
         }
     }
 }

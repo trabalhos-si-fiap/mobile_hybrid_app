@@ -9,7 +9,7 @@ import java.time.OffsetDateTime;
 /**
  * Tickets e eventos para os testes do dashboard, com datas em 2001: nenhum
  * outro teste cria dados antes disso (o {@link TicketFixtures#T0} é 2030),
- * então as contas da PR_RESUMO_DASHBOARD só enxergam os dados do teste.
+ * então as contas da PKG_DASHBOARD.PR_RESUMO_DASHBOARD só enxergam os dados do teste.
  */
 public final class DashboardFixtures {
 
