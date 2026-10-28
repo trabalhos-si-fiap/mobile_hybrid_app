@@ -1,5 +1,7 @@
 package com.edu.api.support;
 
+import java.time.Duration;
+
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -13,10 +15,12 @@ import org.testcontainers.oracle.OracleContainer;
  */
 public abstract class OracleIntegrationTest {
 
+    // O padrão do módulo é 60 s; num runner do CI o Oracle pode passar disso.
     private static final OracleContainer ORACLE =
             new OracleContainer("gvenzl/oracle-free:23.26.3-slim-faststart")
                     .withUsername("edu_admin")
-                    .withPassword("edu_admin");
+                    .withPassword("edu_admin")
+                    .withStartupTimeout(Duration.ofMinutes(3));
 
     static {
         ORACLE.start();

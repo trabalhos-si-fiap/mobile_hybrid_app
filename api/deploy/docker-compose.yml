@@ -1,0 +1,69 @@
+# Stack de deploy efêmera da API: job "deploy" do .github/workflows/ci-cd.yml e
+# uso local. Oracle, MinIO e a API a partir de uma imagem já montada, com as
+# migrations e o PL/SQL, sem o seed de demonstração; as contas do smoke vêm de
+# fixtures/. As credenciais abaixo são públicas e servem só a este ambiente
+# descartável: Oracle e MinIO não publicam porta, e a API só escuta no
+# 127.0.0.1. Nada aqui deve virar ambiente real.
+#
+#   export API_IMAGE=ghcr.io/trabalhos-si-fiap/edu-admin-api:latest
+#   docker compose up -d --wait --wait-timeout 300 oracle minio
+#   docker compose up -d api
+#   ./smoke.sh
+#   docker compose down -v
+#
+# Sem "restart:": uma API que cai na subida tem de aparecer como parada.
+name: edu-admin-staging
+
+services:
+  oracle:
+    image: gvenzl/oracle-free:23.26.3-slim-faststart
+    environment:
+      ORACLE_PASSWORD: staging_sys
+      APP_USER: edu_admin
+      APP_USER_PASSWORD: edu_admin
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+      start_period: 120s
+      start_interval: 2s
+
+  minio:
+    image: ghcr.io/trabalhos-si-fiap/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: edu_admin
+      MINIO_ROOT_PASSWORD: edu_admin_minio
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 30s
+      start_interval: 2s
+
+  api:
+    image: ${API_IMAGE:?defina API_IMAGE com a imagem da API a implantar}
+    depends_on:
+      oracle:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:oracle:thin:@oracle:1521/FREEPDB1
+      DB_USERNAME: edu_admin
+      DB_PASSWORD: edu_admin
+      JWT_SECRET: staging-ci-only-jwt-secret-0123456789abcdef
+      MINIO_URL: http://minio:9000
+      MINIO_ACCESS_KEY: edu_admin
+      MINIO_SECRET_KEY: edu_admin_minio
+      MINIO_BUCKET: ticket-attachments
+      # Sem o job de SLA: nada muda os tickets durante o smoke.
+      TICKET_JOBS_ENABLED: "false"
+      # Migrations e PL/SQL do jar, sem db/seed, mais as contas do smoke.
+      SPRING_FLYWAY_LOCATIONS: classpath:db/migration,classpath:db/plsql,filesystem:/deploy/fixtures
+    volumes:
+      - ./fixtures:/deploy/fixtures:ro
+    ports:
+      - "127.0.0.1:${STAGING_API_PORT:-18080}:8080"

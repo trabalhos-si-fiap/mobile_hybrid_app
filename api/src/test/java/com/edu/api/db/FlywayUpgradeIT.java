@@ -14,6 +14,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 
@@ -43,7 +44,7 @@ class FlywayUpgradeIT extends OracleIntegrationTest {
     private DriverManagerDataSource legacySchema;
 
     @BeforeEach
-    void createLegacySchema() {
+    void createLegacySchema() throws InterruptedException {
         dropUser();
         system.execute("CREATE USER " + USER + " IDENTIFIED BY \"" + PASSWORD + "\""
                 + " DEFAULT TABLESPACE users QUOTA UNLIMITED ON users");
@@ -59,20 +60,34 @@ class FlywayUpgradeIT extends OracleIntegrationTest {
     }
 
     @AfterEach
-    void dropLegacySchema() {
+    void dropLegacySchema() throws InterruptedException {
         dropUser();
     }
 
-    /** O Oracle pode ainda não ter encerrado a sessão de uma conexão já fechada (ORA-01940 no DROP USER). */
-    private void dropUser() {
-        for (String session : system.queryForList(
-                "SELECT sid || ',' || serial# FROM v$session WHERE username = ?", String.class, USER)) {
+    /**
+     * O Oracle pode ainda não ter encerrado a sessão de uma conexão já fechada.
+     * O KILL SESSION só marca a sessão, e o DROP USER falha (ORA-01940) enquanto
+     * ela aparece na v$session; por isso espera ela sumir.
+     */
+    private void dropUser() throws InterruptedException {
+        for (String session : sessions()) {
             system.execute("ALTER SYSTEM KILL SESSION '" + session + "' IMMEDIATE");
+        }
+        long deadline = System.nanoTime() + Duration.ofSeconds(30).toNanos();
+        while (!sessions().isEmpty()) {
+            if (System.nanoTime() > deadline) {
+                throw new IllegalStateException("Sessões de " + USER + " não encerraram: " + sessions());
+            }
+            Thread.sleep(100);
         }
         Integer users = system.queryForObject("SELECT COUNT(*) FROM dba_users WHERE username = ?", Integer.class, USER);
         if (users > 0) {
             system.execute("DROP USER " + USER + " CASCADE");
         }
+    }
+
+    private List<String> sessions() {
+        return system.queryForList("SELECT sid || ',' || serial# FROM v$session WHERE username = ?", String.class, USER);
     }
 
     /** A configuração da aplicação (pastas e padrões ignorados), apontada para o schema antigo. */

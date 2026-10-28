@@ -1,0 +1,418 @@
+# Pipeline de CI/CD do monorepo (Parte 2 da Fase 6). Gatilhos, grafo dos jobs e
+# onde achar cada relatório: README, seção "CI/CD"; desenho completo em
+# docs/superpowers/specs/2026-10-13-ci-cd-design.md.
+#
+# Regras: actions fixadas por SHA; checkout sem credencial persistida; nenhuma
+# expressão de contexto dentro de "run:" (tudo entra por "env:"); permissões
+# declaradas por job.
+name: CI/CD
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ci-cd-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  changes:
+    name: Detectar mudanças
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read # o paths-filter lê os arquivos do PR pela API
+    outputs:
+      api: ${{ steps.filter.outputs.api == 'true' || steps.filter.outputs.workflow == 'true' || github.event_name == 'workflow_dispatch' }}
+      web: ${{ steps.filter.outputs.web == 'true' || steps.filter.outputs.compose == 'true' || steps.filter.outputs.workflow == 'true' || github.event_name == 'workflow_dispatch' }}
+      mobile: ${{ steps.filter.outputs.mobile == 'true' || steps.filter.outputs.compose == 'true' || steps.filter.outputs.workflow == 'true' || github.event_name == 'workflow_dispatch' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Filtrar pastas
+        id: filter
+        if: github.event_name != 'workflow_dispatch'
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          # Com "every", cada padrão de um filtro tem de casar; por isso cada
+          # filtro tem uma pasta só, e a combinação fica nas outputs acima.
+          predicate-quantifier: every
+          filters: |
+            api:
+              - 'api/**'
+              - '!api/**/*.md'
+            web:
+              - 'web-angular/**'
+            mobile:
+              - 'mobile-flutter/**'
+            compose:
+              - 'api/docker-compose.yml'
+            workflow:
+              - '.github/workflows/**'
+
+  api:
+    name: "API: build e testes"
+    needs: changes
+    if: needs.changes.outputs.api == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      checks: write # o test-reporter cria a check run
+    steps:
+      - name: Baixar as imagens dos testes de integração em segundo plano
+        # Sem o redirecionamento, o passo esperaria os pulls terminarem.
+        run: |
+          (
+            for image in \
+              gvenzl/oracle-free:23.26.3-slim-faststart \
+              testcontainers/ryuk:0.14.0 \
+              ghcr.io/trabalhos-si-fiap/minio:RELEASE.2025-09-07T16-13-09Z; do
+              docker pull -q "$image" &
+            done
+            wait
+          ) >"$RUNNER_TEMP/prepull.log" 2>&1 &
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Restaurar o repositório Maven
+        id: m2
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.m2/repository
+          key: maven-${{ runner.os }}-${{ hashFiles('api/pom.xml') }}
+          restore-keys: maven-${{ runner.os }}-
+      - name: Build, testes e cobertura (mvn verify)
+        working-directory: api
+        run: MAVEN_REPO="$HOME/.m2" docker compose run --rm -e MAVEN_ARGS=--no-transfer-progress maven verify
+      - name: Guardar o repositório Maven
+        if: always() && steps.m2.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.m2/repository
+          key: ${{ steps.m2.outputs.cache-primary-key }}
+      - name: Relatório de testes
+        # Em PR de fork o token é só leitura e não cria check run; lá ficam o
+        # artifact e o resumo.
+        if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        with:
+          name: Testes API
+          path: api/out/*-reports/TEST-*.xml
+          reporter: java-junit
+          fail-on-error: true
+          fail-on-empty: false
+          # No v3 o padrão (true) escreve o relatório no resumo do job e não
+          # cria a check run; e a check run só fica vermelha com
+          # fail-on-error: true (o job já falhou no passo dos testes).
+          use-actions-summary: false
+      - name: Resumo da cobertura
+        if: ${{ !cancelled() }}
+        run: |
+          csv=api/out/jacoco/jacoco.csv
+          {
+            echo '### Cobertura (JaCoCo, unidade + integração)'
+            echo
+            if [[ -f "$csv" ]]; then
+              awk -F, 'NR > 1 { bm += $6; bc += $7; lm += $8; lc += $9 }
+                END {
+                  printf "| Métrica | Cobertas | Total | %% |\n|---|---|---|---|\n"
+                  printf "| Linhas | %d | %d | %.1f%% |\n", lc, lm + lc, (lm + lc) ? 100 * lc / (lm + lc) : 0
+                  printf "| Branches | %d | %d | %.1f%% |\n", bc, bm + bc, (bm + bc) ? 100 * bc / (bm + bc) : 0
+                }' "$csv"
+              echo
+              echo "Relatório HTML no artifact \`api-reports\` (\`jacoco/index.html\`)."
+            else
+              echo 'Sem cobertura: o build parou antes dos testes de integração.'
+            fi
+          } >>"$GITHUB_STEP_SUMMARY"
+      - name: Guardar os relatórios
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: api-reports
+          path: |
+            api/out/
+            !api/out/jar/
+          # Um re-run do job sobe de novo com o mesmo nome no mesmo run.
+          overwrite: true
+          retention-days: 30
+          if-no-files-found: warn
+      - name: Guardar o jar testado
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: api-jar
+          path: api/out/jar/app.jar
+          # Um re-run do job sobe de novo com o mesmo nome no mesmo run.
+          overwrite: true
+          retention-days: 1
+          if-no-files-found: error
+      - name: Disco
+        if: ${{ !cancelled() }}
+        # Recuo de 4 espaços: bloco de código no Markdown do resumo.
+        run: |
+          { echo '### Disco do runner'; echo; { df -h /; docker system df; } | sed 's/^/    /'; } >>"$GITHUB_STEP_SUMMARY"
+
+  web:
+    name: "Web: testes e build"
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      checks: write # o test-reporter cria a check run
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Testes unitários (Vitest)
+        working-directory: api
+        run: docker compose run --rm node test
+      - name: Build de produção
+        working-directory: api
+        run: docker compose run --rm node run build
+      - name: Relatório de testes
+        if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        with:
+          name: Testes Web
+          path: web-angular/out/junit.xml
+          reporter: jest-junit
+          fail-on-error: true
+          fail-on-empty: false
+          use-actions-summary: false
+      - name: Guardar os relatórios
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: web-reports
+          path: web-angular/out/
+          # Um re-run do job sobe de novo com o mesmo nome no mesmo run.
+          overwrite: true
+          retention-days: 30
+          if-no-files-found: warn
+
+  mobile:
+    name: "Mobile: análise e testes"
+    needs: changes
+    if: needs.changes.outputs.mobile == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      checks: write # o test-reporter cria a check run
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Análise estática (flutter analyze)
+        working-directory: api
+        run: docker compose run --rm flutter analyze
+      - name: Testes de unidade e widget (flutter test)
+        working-directory: api
+        run: docker compose run --rm flutter test
+      - name: Relatório de testes
+        if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        with:
+          name: Testes Mobile
+          path: mobile-flutter/out/flutter-test.json
+          reporter: flutter-json
+          fail-on-error: true
+          fail-on-empty: false
+          use-actions-summary: false
+      - name: Guardar os relatórios
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mobile-reports
+          path: mobile-flutter/out/
+          # Um re-run do job sobe de novo com o mesmo nome no mesmo run.
+          overwrite: true
+          retention-days: 30
+          if-no-files-found: warn
+
+  publish:
+    name: Publicar imagem da API
+    needs: api
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write # push da imagem no GHCR
+    outputs:
+      image: ${{ steps.ref.outputs.image }}
+    env:
+      IMAGE_NAME: ghcr.io/trabalhos-si-fiap/edu-admin-api
+      PUSH: ${{ github.ref == 'refs/heads/main' }} # main-only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Baixar o jar testado
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: api-jar
+          path: ci-jar/build/target
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Tags e labels
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=sha-,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=edu-admin-api
+            org.opencontainers.image.description=Imagem de demonstração da API Edu Admin; em uso real, defina JWT_SECRET e SPRING_FLYWAY_LOCATIONS
+      - name: Login no GHCR
+        if: env.PUSH == 'true'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Montar (e publicar na main) a imagem
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: api
+          # O contexto "build" substitui o estágio Maven do Dockerfile: a imagem
+          # leva o jar que passou nos testes, sem compilar de novo.
+          build-contexts: build=${{ github.workspace }}/ci-jar
+          push: ${{ env.PUSH == 'true' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+      - name: Referência da imagem
+        id: ref
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          if [[ "$PUSH" == true ]]; then
+            echo "image=$IMAGE_NAME@$DIGEST" >>"$GITHUB_OUTPUT"
+            {
+              echo '### Imagem publicada'
+              echo
+              echo "- Digest: \`$IMAGE_NAME@$DIGEST\`"
+              echo '- Tags:'
+              while read -r tag; do echo "  - \`$tag\`"; done <<<"$TAGS"
+            } >>"$GITHUB_STEP_SUMMARY"
+          else
+            { echo '### Imagem'; echo; echo 'Build sem push: só a main publica.'; } >>"$GITHUB_STEP_SUMMARY"
+          fi
+
+  deploy:
+    name: Deploy efêmero (Oracle)
+    needs: publish
+    if: github.ref == 'refs/heads/main' # main-only
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read # pull da imagem publicada
+    environment: staging
+    env:
+      API_IMAGE: ${{ needs.publish.outputs.image }}
+      DEPLOY_OUT: ${{ github.workspace }}/deploy-out
+    defaults:
+      run:
+        working-directory: api/deploy
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Login no GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Baixar as imagens
+        run: docker compose pull
+      - name: Subir Oracle e MinIO
+        run: docker compose up -d --wait --wait-timeout 300 oracle minio
+      - name: Subir a API (Flyway aplica migrations e PL/SQL)
+        run: docker compose up -d api
+      - name: Smoke test
+        run: ./smoke.sh http://127.0.0.1:18080/api/v1 "$DEPLOY_OUT"
+      - name: Resumo do deploy
+        if: always()
+        run: |
+          {
+            echo '### Deploy efêmero'
+            echo
+            echo "Imagem: \`$API_IMAGE\`"
+            echo
+            for report in smoke flyway plsql; do
+              if [[ -f "$DEPLOY_OUT/$report.md" ]]; then
+                cat "$DEPLOY_OUT/$report.md"
+                echo
+              fi
+            done
+            echo '### Disco do runner'
+            echo
+            { df -h /; docker system df; } | sed 's/^/    /'
+          } >>"$GITHUB_STEP_SUMMARY"
+      - name: Coletar os logs
+        if: always()
+        run: |
+          mkdir -p "$DEPLOY_OUT/logs"
+          for service in oracle minio api; do
+            docker compose logs --no-color "$service" >"$DEPLOY_OUT/logs/$service.log" 2>&1 || true
+          done
+          docker compose ps -a >"$DEPLOY_OUT/logs/ps.txt" 2>&1 || true
+          { df -h /; docker system df; } >"$DEPLOY_OUT/logs/disco.txt" 2>&1 || true
+      - name: Guardar os logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: deploy-logs
+          path: deploy-out/
+          # Um re-run do job sobe de novo com o mesmo nome no mesmo run.
+          overwrite: true
+          retention-days: 30
+          if-no-files-found: warn
+      - name: Derrubar a stack
+        if: always()
+        run: docker compose down -v
+
+  report:
+    name: Relatório da execução
+    needs: [changes, api, web, mobile, publish, deploy]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Resultado de cada job
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          EVENT: ${{ github.event_name }}
+          SHA: ${{ github.sha }}
+        run: |
+          {
+            echo '## Relatório da execução'
+            echo
+            echo "Commit \`${SHA:0:7}\`, gatilho \`$EVENT\`. Relatórios e logs: [artifacts do run]($RUN_URL#artifacts)."
+            echo
+            echo '| Job | Resultado |'
+            echo '|---|---|'
+            jq -r '
+              {"success": "✅ sucesso", "failure": "❌ falha", "cancelled": "⚪ cancelado", "skipped": "⏭️ não rodou"} as $label
+              | to_entries[] | "| \(.key) | \($label[.value.result] // .value.result) |"' <<<"$NEEDS"
+          } >>"$GITHUB_STEP_SUMMARY"
+          if jq -e 'any(.[]; .result == "failure" or .result == "cancelled")' <<<"$NEEDS" >/dev/null; then
+            echo '::error::Algum job falhou ou foi cancelado; veja a tabela no resumo.'
+            exit 1
+          fi

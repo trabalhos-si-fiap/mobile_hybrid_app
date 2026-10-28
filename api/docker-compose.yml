@@ -20,7 +20,9 @@ services:
       start_period: 30s
 
   minio:
-    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    # A imagem oficial saiu do Docker Hub; esta é uma cópia idêntica no GHCR
+    # (docs/pendencias.md, P6-01).
+    image: ghcr.io/trabalhos-si-fiap/minio:RELEASE.2025-09-07T16-13-09Z
     container_name: edu-admin-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
@@ -67,21 +69,23 @@ services:
       - "${API_PORT:-8080}:8080"
 
   # Build e testes Java sem JDK no host: docker compose run --rm maven test|verify
-  # O código entra read-only e é copiado para /build, então nada é escrito no host.
+  # O código entra read-only e é copiado para /build; só api/out volta para o
+  # host (relatórios de teste, cobertura e jar), também quando um teste falha.
+  # MAVEN_REPO troca o volume do repositório Maven por uma pasta do host (o CI
+  # usa $HOME/.m2, guardada entre execuções).
   # O socket do Docker permite ao Testcontainers criar o Oracle efêmero dos *IT
   # e dá a este container acesso equivalente a root no Docker do host.
   maven:
     image: maven:3.9.16-eclipse-temurin-21
     profiles: ["tools"]
     working_dir: /build
-    entrypoint:
-      - sh
-      - -c
-      - 'tar -C /src --exclude=./target --exclude=./data -cf - . | tar -xf - && exec mvn -B "$$@"'
-      - mvn
+    # init: o bash do script não é PID 1, então Ctrl+C e docker stop chegam ao build.
+    init: true
+    entrypoint: ["bash", "/src/tool/maven-container.sh"]
     volumes:
       - ./:/src:ro
-      - maven-repo:/root/.m2
+      - ./out:/out
+      - ${MAVEN_REPO:-maven-repo}:/root/.m2
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
       TESTCONTAINERS_HOST_OVERRIDE: host.docker.internal
@@ -112,19 +116,17 @@ services:
       - "127.0.0.1:${WEB_PORT:-4200}:4200"
 
   # Testes e build do painel sem Node no host, no mesmo esquema do serviço maven:
-  #   docker compose run --rm node test        (Vitest, uma vez)
+  #   docker compose run --rm node test        (Vitest, uma vez; JUnit em web-angular/out)
   #   docker compose run --rm node run build   (build de produção, com os limites de tamanho)
   node:
     image: node:24.21.0
     profiles: ["tools"]
     working_dir: /build
-    entrypoint:
-      - bash
-      - -c
-      - 'set -euo pipefail; tar -C /src --exclude=node_modules --exclude=.angular --exclude=dist --exclude=e2e -cf - . | tar -xf -; npm ci --no-audit --no-fund; exec npm "$$@"'
-      - npm
+    init: true
+    entrypoint: ["bash", "/src/tool/node-container.sh"]
     volumes:
       - ../web-angular:/src:ro
+      - ../web-angular/out:/out
       - npm-cache:/root/.npm
 
   # App Flutter sem Flutter no host, no mesmo esquema dos serviços maven e node:
@@ -137,6 +139,7 @@ services:
   flutter:
     image: ghcr.io/cirruslabs/flutter:3.44.0
     profiles: ["tools"]
+    init: true
     entrypoint: ["bash", "/src/tool/container.sh"]
     volumes:
       - ../mobile-flutter:/src:ro

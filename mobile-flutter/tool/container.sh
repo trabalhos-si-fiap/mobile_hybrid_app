@@ -2,6 +2,7 @@
 # Entrada do serviço flutter (api/docker-compose.yml). O código chega somente
 # leitura em /src e é copiado para /build, então analyze, test e build não
 # escrevem no host. Só escrevem em /host (a pasta mobile-flutter):
+#   test   -> out/flutter-test.json
 #   apk    -> dist/app-debug.apk
 #   lock   -> pubspec.lock
 #   format -> os arquivos pedidos
@@ -13,7 +14,7 @@ shift || true
 copy_sources() {
   mkdir -p /build
   cd /build
-  tar -C /src --exclude=./build --exclude=./.dart_tool --exclude=./dist --exclude=./e2e -cf - . | tar -xf -
+  tar -C /src --exclude=./build --exclude=./.dart_tool --exclude=./dist --exclude=./e2e --exclude=./out -cf - . | tar -xf -
 }
 
 pub_get() {
@@ -25,6 +26,17 @@ pub_get() {
   fi
 }
 
+# Relatório do flutter test em mobile-flutter/out, com o dono do host. A pasta
+# é esvaziada a cada test, para não misturar execuções.
+export_report() {
+  mkdir -p /host/out
+  find /host/out -mindepth 1 -delete
+  if [[ -f "$1" ]]; then
+    cp "$1" /host/out/
+  fi
+  chown -R "$(stat -c %u:%g /host)" /host/out
+}
+
 case "$command" in
   analyze)
     copy_sources
@@ -34,7 +46,10 @@ case "$command" in
   test)
     copy_sources
     pub_get
-    exec flutter test "$@"
+    status=0
+    flutter test --file-reporter json:/build/flutter-test.json "$@" || status=$?
+    export_report /build/flutter-test.json
+    exit "$status"
     ;;
   apk)
     copy_sources
