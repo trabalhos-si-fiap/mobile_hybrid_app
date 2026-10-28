@@ -108,10 +108,11 @@ jobs:
           name: Testes API
           path: api/out/*-reports/TEST-*.xml
           reporter: java-junit
-          fail-on-error: false
+          fail-on-error: true
           fail-on-empty: false
           # No v3 o padrão (true) escreve o relatório no resumo do job e não
-          # cria a check run.
+          # cria a check run; e a check run só fica vermelha com
+          # fail-on-error: true (o job já falhou no passo dos testes).
           use-actions-summary: false
       - name: Resumo da cobertura
         if: ${{ !cancelled() }}
@@ -186,7 +187,7 @@ jobs:
           name: Testes Web
           path: web-angular/out/junit.xml
           reporter: jest-junit
-          fail-on-error: false
+          fail-on-error: true
           fail-on-empty: false
           use-actions-summary: false
       - name: Guardar os relatórios
@@ -226,7 +227,7 @@ jobs:
           name: Testes Mobile
           path: mobile-flutter/out/flutter-test.json
           reporter: flutter-json
-          fail-on-error: false
+          fail-on-error: true
           fail-on-empty: false
           use-actions-summary: false
       - name: Guardar os relatórios
