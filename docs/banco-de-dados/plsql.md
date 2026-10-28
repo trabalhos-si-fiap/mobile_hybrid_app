@@ -53,6 +53,62 @@ As classes Java ficam em `api/src/main/java/com/edu/api/`:
 `dashboard/plsql/DashboardProcedures.java` (`PKG_DASHBOARD`). Cada uma é o
 único ponto do Java que chama o seu package.
 
+## Valor agregado
+
+O que cada recurso traz para o Edu, além de cumprir a regra de negócio.
+
+**Packages (`PKG_TICKETS`, `PKG_CHATBOT` e `PKG_DASHBOARD`)**
+
+- **Organização por domínio:** cada package reúne as rotinas de um assunto
+  do atendimento num arquivo só, e uma única classe Java chama cada um.
+  Mudar uma regra do atendimento é mexer num lugar do banco e num do Java.
+- **Uma regra, vários usos:** o status do SLA sai só da
+  `PKG_TICKETS.FN_STATUS_SLA_TICKET`, usada pelas telas de ticket, pela busca
+  e pelo dashboard. O que o roteamento e o escalonamento fazem igual (marcar
+  a atribuição e notificar o atendente) fica em membros privados do body.
+  Uma correção vale para todos os pontos de uma vez.
+- **Interface pequena e estável:** a spec mostra só os membros públicos, os
+  códigos de erro e as exceções nomeadas; o resto fica escondido no body,
+  que pode mudar sem afetar quem chama. A API traduz cada código para a
+  resposta HTTP certa (ver "Erros e tradução na API").
+- **Atualização com a API no ar:** sem estado no nível do package, recriar
+  um package não derruba as conexões abertas do pool (ORA-04068). O deploy do
+  pipeline de CI/CD aplica os packages pelo Flyway num Oracle novo e confere
+  que ficaram `VALID`.
+
+**Triggers de auditoria (`TRG_TICKETS_AUDITORIA` e
+`TRG_TICKET_AUDITORIA_IMUTAVEL`)**
+
+- **Histórico de cada ticket:** toda mudança de status, prioridade, dono,
+  segmento ou alerta de engenharia fica em `ticket_auditoria`, com o valor
+  anterior, o novo e o momento. Dá para reconstruir quando um ticket foi
+  escalado, trocou de atendente ou mudou de prioridade.
+- **Nenhum caminho escapa:** por estar no banco, a auditoria vale para a
+  API, para o job de SLA (escalonamento e reroteamento) e para SQL manual.
+  Um código novo que mude o ticket não precisa lembrar de registrar nada.
+- **Coerente com a transação:** a linha de auditoria entra e sai junto com
+  a mudança do ticket; um rollback não deixa registro de algo que não
+  aconteceu.
+- **Histórico que não se reescreve:** a segunda trigger recusa alterar ou
+  apagar a auditoria; a tabela só recebe `INSERT` (os limites estão em
+  "Limites da auditoria").
+
+**Dynamic SQL (`PKG_TICKETS.PR_BUSCAR_TICKETS`)**
+
+- **Busca flexível em tempo real:** o console combina à vontade status,
+  segmento, prioridade, atendente, período, texto e alerta de engenharia em
+  `GET /api/v1/tickets/search`, sem uma consulta fixa para cada combinação.
+- **SQL só com o necessário:** o `WHERE` tem apenas os filtros recebidos.
+  Cada combinação vira um texto de SQL próprio, que o Oracle planeja com os
+  predicados dela e reaproveita nas buscas seguintes, em vez de uma consulta
+  genérica com todos os filtros opcionais.
+- **Sem SQL injection:** todo valor entra por bind, e a ordenação sai de uma
+  lista fixa; nada do que o usuário digita vira texto de SQL.
+- **Regra de acesso no banco:** a visibilidade (o ADMIN vê tudo; o
+  atendente, os que abriu, os atribuídos a ele e os das suas skills) e o SLA
+  de cada linha são resolvidos na própria consulta. Uma ida ao banco devolve a
+  lista pronta para a tela.
+
 ## Erros e tradução na API
 
 | Código | Constante e exceção | Levantado por | Situação | HTTP |
