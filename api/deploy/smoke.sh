@@ -30,11 +30,11 @@ HTTP_CHECKS=(
   'API: contrato OpenAPI publicado'
   'API: rota protegida recusa quem não tem token'
   'Login de USER (smoke.usuario)'
-  'Ticket roteado pela PR_ROTEAR_TICKET'
-  'SLA pela FN_STATUS_SLA_TICKET'
+  'Ticket roteado pela PKG_TICKETS.PR_ROTEAR_TICKET'
+  'SLA pela PKG_TICKETS.FN_STATUS_SLA_TICKET'
   'Anexo gravado e lido no MinIO'
   'Login de ADMIN (smoke.admin)'
-  'Dashboard pela PR_RESUMO_DASHBOARD'
+  'Dashboard pela PKG_DASHBOARD.PR_RESUMO_DASHBOARD'
 )
 
 mkdir -p "$OUT_DIR"
@@ -84,6 +84,10 @@ repeatable_names() {
     | sed -E 's/^R__(.*)\.sql$/\1/' | sort
 }
 
+# Objeto criado por um R__: o nome sem o número de ordem ("01_pkg_tickets"
+# vira PKG_TICKETS).
+object_name() { sed -E 's/^[0-9]+_//' <<<"${1^^}"; }
+
 joined() { paste -sd, - | sed 's/,/, /g'; }
 
 wait_for_api() {
@@ -103,7 +107,7 @@ wait_for_api() {
 }
 
 check_database() {
-  local expected applied failed seed all hits descriptions objects invalid v1 v2 name
+  local expected applied failed seed all hits descriptions objects invalid v1 v2 name object
   local missing=()
 
   expected="$(file_versions "$DB_DIR/migration" "$HERE/fixtures")"
@@ -136,10 +140,12 @@ check_database() {
   objects="$(sql "SELECT object_name || ' ' || status FROM user_objects WHERE object_type IN ('FUNCTION', 'PROCEDURE', 'PACKAGE', 'PACKAGE BODY', 'TRIGGER')")" || objects=''
   while read -r name; do
     grep -qxF "${name//_/ }" <<<"$descriptions" || missing+=("$name no Flyway")
-    grep -qxF "${name^^} VALID" <<<"$objects" || missing+=("${name^^} VALID")
+    object="$(object_name "$name")"
+    grep -qxF "$object VALID" <<<"$objects" || missing+=("$object VALID")
   done < <(repeatable_names)
   if (( ${#missing[@]} == 0 )); then
-    record PASS 'PL/SQL: objetos dos R__ aplicados e VALID' "$(repeatable_names | tr '[:lower:]' '[:upper:]' | joined)"
+    record PASS 'PL/SQL: objetos dos R__ aplicados e VALID' \
+      "$(repeatable_names | while read -r name; do object_name "$name"; done | joined)"
   else
     record FAIL 'PL/SQL: objetos dos R__ aplicados e VALID' "faltam: ${missing[*]}"
   fi
@@ -150,12 +156,12 @@ check_database() {
     record FAIL 'PL/SQL: nenhum objeto INVALID' "inválidos: ${invalid:-consulta falhou}"
   fi
 
-  v1="$(sql "SELECT TO_CHAR(FN_CALC_TAXA_VARIACAO(120, 100), 'TM9', 'NLS_NUMERIC_CHARACTERS=''.,''') FROM dual")" || v1='erro'
-  v2="$(sql "SELECT TO_CHAR(FN_CALC_TAXA_VARIACAO(1, 3), 'TM9', 'NLS_NUMERIC_CHARACTERS=''.,''') FROM dual")" || v2='erro'
+  v1="$(sql "SELECT TO_CHAR(PKG_DASHBOARD.FN_CALC_TAXA_VARIACAO(120, 100), 'TM9', 'NLS_NUMERIC_CHARACTERS=''.,''') FROM dual")" || v1='erro'
+  v2="$(sql "SELECT TO_CHAR(PKG_DASHBOARD.FN_CALC_TAXA_VARIACAO(1, 3), 'TM9', 'NLS_NUMERIC_CHARACTERS=''.,''') FROM dual")" || v2='erro'
   if [[ "$v1" == 20 && "$v2" == -66.7 ]]; then
-    record PASS 'FN_CALC_TAXA_VARIACAO chamada no Oracle' '(120, 100) = 20; (1, 3) = -66.7'
+    record PASS 'PKG_DASHBOARD.FN_CALC_TAXA_VARIACAO chamada no Oracle' '(120, 100) = 20; (1, 3) = -66.7'
   else
-    record FAIL 'FN_CALC_TAXA_VARIACAO chamada no Oracle' "(120, 100) = $v1; (1, 3) = $v2"
+    record FAIL 'PKG_DASHBOARD.FN_CALC_TAXA_VARIACAO chamada no Oracle' "(120, 100) = $v1; (1, 3) = $v2"
   fi
 }
 

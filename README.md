@@ -441,11 +441,12 @@ changes ─┬─ api ────── publish ── deploy ─┐
   publicada (`api/deploy/docker-compose.yml`). O Flyway aplica migrations e
   PL/SQL num Oracle novo, sem o seed de demonstração. O smoke test
   (`api/deploy/smoke.sh`) confere:
-  * no Oracle: as migrations aplicadas, nenhuma versão do seed, os objetos
-    PL/SQL válidos e a `FN_CALC_TAXA_VARIACAO`;
-  * pela API: login, um ticket roteado pela `PR_ROTEAR_TICKET` (fila,
-    prioridade e prazo de SLA), o SLA pela `FN_STATUS_SLA_TICKET`, um anexo
-    gravado e lido no MinIO e o dashboard pela `PR_RESUMO_DASHBOARD`.
+  * no Oracle: as migrations aplicadas, nenhuma versão do seed, os packages e
+    as triggers válidos e a `PKG_DASHBOARD.FN_CALC_TAXA_VARIACAO`;
+  * pela API: login, um ticket roteado pela `PKG_TICKETS.PR_ROTEAR_TICKET`
+    (fila, prioridade e prazo de SLA), o SLA pela
+    `PKG_TICKETS.FN_STATUS_SLA_TICKET`, um anexo gravado e lido no MinIO e o
+    dashboard pela `PKG_DASHBOARD.PR_RESUMO_DASHBOARD`.
 
   Depois tudo é derrubado. Cada deploy aparece em **Deployments → staging**.
 * **report** junta o resultado de todos os jobs e deixa o run vermelho se
